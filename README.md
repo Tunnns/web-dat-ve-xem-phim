@@ -1,6 +1,4 @@
-# Hệ Thống Đặt Vé Xem Phim (Movie Ticket Booking)
-
-Đây là folder base chuẩn được setup dựa trên yêu cầu dành cho team 5 người. Dự án được chia thành 3 phần chính (Backend, Client, Admin) theo mô hình Monorepo (hoặc nhiều repo tách biệt tuỳ vào cách tổ chức git của team).
+# Hệ Thống Đặt Vé Xem Phim
 
 ## Công nghệ sử dụng
 - **Backend:** Node.js, Express, MongoDB (Mongoose), express-validator, multer, jsonwebtoken.
