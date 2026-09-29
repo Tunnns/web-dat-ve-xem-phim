@@ -40,7 +40,7 @@
   - Trang Profile: Lịch sử đặt vé, render mã QR để quét ở rạp.
   - Gọi API Auth (Đăng nhập, Đăng ký, Quên mật khẩu).
 
-### 5. Frontend Admin & Dashboard
+### 5. Frontend Admin & Dashboard (Châu)
 - **Nơi làm việc:** `admin/`
 - **Thư mục liên quan:** `src/pages/Dashboard`, `src/pages/MoviesManager`, `src/components/Charts`
 - **Nhiệm vụ chính:**
