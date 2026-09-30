@@ -1,6 +1,4 @@
-# Hệ Thống Đặt Vé Xem Phim (Movie Ticket Booking)
-
-Đây là folder base chuẩn được setup dựa trên yêu cầu dành cho team 5 người. Dự án được chia thành 3 phần chính (Backend, Client, Admin) theo mô hình Monorepo (hoặc nhiều repo tách biệt tuỳ vào cách tổ chức git của team).
+# Hệ Thống Đặt Vé Xem Phim
 
 ## Công nghệ sử dụng
 - **Backend:** Node.js, Express, MongoDB (Mongoose), express-validator, multer, jsonwebtoken.
@@ -17,7 +15,7 @@
   - Thuật toán **Seat Locking** (Khóa ghế tạm thời 5 phút) xử lý bằng logic trên MongoDB.
   - Tích hợp cổng thanh toán
 
-### 2. Backend Support & API
+### 2. Backend Support & API (Huy)
 - **Nơi làm việc:** `backend/`
 - **Thư mục liên quan:** `src/controllers/admin.controller.ts`, `src/routes/`, `src/utils/qr.util.ts`
 - **Nhiệm vụ chính:**
@@ -25,7 +23,7 @@
   - Xử lý logic tính tiền combo bắp nước và mã giảm giá (Voucher).
   - Viết logic sinh vé điện tử (QR Code bằng thư viện `qrcode`) sau khi thanh toán.
 
-### 3. Frontend Client Core
+### 3. Frontend Client Core (Trường)
 - **Nơi làm việc:** `client/`
 - **Thư mục liên quan:** `src/pages/Home`, `src/pages/MovieDetail`, `src/components/SeatMap`
 - **Nhiệm vụ chính:**
@@ -33,7 +31,7 @@
   - Dựng UI Trang chủ, Trang chi tiết phim, Lịch chiếu.
   - **Quan trọng nhất:** Xử lý UI **Sơ đồ ghế ngồi** (Map data từ API để render trạng thái ghế: Trống, Đang chọn, Đã bán).
 
-### 4. Frontend Client Support
+### 4. Frontend Client Support (Hoàng)
 - **Nơi làm việc:** `client/`
 - **Thư mục liên quan:** `src/pages/Checkout`, `src/pages/Profile`, `src/store/cartStore.ts`
 - **Nhiệm vụ chính:**
@@ -42,7 +40,7 @@
   - Trang Profile: Lịch sử đặt vé, render mã QR để quét ở rạp.
   - Gọi API Auth (Đăng nhập, Đăng ký, Quên mật khẩu).
 
-### 5. Frontend Admin & Dashboard
+### 5. Frontend Admin & Dashboard (Châu)
 - **Nơi làm việc:** `admin/`
 - **Thư mục liên quan:** `src/pages/Dashboard`, `src/pages/MoviesManager`, `src/components/Charts`
 - **Nhiệm vụ chính:**
