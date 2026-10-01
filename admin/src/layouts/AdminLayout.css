@@ -1,0 +1,79 @@
+.admin-sidebar {
+  box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
+  z-index: 10;
+}
+
+.sidebar-logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1677ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 16px;
+}
+
+.admin-menu {
+  border-right: none;
+}
+
+.admin-header {
+  padding: 0;
+  background: #fff !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  z-index: 9;
+}
+
+.trigger-btn {
+  font-size: 18px !important;
+  width: 64px !important;
+  height: 64px !important;
+  border-radius: 0 !important;
+}
+
+.trigger-btn:hover {
+  background: rgba(0, 0, 0, 0.025) !important;
+}
+
+.header-right {
+  padding-right: 24px;
+}
+
+.user-profile {
+  cursor: pointer;
+  padding: 0 12px;
+  transition: all 0.3s;
+  height: 64px;
+  display: flex;
+  align-items: center;
+}
+
+.user-profile:hover {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.username {
+  margin-left: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.admin-content {
+  margin: 24px 16px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  min-height: 280px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
