@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo QR Banking</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 100%; }
+        h2 { color: #333; margin-top: 0; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { background: #007bff; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.3s; }
+        button:hover { background: #0056b3; }
+        .qr-result { margin-top: 20px; display: none; }
+        .qr-result img { max-width: 100%; border-radius: 8px; border: 2px solid #eee; padding: 10px; }
+        .loading { display: none; margin-top: 15px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Thanh Toán QR Demo</h2>
+    
+    <input type="text" id="bankId" placeholder="Ngân hàng (VD: MB, VCB...)" value="MB" />
+    <input type="text" id="accountNo" placeholder="Số tài khoản" value="0987654321" />
+    <input type="text" id="accountName" placeholder="Tên chủ thẻ" value="NGUYEN VAN A" />
+    
+    <input type="number" id="amount" placeholder="Số tiền (VND)" value="50000" />
+    <input type="text" id="description" placeholder="Nội dung chuyển khoản" value="Thanh toan ve xem phim" />
+    
+    <button onclick="generateQR()">Tạo mã QR</button>
+
+    <div class="loading" id="loading">Đang tạo mã QR...</div>
+
+    <div class="qr-result" id="qrResult">
+        <h4 style="margin-bottom: 10px;">Quét mã để thanh toán</h4>
+        <img id="qrImage" src="" alt="Mã QR Thanh Toán" />
+    </div>
+</div>
+
+<script>
+    async function generateQR() {
+        const amount = document.getElementById('amount').value;
+        const description = document.getElementById('description').value;
+        const bankId = document.getElementById('bankId').value;
+        const accountNo = document.getElementById('accountNo').value;
+        const accountName = document.getElementById('accountName').value;
+
+        const loading = document.getElementById('loading');
+        const qrResult = document.getElementById('qrResult');
+        const qrImage = document.getElementById('qrImage');
+
+        loading.style.display = 'block';
+        qrResult.style.display = 'none';
+
+        try {
+            const response = await fetch('http://localhost:5000/api/payment/qr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount, description, bankId, accountNo, accountName })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                qrImage.src = result.data.qrUrl;
+                qrResult.style.display = 'block';
+            } else {
+                alert('Lỗi: ' + result.message);
+            }
+        } catch (error) {
+            alert('Lỗi kết nối đến server!');
+            console.error(error);
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
