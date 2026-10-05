@@ -4,6 +4,7 @@ import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
 import ForgotPassword from './pages/Auth/ForgotPassword'
 import ResetPassword from './pages/Auth/ResetPassword'
+import Checkout from './pages/Checkout/Checkout'
 import { useAuthStore } from './store/authStore'
 
 // Placeholder - Trang chủ do Trường phụ trách
@@ -30,6 +31,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePlaceholder />} />
+        <Route path="/checkout" element={<Checkout />} />
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
