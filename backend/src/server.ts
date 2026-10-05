@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import paymentRoutes from './routes/payment.route';
+import adminRoutes from './routes/admin.route';
 import connectDB from './config/db';
 import dotenv from 'dotenv';
 
@@ -19,6 +20,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/payment', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Test route
 app.get('/', (req, res) => {
