@@ -11,6 +11,16 @@ import {
   createTheater,
   updateTheater,
   deleteTheater,
+  getRooms,
+  getRoomById,
+  createRoom,
+  updateRoom,
+  deleteRoom,
+  getShowtimes,
+  getShowtimeById,
+  createShowtime,
+  updateShowtime,
+  deleteShowtime,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -98,5 +108,71 @@ router.get('/theaters/:id', getTheaterById);
 router.post('/theaters', theaterCreateRules, validate, createTheater);
 router.put('/theaters/:id', theaterUpdateRules, validate, updateTheater);
 router.delete('/theaters/:id', deleteTheater);
+
+/* ============================ PHÒNG (Room) ============================ */
+
+const roomCreateRules = [
+  body('name').trim().notEmpty().withMessage('Tên phòng là bắt buộc'),
+  body('theater').isMongoId().withMessage('ID rạp không hợp lệ'),
+  body('capacity').isInt({ min: 1 }).withMessage('Sức chứa phải là số nguyên dương'),
+  body('seatLayout').optional().isArray().withMessage('Sơ đồ ghế phải là mảng'),
+  body('seatLayout.*.code').optional().trim().notEmpty().withMessage('Mã ghế không được rỗng'),
+  body('seatLayout.*.type')
+    .optional()
+    .isIn(['normal', 'vip', 'couple'])
+    .withMessage('Loại ghế không hợp lệ'),
+  body('seatLayout.*.status')
+    .optional()
+    .isIn(['available', 'maintenance'])
+    .withMessage('Trạng thái ghế không hợp lệ'),
+];
+
+const roomUpdateRules = [
+  body('name').optional().trim().notEmpty().withMessage('Tên phòng không được rỗng'),
+  body('theater').optional().isMongoId().withMessage('ID rạp không hợp lệ'),
+  body('capacity').optional().isInt({ min: 1 }).withMessage('Sức chứa phải là số nguyên dương'),
+  body('seatLayout').optional().isArray().withMessage('Sơ đồ ghế phải là mảng'),
+  body('seatLayout.*.code').optional().trim().notEmpty().withMessage('Mã ghế không được rỗng'),
+  body('seatLayout.*.type')
+    .optional()
+    .isIn(['normal', 'vip', 'couple'])
+    .withMessage('Loại ghế không hợp lệ'),
+  body('seatLayout.*.status')
+    .optional()
+    .isIn(['available', 'maintenance'])
+    .withMessage('Trạng thái ghế không hợp lệ'),
+];
+
+router.get('/rooms', getRooms);
+router.get('/rooms/:id', getRoomById);
+router.post('/rooms', roomCreateRules, validate, createRoom);
+router.put('/rooms/:id', roomUpdateRules, validate, updateRoom);
+router.delete('/rooms/:id', deleteRoom);
+
+/* ============================ SUẤT CHIẾU (Showtime) ============================ */
+
+const showtimeCreateRules = [
+  body('movie').isMongoId().withMessage('ID phim không hợp lệ'),
+  body('theater').isMongoId().withMessage('ID rạp không hợp lệ'),
+  body('room').isMongoId().withMessage('ID phòng không hợp lệ'),
+  body('startTime').isISO8601().toDate().withMessage('Thời gian bắt đầu không hợp lệ'),
+  body('endTime').isISO8601().toDate().withMessage('Thời gian kết thúc không hợp lệ'),
+  body('price').isFloat({ min: 0 }).withMessage('Giá vé phải là số dương'),
+];
+
+const showtimeUpdateRules = [
+  body('movie').optional().isMongoId().withMessage('ID phim không hợp lệ'),
+  body('theater').optional().isMongoId().withMessage('ID rạp không hợp lệ'),
+  body('room').optional().isMongoId().withMessage('ID phòng không hợp lệ'),
+  body('startTime').optional().isISO8601().toDate().withMessage('Thời gian bắt đầu không hợp lệ'),
+  body('endTime').optional().isISO8601().toDate().withMessage('Thời gian kết thúc không hợp lệ'),
+  body('price').optional().isFloat({ min: 0 }).withMessage('Giá vé phải là số dương'),
+];
+
+router.get('/showtimes', getShowtimes);
+router.get('/showtimes/:id', getShowtimeById);
+router.post('/showtimes', showtimeCreateRules, validate, createShowtime);
+router.put('/showtimes/:id', showtimeUpdateRules, validate, updateShowtime);
+router.delete('/showtimes/:id', deleteShowtime);
 
 export default router;

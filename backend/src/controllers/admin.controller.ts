@@ -1,316 +1,213 @@
 import { Request, Response } from 'express';
-import mongoose from 'mongoose';
-import Movie from '../models/Movie';
-import Theater from '../models/Theater';
+import { AppError } from '../utils/appError';
+import * as MovieService from '../services/movie.service';
+import * as TheaterService from '../services/theater.service';
+import * as RoomService from '../services/room.service';
+import * as ShowtimeService from '../services/showtime.service';
 
-/* =====================================================================
- *  PHIM (Movie) - CRUD
- * ===================================================================== */
+const handleError = (res: Response, error: unknown): void => {
+  if (error instanceof AppError) {
+    res.status(error.statusCode).json({ success: false, message: error.message });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ',
+      error: (error as Error).message,
+    });
+  }
+};
 
-/**
- * @route   GET /api/admin/movies
- * @desc    Lấy danh sách phim (hỗ trợ lọc theo status và tìm kiếm theo tiêu đề)
- */
+/* ============================ PHIM (Movie) ============================ */
+
 export const getMovies = async (req: Request, res: Response) => {
   try {
-    const status = req.query.status as string | undefined;
-    const search = req.query.search as string | undefined;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filter: Record<string, any> = {};
-    if (status) filter.status = status;
-    if (search) filter.title = { $regex: search, $options: 'i' };
-
-    const movies = await Movie.find(filter).sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      message: 'Lấy danh sách phim thành công',
-      data: movies,
-    });
+    const movies = await MovieService.getMovies(
+      req.query.status as string | undefined,
+      req.query.search as string | undefined
+    );
+    res.status(200).json({ success: true, message: 'Lấy danh sách phim thành công', data: movies });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi lấy danh sách phim',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/**
- * @route   GET /api/admin/movies/:id
- * @desc    Lấy chi tiết một bộ phim
- */
 export const getMovieById = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'ID phim không hợp lệ' });
-    }
-
-    const movie = await Movie.findById(id);
-    if (!movie) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy phim' });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Lấy thông tin phim thành công',
-      data: movie,
-    });
+    const movie = await MovieService.getMovieById(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Lấy thông tin phim thành công', data: movie });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi lấy thông tin phim',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/**
- * @route   POST /api/admin/movies
- * @desc    Tạo mới một bộ phim
- */
 export const createMovie = async (req: Request, res: Response) => {
   try {
-    const movie = await Movie.create(req.body);
-
-    res.status(201).json({
-      success: true,
-      message: 'Tạo phim thành công',
-      data: movie,
-    });
+    const movie = await MovieService.createMovie(req.body);
+    res.status(201).json({ success: true, message: 'Tạo phim thành công', data: movie });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi tạo phim',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/**
- * @route   PUT /api/admin/movies/:id
- * @desc    Cập nhật thông tin một bộ phim
- */
 export const updateMovie = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'ID phim không hợp lệ' });
-    }
-
-    const movie = await Movie.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-
-    if (!movie) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy phim' });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Cập nhật phim thành công',
-      data: movie,
-    });
+    const movie = await MovieService.updateMovie(req.params.id as string, req.body);
+    res.status(200).json({ success: true, message: 'Cập nhật phim thành công', data: movie });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi cập nhật phim',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/**
- * @route   DELETE /api/admin/movies/:id
- * @desc    Xóa một bộ phim
- *          (Nếu cần, có thể mở rộng xóa luôn các suất chiếu liên quan)
- */
 export const deleteMovie = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'ID phim không hợp lệ' });
-    }
-
-    const movie = await Movie.findByIdAndDelete(id);
-    if (!movie) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy phim' });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Xóa phim thành công',
-      data: movie,
-    });
+    const movie = await MovieService.deleteMovie(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Xóa phim thành công', data: movie });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi xóa phim',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/* =====================================================================
- *  RẠP (Theater) - CRUD
- * ===================================================================== */
+/* ============================ RẠP (Theater) ============================ */
 
-/**
- * @route   GET /api/admin/theaters
- * @desc    Lấy danh sách rạp (hỗ trợ tìm kiếm theo tên/địa chỉ)
- */
 export const getTheaters = async (req: Request, res: Response) => {
   try {
-    const search = req.query.search as string | undefined;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filter: Record<string, any> = {};
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { address: { $regex: search, $options: 'i' } },
-      ];
-    }
-
-    const theaters = await Theater.find(filter).sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      message: 'Lấy danh sách rạp thành công',
-      data: theaters,
-    });
+    const theaters = await TheaterService.getTheaters(req.query.search as string | undefined);
+    res.status(200).json({ success: true, message: 'Lấy danh sách rạp thành công', data: theaters });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi lấy danh sách rạp',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/**
- * @route   GET /api/admin/theaters/:id
- * @desc    Lấy chi tiết một rạp
- */
 export const getTheaterById = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'ID rạp không hợp lệ' });
-    }
-
-    const theater = await Theater.findById(id);
-    if (!theater) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy rạp' });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Lấy thông tin rạp thành công',
-      data: theater,
-    });
+    const theater = await TheaterService.getTheaterById(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Lấy thông tin rạp thành công', data: theater });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi lấy thông tin rạp',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/**
- * @route   POST /api/admin/theaters
- * @desc    Tạo mới một rạp
- */
 export const createTheater = async (req: Request, res: Response) => {
   try {
-    const theater = await Theater.create(req.body);
-
-    res.status(201).json({
-      success: true,
-      message: 'Tạo rạp thành công',
-      data: theater,
-    });
+    const theater = await TheaterService.createTheater(req.body);
+    res.status(201).json({ success: true, message: 'Tạo rạp thành công', data: theater });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi tạo rạp',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/**
- * @route   PUT /api/admin/theaters/:id
- * @desc    Cập nhật thông tin một rạp
- */
 export const updateTheater = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'ID rạp không hợp lệ' });
-    }
-
-    const theater = await Theater.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-
-    if (!theater) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy rạp' });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Cập nhật rạp thành công',
-      data: theater,
-    });
+    const theater = await TheaterService.updateTheater(req.params.id as string, req.body);
+    res.status(200).json({ success: true, message: 'Cập nhật rạp thành công', data: theater });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi cập nhật rạp',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
-/**
- * @route   DELETE /api/admin/theaters/:id
- * @desc    Xóa một rạp
- *          (Nếu cần, có thể mở rộng xóa luôn các phòng/suất chiếu liên quan)
- */
 export const deleteTheater = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'ID rạp không hợp lệ' });
-    }
-
-    const theater = await Theater.findByIdAndDelete(id);
-    if (!theater) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy rạp' });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Xóa rạp thành công',
-      data: theater,
-    });
+    const theater = await TheaterService.deleteTheater(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Xóa rạp thành công', data: theater });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi xóa rạp',
-      error: (error as Error).message,
-    });
+    handleError(res, error);
   }
 };
 
+/* ============================ PHÒNG (Room) ============================ */
+
+export const getRooms = async (req: Request, res: Response) => {
+  try {
+    const rooms = await RoomService.getRooms(req.query.theater as string | undefined);
+    res.status(200).json({ success: true, message: 'Lấy danh sách phòng thành công', data: rooms });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const getRoomById = async (req: Request, res: Response) => {
+  try {
+    const room = await RoomService.getRoomById(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Lấy thông tin phòng thành công', data: room });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const createRoom = async (req: Request, res: Response) => {
+  try {
+    const room = await RoomService.createRoom(req.body);
+    res.status(201).json({ success: true, message: 'Tạo phòng thành công', data: room });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const updateRoom = async (req: Request, res: Response) => {
+  try {
+    const room = await RoomService.updateRoom(req.params.id as string, req.body);
+    res.status(200).json({ success: true, message: 'Cập nhật phòng thành công', data: room });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const deleteRoom = async (req: Request, res: Response) => {
+  try {
+    const room = await RoomService.deleteRoom(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Xóa phòng thành công', data: room });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+/* ============================ SUẤT CHIẾU (Showtime) ============================ */
+
+export const getShowtimes = async (req: Request, res: Response) => {
+  try {
+    const showtimes = await ShowtimeService.getShowtimes({
+      movie: req.query.movie as string | undefined,
+      theater: req.query.theater as string | undefined,
+      room: req.query.room as string | undefined,
+    });
+    res.status(200).json({ success: true, message: 'Lấy danh sách suất chiếu thành công', data: showtimes });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const getShowtimeById = async (req: Request, res: Response) => {
+  try {
+    const showtime = await ShowtimeService.getShowtimeById(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Lấy thông tin suất chiếu thành công', data: showtime });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const createShowtime = async (req: Request, res: Response) => {
+  try {
+    const showtime = await ShowtimeService.createShowtime(req.body);
+    res.status(201).json({ success: true, message: 'Tạo suất chiếu thành công', data: showtime });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const updateShowtime = async (req: Request, res: Response) => {
+  try {
+    const showtime = await ShowtimeService.updateShowtime(req.params.id as string, req.body);
+    res.status(200).json({ success: true, message: 'Cập nhật suất chiếu thành công', data: showtime });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const deleteShowtime = async (req: Request, res: Response) => {
+  try {
+    const showtime = await ShowtimeService.deleteShowtime(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Xóa suất chiếu thành công', data: showtime });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
