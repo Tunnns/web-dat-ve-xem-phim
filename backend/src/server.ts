@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import paymentRoutes from './routes/payment.route';
 import adminRoutes from './routes/admin.route';
+import authRoutes from './routes/auth.route';
 import connectDB from './config/db';
 import dotenv from 'dotenv';
 
@@ -19,6 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 
