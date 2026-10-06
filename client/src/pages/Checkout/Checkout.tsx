@@ -38,7 +38,7 @@ export default function Checkout() {
   const { showtime, seats: selected, setShowtime, toggleSeat, removeSeat, clearCart, totalPrice } =
     useCartStore()
   const [warning, setWarning] = useState('')
-  const allSeats = useMemo(buildSeats, [])
+  const allSeats = useMemo(() => buildSeats(), [])
 
   useEffect(() => {
     setShowtime(MOCK_SHOWTIME)
