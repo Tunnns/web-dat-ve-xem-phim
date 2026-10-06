@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Movie from '../models/Movie';
+import Showtime from '../models/Showtime';
 import { AppError } from '../utils/appError';
 
 export const getMovies = (status?: string, search?: string) => {
@@ -44,6 +45,10 @@ export const updateMovie = async (id: string, data: any) => {
 export const deleteMovie = async (id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError('ID phim không hợp lệ', 400);
+  }
+
+  if (await Showtime.exists({ movie: id })) {
+    throw new AppError('Không thể xóa phim vì đang có suất chiếu tham chiếu', 400);
   }
 
   const movie = await Movie.findByIdAndDelete(id);

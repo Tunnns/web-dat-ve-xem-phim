@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import Theater from '../models/Theater';
+import Room from '../models/Room';
+import Showtime from '../models/Showtime';
 import { AppError } from '../utils/appError';
 
 export const getTheaters = (search?: string) => {
@@ -48,6 +50,13 @@ export const updateTheater = async (id: string, data: any) => {
 export const deleteTheater = async (id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError('ID rạp không hợp lệ', 400);
+  }
+
+  if (await Room.exists({ theater: id })) {
+    throw new AppError('Không thể xóa rạp vì vẫn còn phòng thuộc rạp này', 400);
+  }
+  if (await Showtime.exists({ theater: id })) {
+    throw new AppError('Không thể xóa rạp vì đang có suất chiếu tham chiếu', 400);
   }
 
   const theater = await Theater.findByIdAndDelete(id);
