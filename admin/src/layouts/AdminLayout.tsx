@@ -5,6 +5,8 @@ import {
   MenuUnfoldOutlined,
   DashboardOutlined,
   VideoCameraOutlined,
+  ShopOutlined,
+  AppstoreOutlined,
   UserOutlined,
   PlaySquareOutlined,
   LogoutOutlined,
@@ -31,9 +33,19 @@ const AdminLayout: React.FC = () => {
       label: 'Quản lý Phim',
     },
     {
+      key: '/theaters',
+      icon: <ShopOutlined />,
+      label: 'Quản lý Rạp',
+    },
+    {
+      key: '/rooms',
+      icon: <AppstoreOutlined />,
+      label: 'Quản lý Phòng',
+    },
+    {
       key: '/showtimes',
       icon: <PlaySquareOutlined />,
-      label: 'Lịch chiếu',
+      label: 'Suất chiếu',
     },
     {
       key: '/users',

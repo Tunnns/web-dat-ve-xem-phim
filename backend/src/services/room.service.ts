@@ -4,6 +4,13 @@ import Theater from '../models/Theater';
 import Showtime from '../models/Showtime';
 import { AppError } from '../utils/appError';
 
+// capacity phải khớp số ghế trong seatLayout (nếu có seatLayout)
+const assertCapacityMatches = (capacity: unknown, seatLayout: unknown) => {
+  if (Array.isArray(seatLayout) && seatLayout.length > 0 && Number(capacity) !== seatLayout.length) {
+    throw new AppError(`Sức chứa (${capacity}) phải bằng số ghế trong sơ đồ (${seatLayout.length})`, 400);
+  }
+};
+
 export const getRooms = (theater?: string) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: Record<string, any> = {};
@@ -42,6 +49,8 @@ export const createRoom = async (data: any) => {
     throw new AppError('Rạp không tồn tại', 404);
   }
 
+  assertCapacityMatches(data.capacity, data.seatLayout);
+
   return Room.create(data);
 };
 
@@ -60,6 +69,14 @@ export const updateRoom = async (id: string, data: any) => {
     if (!theaterExists) {
       throw new AppError('Rạp không tồn tại', 404);
     }
+  }
+
+  if (data.capacity !== undefined || data.seatLayout !== undefined) {
+    const current = await Room.findById(id);
+    if (!current) {
+      throw new AppError('Không tìm thấy phòng', 404);
+    }
+    assertCapacityMatches(data.capacity ?? current.capacity, data.seatLayout ?? current.seatLayout);
   }
 
   const room = await Room.findByIdAndUpdate(id, data, { new: true, runValidators: true }).populate(

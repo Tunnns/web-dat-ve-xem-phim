@@ -5,6 +5,16 @@ import Room from '../models/Room';
 import Showtime from '../models/Showtime';
 import { AppError } from '../utils/appError';
 
+// Kiểm tra trùng lịch chiếu trong cùng một phòng
+const assertNoOverlap = async (room: string, start: Date, end: Date, excludeId?: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: Record<string, any> = { room, startTime: { $lt: end }, endTime: { $gt: start } };
+  if (excludeId) filter._id = { $ne: excludeId };
+  if (await Showtime.exists(filter)) {
+    throw new AppError('Phòng đã có suất chiếu khác trùng thời gian', 409);
+  }
+};
+
 export const getShowtimes = (filters: { movie?: string; theater?: string; room?: string }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: Record<string, any> = {};
@@ -75,6 +85,8 @@ export const createShowtime = async (data: any) => {
     throw new AppError('Thời gian bắt đầu phải trước thời gian kết thúc', 400);
   }
 
+  await assertNoOverlap(room, new Date(startTime), new Date(endTime));
+
   return Showtime.create(data);
 };
 
@@ -104,12 +116,29 @@ export const updateShowtime = async (id: string, data: any) => {
     throw new AppError('Phòng không tồn tại', 404);
   }
 
-  // Kiểm tra thời gian nếu cập nhật đầy đủ start/end
-  const startTime = data.startTime ? new Date(data.startTime) : null;
-  const endTime = data.endTime ? new Date(data.endTime) : null;
-  if (startTime && endTime && startTime >= endTime) {
+  const existing = await Showtime.findById(id);
+  if (!existing) {
+    throw new AppError('Không tìm thấy suất chiếu', 404);
+  }
+
+  // Gộp dữ liệu mới với dữ liệu cũ để kiểm tra nhất quán
+  const finalTheater = String(data.theater ?? existing.theater);
+  const finalRoom = String(data.room ?? existing.room);
+  const startTime = new Date(data.startTime ?? existing.startTime);
+  const endTime = new Date(data.endTime ?? existing.endTime);
+
+  if (data.theater || data.room) {
+    const roomDoc = await Room.findById(finalRoom);
+    if (!roomDoc || String(roomDoc.theater) !== finalTheater) {
+      throw new AppError('Phòng không thuộc rạp đã chọn', 400);
+    }
+  }
+
+  if (startTime >= endTime) {
     throw new AppError('Thời gian bắt đầu phải trước thời gian kết thúc', 400);
   }
+
+  await assertNoOverlap(finalRoom, startTime, endTime, id);
 
   const showtime = await Showtime.findByIdAndUpdate(id, data, { new: true, runValidators: true })
     .populate('movie', 'title')
