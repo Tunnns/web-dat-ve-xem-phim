@@ -6,7 +6,7 @@ import type { Seat, ShowtimeInfo } from '../../types/booking'
 const MOCK_SHOWTIME: ShowtimeInfo = {
   id: 'demo-showtime-1',
   movieTitle: 'Phim Demo',
-  cinema: 'CineBook Center',
+  cinema: 'Fivecore Center',
   room: 'Phòng 1',
   startTime: new Date().toISOString(),
 }
@@ -38,11 +38,13 @@ export default function Checkout() {
   const { showtime, seats: selected, setShowtime, toggleSeat, removeSeat, clearCart, totalPrice } =
     useCartStore()
   const [warning, setWarning] = useState('')
-  const allSeats = useMemo(buildSeats, [])
+  const allSeats = useMemo(() => buildSeats(), [])
 
   useEffect(() => {
-    setShowtime(MOCK_SHOWTIME)
-  }, [setShowtime])
+    if (!showtime) {
+      setShowtime(MOCK_SHOWTIME)
+    }
+  }, [showtime, setShowtime])
 
   const selectedIds = new Set(selected.map((s) => s.id))
 

@@ -22,7 +22,9 @@ export default function AuthLayout({ title, subtitle, children }: Props) {
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 shadow-lg shadow-brand-500/40">
             <Film size={22} />
           </span>
-          <span className="text-xl font-bold tracking-wide">CineBook</span>
+          <span className="text-xl font-bold tracking-wide">
+            Five<span className="text-brand-500">core</span>
+          </span>
         </Link>
         <h1 className="text-center text-2xl font-semibold">{title}</h1>
         <p className="mb-6 mt-1 text-center text-sm text-white/60">{subtitle}</p>

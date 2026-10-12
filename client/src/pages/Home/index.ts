@@ -1,0 +1,5 @@
+export { default } from './Home'
+export { default as Home } from './Home'
+export { default as HeroBanner } from './HeroBanner'
+export { default as QuickBooking } from './QuickBooking'
+export { default as MovieCard } from './MovieCard'
