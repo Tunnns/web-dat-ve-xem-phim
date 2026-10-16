@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Play, Star, Clock, Ticket } from 'lucide-react'
 import type { Movie } from '../../types/movie'
