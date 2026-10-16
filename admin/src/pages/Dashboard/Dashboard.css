@@ -1,0 +1,553 @@
+
+.dashboard-page {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  color: #182230;
+}
+
+.dashboard-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 28px;
+}
+
+.dashboard-eyebrow {
+  color: #e53945;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+}
+
+.dashboard-heading h1 {
+  margin: 9px 0 7px;
+  color: #182230;
+  font-size: clamp(21px, 2vw, 28px);
+  font-weight: 750;
+  letter-spacing: -0.8px;
+}
+
+.dashboard-heading p,
+.panel-heading p {
+  margin: 0;
+  color: #8a94a5;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.dashboard-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.period-picker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 38px;
+  padding: 4px;
+  border: 1px solid #e5e9f0;
+  border-radius: 9px;
+  background: #fff;
+  color: #7c8798;
+}
+
+.period-picker > .anticon {
+  margin: 0 7px;
+  font-size: 13px;
+}
+
+.period-picker button {
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #737e8f;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.period-picker button.active {
+  background: #fff0f1;
+  color: #d72f3c;
+  font-weight: 700;
+}
+
+.export-button,
+.view-all-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #e5e9f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.export-button:hover,
+.view-all-button:hover {
+  border-color: #e53945;
+  color: #e53945;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.stat-card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #edf0f5;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(28, 39, 60, 0.025);
+}
+
+.stat-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stat-title {
+  color: #788396;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  font-size: 19px;
+}
+
+.stat-icon.red {
+  background: #fff0f1;
+  color: #e53945;
+}
+
+.stat-icon.blue {
+  background: #edf5ff;
+  color: #4285ee;
+}
+
+.stat-icon.purple {
+  background: #f4efff;
+  color: #8964d9;
+}
+
+.stat-icon.orange {
+  background: #fff5e7;
+  color: #e99a26;
+}
+
+.stat-value {
+  margin: 19px 0 14px;
+  color: #172033;
+  font-size: clamp(24px, 2.3vw, 31px);
+  font-weight: 750;
+  letter-spacing: -1px;
+}
+
+.stat-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.stat-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.stat-change.up {
+  color: #169b68;
+}
+
+.stat-change.down {
+  color: #e05260;
+}
+
+.stat-description {
+  color: #99a2b1;
+  font-size: 10px;
+}
+
+.dashboard-chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(270px, 1fr);
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.dashboard-panel {
+  min-width: 0;
+  border: 1px solid #edf0f5;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(28, 39, 60, 0.025);
+}
+
+.revenue-panel,
+.ticket-panel {
+  padding: 23px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.panel-heading h2 {
+  margin: 0 0 7px;
+  color: #202b3d;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.panel-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #7f899a;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.panel-more:hover {
+  background: #f5f7fb;
+}
+
+.revenue-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 21px;
+}
+
+.revenue-summary > strong {
+  color: #182230;
+  font-size: 25px;
+  letter-spacing: -0.7px;
+}
+
+.summary-positive {
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: #e9f8f0;
+  color: #169b68;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.revenue-summary > small {
+  color: #98a1b0;
+  font-size: 10px;
+}
+
+.revenue-chart {
+  width: 100%;
+  height: 255px;
+  margin-top: 15px;
+}
+
+.ticket-chart {
+  position: relative;
+  width: 100%;
+  height: 210px;
+  margin: 7px auto 0;
+}
+
+.ticket-chart-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.ticket-chart-center strong {
+  color: #182230;
+  font-size: 25px;
+  font-weight: 750;
+}
+
+.ticket-chart-center span {
+  color: #98a1b0;
+  font-size: 10px;
+}
+
+.ticket-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 7px;
+}
+
+.ticket-legend-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  color: #778294;
+  font-size: 11px;
+}
+
+.ticket-legend-item strong {
+  color: #253044;
+  font-size: 11px;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.bookings-panel {
+  overflow: hidden;
+}
+
+.bookings-heading {
+  align-items: center;
+  padding: 23px 23px 18px;
+}
+
+.bookings-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.bookings-table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.bookings-table thead {
+  background: #f8f9fc;
+}
+
+.bookings-table th {
+  padding: 14px 18px;
+  color: #8b95a5;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.5px;
+}
+
+.bookings-table td {
+  padding: 17px 18px;
+  border-bottom: 1px solid #f0f2f6;
+  color: #687487;
+  font-size: 11px;
+}
+
+.bookings-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.bookings-table tbody tr:hover {
+  background: #fcfcfe;
+}
+
+.booking-id {
+  color: #df3542 !important;
+  font-weight: 700;
+}
+
+.booking-customer {
+  color: #263247 !important;
+  font-weight: 600;
+}
+
+.booking-amount {
+  color: #263247 !important;
+  font-weight: 700;
+}
+
+.booking-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.booking-status.paid {
+  background: #eaf8f0;
+  color: #168457;
+}
+
+.booking-status.pending {
+  background: #fff5e6;
+  color: #bd7a17;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 23px;
+  border-top: 1px solid #edf0f5;
+  color: #98a1b0;
+  font-size: 10px;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ticket-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    column-gap: 20px;
+  }
+
+  .ticket-panel .panel-heading {
+    grid-column: 1 / -1;
+  }
+
+  .ticket-chart {
+    max-width: 280px;
+  }
+
+  .ticket-legend {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboard-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-heading-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .period-picker {
+    max-width: 100%;
+  }
+
+  .dashboard-stats {
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 15px;
+  }
+
+  .stat-title {
+    font-size: 11px;
+  }
+
+  .stat-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+
+  .stat-value {
+    font-size: 23px;
+  }
+
+  .revenue-panel,
+  .ticket-panel {
+    padding: 16px;
+  }
+
+  .ticket-panel {
+    display: block;
+  }
+
+  .ticket-chart {
+    max-width: 300px;
+  }
+
+  .ticket-legend {
+    margin-top: 12px;
+  }
+
+  .bookings-heading {
+    padding: 17px;
+  }
+
+  .table-footer {
+    padding: 13px 17px;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .period-picker {
+    flex: 1;
+  }
+
+  .period-picker button {
+    padding-inline: 6px;
+  }
+
+  .export-button {
+    padding-inline: 10px;
+  }
+
+  .revenue-summary > strong {
+    font-size: 22px;
+  }
+}
