@@ -5,10 +5,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "concurrently -n \"BACKEND,CLIENT,ADMIN\" -c \"blue,green,magenta\" \"npm --prefix backend run dev\" \"npm --prefix client run dev\" \"npm --prefix admin run dev\"",
+    "start": "npm run dev",
+    "build": "concurrently -n \"BACKEND,CLIENT,ADMIN\" -c \"blue,green,magenta\" \"npm --prefix backend run build\" \"npm --prefix client run build\" \"npm --prefix admin run build\"",
     "dev:backend": "npm --prefix backend run dev",
     "dev:client": "npm --prefix client run dev",
     "dev:admin": "npm --prefix admin run dev",
-    "build": "concurrently -n \"BACKEND,CLIENT,ADMIN\" -c \"blue,green,magenta\" \"npm --prefix backend run build\" \"npm --prefix client run build\" \"npm --prefix admin run build\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
