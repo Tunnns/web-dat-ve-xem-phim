@@ -70,3 +70,5 @@ export const getRooms = () => getList('/rooms');
 
 // Danh sách suất chiếu
 export const getShowtimes = () => getList('/showtimes');
+// Danh sách vé đặt
+export const getTickets = () => getList('/tickets');
