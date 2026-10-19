@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Loader2, Lock, Mail } from 'lucide-react'
 import AuthLayout from '../../components/AuthLayout'
 import InputField from '../../components/InputField'
-import { authApi } from '../../api/auth.api'
 import { getErrorMessage } from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 
@@ -11,7 +10,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function Login() {
   const navigate = useNavigate()
-  const setAuth = useAuthStore((s) => s.setAuth)
+  const login = useAuthStore((s) => s.login)
   const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState('')
@@ -31,9 +30,7 @@ export default function Login() {
     if (!validate()) return
     setLoading(true)
     try {
-      const res = await authApi.login(form)
-      if (!res.data) throw new Error('Phản hồi không hợp lệ')
-      setAuth(res.data.user, res.data.token)
+      await login(form)
       navigate('/', { replace: true })
     } catch (err) {
       setServerError(getErrorMessage(err))
