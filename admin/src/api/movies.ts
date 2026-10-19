@@ -6,11 +6,11 @@ export const getMovies = async (params?: { status?: MovieStatus; search?: string
   return res.data.data ?? [];
 };
 
-export const createMovie = async (payload: Record<string, unknown>): Promise<void> => {
+export const createMovie = async (payload: FormData): Promise<void> => {
   await apiClient.post('/movies', payload);
 };
 
-export const updateMovie = async (id: string, payload: Record<string, unknown>): Promise<void> => {
+export const updateMovie = async (id: string, payload: FormData): Promise<void> => {
   await apiClient.put(`/movies/${id}`, payload);
 };
 

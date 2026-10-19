@@ -42,9 +42,34 @@ export const getMovieById = async (req: Request, res: Response) => {
   }
 };
 
+type UploadedFiles = Record<string, Array<{ filename: string }>> | undefined;
+
+const buildFileUrl = (req: Request, filename: string): string =>
+  `${req.protocol}://${req.get('host')}/uploads/${filename}`;
+
+const buildMovieData = (req: Request): Record<string, unknown> => {
+  const data: Record<string, unknown> = { ...(req.body ?? {}) };
+  const files = req.files as UploadedFiles;
+
+  if (files?.poster?.[0]?.filename) {
+    data.posterUrl = buildFileUrl(req, files.poster[0].filename);
+  }
+  if (files?.banner?.[0]?.filename) {
+    data.bannerUrl = buildFileUrl(req, files.banner[0].filename);
+  }
+
+  return data;
+};
+
 export const createMovie = async (req: Request, res: Response) => {
   try {
-    const movie = await MovieService.createMovie(req.body);
+    const data = buildMovieData(req);
+
+    if (!data.posterUrl) {
+      throw new AppError('Poster phim là bắt buộc', 400);
+    }
+
+    const movie = await MovieService.createMovie(data);
     res.status(201).json({ success: true, message: 'Tạo phim thành công', data: movie });
   } catch (error) {
     handleError(res, error);
@@ -53,7 +78,8 @@ export const createMovie = async (req: Request, res: Response) => {
 
 export const updateMovie = async (req: Request, res: Response) => {
   try {
-    const movie = await MovieService.updateMovie(req.params.id as string, req.body);
+    const data = buildMovieData(req);
+    const movie = await MovieService.updateMovie(req.params.id as string, data);
     res.status(200).json({ success: true, message: 'Cập nhật phim thành công', data: movie });
   } catch (error) {
     handleError(res, error);

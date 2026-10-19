@@ -32,6 +32,7 @@ import {
   updateVoucher,
   deleteVoucher,
 } from '../controllers/admin.controller';
+import { uploadMovieImages } from '../middlewares/upload.middleware';
 
 const router = Router();
 
@@ -53,7 +54,7 @@ const validate = (req: Request, res: Response, next: NextFunction): Response | v
 const movieCreateRules = [
   body('title').trim().notEmpty().withMessage('Tiêu đề phim là bắt buộc'),
   body('description').trim().notEmpty().withMessage('Mô tả phim là bắt buộc'),
-  body('posterUrl').trim().notEmpty().withMessage('Đường dẫn poster là bắt buộc'),
+  body('bannerUrl').optional().trim(),
   body('duration')
     .isInt({ min: 1 })
     .withMessage('Thời lượng phim phải là số nguyên dương (phút)'),
@@ -72,6 +73,7 @@ const movieUpdateRules = [
   body('title').optional().trim().notEmpty().withMessage('Tiêu đề phim không được rỗng'),
   body('description').optional().trim().notEmpty().withMessage('Mô tả phim không được rỗng'),
   body('posterUrl').optional().trim().notEmpty().withMessage('Đường dẫn poster không được rỗng'),
+  body('bannerUrl').optional().trim().notEmpty().withMessage('Đường dẫn banner không được rỗng'),
   body('duration')
     .optional()
     .isInt({ min: 1 })
@@ -89,8 +91,8 @@ const movieUpdateRules = [
 
 router.get('/movies', getMovies);
 router.get('/movies/:id', getMovieById);
-router.post('/movies', movieCreateRules, validate, createMovie);
-router.put('/movies/:id', movieUpdateRules, validate, updateMovie);
+router.post('/movies', uploadMovieImages, movieCreateRules, validate, createMovie);
+router.put('/movies/:id', uploadMovieImages, movieUpdateRules, validate, updateMovie);
 router.delete('/movies/:id', deleteMovie);
 
 /* ============================ RẠP (Theater) ============================ */
