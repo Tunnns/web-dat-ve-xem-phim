@@ -1,163 +1,336 @@
-import { useEffect, useMemo, useState } from 'react'
-import { MAX_SEATS, useCartStore } from '../../store/cartStore'
-import type { Seat, ShowtimeInfo } from '../../types/booking'
-
-// TODO: thay bằng dữ liệu từ API khi backend có endpoint suất chiếu/ghế
-const MOCK_SHOWTIME: ShowtimeInfo = {
-  id: 'demo-showtime-1',
-  movieTitle: 'Phim Demo',
-  cinema: 'Fivecore Center',
-  room: 'Phòng 1',
-  startTime: new Date().toISOString(),
-}
-
-const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-const COLS = 10
-const BOOKED = new Set(['A3', 'A4', 'C5', 'C6', 'D7', 'E2', 'F8', 'F9', 'G1'])
-
-function buildSeats(): Seat[] {
-  return ROWS.flatMap((row, ri) =>
-    Array.from({ length: COLS }, (_, i) => {
-      const id = `${row}${i + 1}`
-      const vip = ri >= 4 && ri <= 6
-      return {
-        id,
-        row,
-        number: i + 1,
-        type: vip ? 'vip' : 'standard',
-        status: BOOKED.has(id) ? 'booked' : 'available',
-        price: vip ? 120000 : 80000,
-      } as Seat
-    }),
-  )
-}
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import {
+  ArrowLeft,
+  Ticket,
+  CreditCard,
+  ShieldCheck,
+  Loader2,
+  MapPin,
+  Clock,
+  Film,
+  Receipt,
+  ChevronRight,
+} from 'lucide-react'
+import { useCartStore } from '../../store/cartStore'
+import ComboSelector, {
+  type SelectedCombo,
+} from '../../components/ComboSelector/ComboSelector'
+import VoucherInput from '../../components/VoucherInput/VoucherInput'
+import {
+  paymentApi,
+  type VoucherValidation,
+  type CalculateResponse,
+} from '../../api/paymentApi'
+import { getErrorMessage } from '../../api/axios'
 
 const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ'
 
 export default function Checkout() {
-  const { showtime, seats: selected, setShowtime, toggleSeat, removeSeat, clearCart, totalPrice } =
-    useCartStore()
-  const [warning, setWarning] = useState('')
-  const allSeats = useMemo(() => buildSeats(), [])
+  const navigate = useNavigate()
+  const { showtime, seats: selectedSeats, clearCart, totalPrice } = useCartStore()
 
+  // ── State ──
+  const [selectedCombos, setSelectedCombos] = useState<SelectedCombo[]>([])
+  const [appliedVoucher, setAppliedVoucher] = useState<VoucherValidation | null>(null)
+  const [pricing, setPricing] = useState<CalculateResponse | null>(null)
+  const [calculating, setCalculating] = useState(false)
+  const [calcError, setCalcError] = useState('')
+  const [hydrated, setHydrated] = useState(false)
+
+  // Đợi Zustand persist hydrate xong từ localStorage
   useEffect(() => {
-    if (!showtime) {
-      setShowtime(MOCK_SHOWTIME)
+    // Zustand persist onFinishHydration hoặc fallback timeout
+    const unsub = useCartStore.persist.onFinishHydration(() => setHydrated(true))
+    // Nếu đã hydrate trước khi subscribe (trường hợp nhanh)
+    if (useCartStore.persist.hasHydrated()) setHydrated(true)
+    return unsub
+  }, [])
+
+  // Redirect nếu chưa chọn ghế (chỉ sau khi hydrate xong)
+  useEffect(() => {
+    if (hydrated && (!showtime || selectedSeats.length === 0)) {
+      navigate('/', { replace: true })
     }
-  }, [showtime, setShowtime])
+  }, [hydrated, showtime, selectedSeats, navigate])
 
-  const selectedIds = new Set(selected.map((s) => s.id))
-
-  const handleClick = (seat: Seat) => {
-    const ok = toggleSeat(seat)
-    setWarning(!ok && seat.status !== 'booked' ? `Tối đa ${MAX_SEATS} ghế mỗi lần đặt` : '')
-  }
-
-  const seatClass = (seat: Seat) => {
-    if (seat.status === 'booked') return 'cursor-not-allowed bg-zinc-700 text-zinc-500'
-    if (selectedIds.has(seat.id)) return 'bg-brand-500 text-white scale-105'
-    if (seat.type === 'vip') return 'border border-amber-400/60 bg-amber-400/10 text-amber-300 hover:bg-amber-400/30'
-    return 'border border-zinc-600 bg-zinc-800 text-zinc-300 hover:bg-zinc-600'
-  }
-
-  return (
-    <div className="mx-auto grid max-w-6xl gap-8 p-6 lg:grid-cols-[1fr_340px]">
-      <section>
-        <h1 className="mb-1 text-2xl font-semibold">Chọn ghế</h1>
-        <p className="mb-6 text-sm text-zinc-400">
-          {showtime?.movieTitle} · {showtime?.cinema} · {showtime?.room}
-        </p>
-
-        <div className="mb-8">
-          <div className="mx-auto h-2 w-3/4 rounded-full bg-gradient-to-r from-transparent via-brand-500 to-transparent" />
-          <p className="mt-2 text-center text-xs uppercase tracking-widest text-zinc-500">Màn hình</p>
-        </div>
-
-        <div className="flex flex-col items-center gap-2 overflow-x-auto">
-          {ROWS.map((row) => (
-            <div key={row} className="flex items-center gap-2">
-              <span className="w-5 text-center text-xs text-zinc-500">{row}</span>
-              {allSeats
-                .filter((s) => s.row === row)
-                .map((seat) => (
-                  <button
-                    key={seat.id}
-                    type="button"
-                    id={`seat-${seat.id}`}
-                    disabled={seat.status === 'booked'}
-                    onClick={() => handleClick(seat)}
-                    title={`${seat.id} - ${fmt(seat.price)}`}
-                    className={`h-8 w-8 rounded-md text-xs transition ${seatClass(seat)}`}
-                  >
-                    {seat.number}
-                  </button>
-                ))}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs text-zinc-400">
-          <Legend className="border border-zinc-600 bg-zinc-800" label="Thường" />
-          <Legend className="border border-amber-400/60 bg-amber-400/10" label="VIP" />
-          <Legend className="bg-brand-500" label="Đang chọn" />
-          <Legend className="bg-zinc-700" label="Đã đặt" />
-        </div>
-        {warning && <p className="mt-4 text-center text-sm text-red-400">{warning}</p>}
-      </section>
-
-      <aside className="h-fit rounded-xl border border-zinc-700 bg-zinc-900 p-5">
-        <h2 className="mb-4 text-lg font-semibold">Vé của bạn</h2>
-        {selected.length === 0 ? (
-          <p className="text-sm text-zinc-500">Chưa chọn ghế nào.</p>
-        ) : (
-          <ul className="mb-4 space-y-2">
-            {selected.map((s) => (
-              <li key={s.id} className="flex items-center justify-between text-sm">
-                <span>
-                  Ghế {s.id} {s.type === 'vip' && <em className="text-amber-300">(VIP)</em>}
-                </span>
-                <span className="flex items-center gap-3">
-                  {fmt(s.price)}
-                  <button
-                    type="button"
-                    onClick={() => removeSeat(s.id)}
-                    className="text-zinc-500 hover:text-red-400"
-                    aria-label={`Bỏ ghế ${s.id}`}
-                  >
-                    ✕
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mb-4 flex justify-between border-t border-zinc-700 pt-4 font-semibold">
-          <span>Tổng cộng</span>
-          <span>{fmt(totalPrice())}</span>
-        </div>
-        <button
-          type="button"
-          id="btn-confirm-checkout"
-          disabled={selected.length === 0}
-          className="w-full rounded-lg bg-brand-500 py-2.5 font-medium disabled:cursor-not-allowed disabled:opacity-40"
-          onClick={() => alert('Chuyển sang bước thanh toán (sẽ làm tiếp)')}
-        >
-          Tiếp tục thanh toán
-        </button>
-        {selected.length > 0 && (
-          <button type="button" onClick={clearCart} className="mt-2 w-full text-sm text-zinc-400 hover:text-white">
-            Xoá giỏ
-          </button>
-        )}
-      </aside>
-    </div>
+  // ── Tính tiền subtotal cơ bản (vé + combo) ──
+  const ticketSubtotal = totalPrice()
+  const comboSubtotal = useMemo(
+    () => selectedCombos.reduce((sum, c) => sum + c.unitPrice * c.quantity, 0),
+    [selectedCombos],
   )
-}
+  const localSubtotal = ticketSubtotal + comboSubtotal
 
-function Legend({ className, label }: { className: string; label: string }) {
+  // ── Gọi API tính tiền ──
+  const recalculate = useCallback(async () => {
+    if (!showtime || selectedSeats.length === 0) return
+
+    setCalculating(true)
+    setCalcError('')
+
+    try {
+      const result = await paymentApi.calculate({
+        showtimeId: showtime.id,
+        seats: selectedSeats.map((s) => s.id),
+        combos: selectedCombos
+          .filter((c) => c.quantity > 0)
+          .map((c) => ({ comboId: c.comboId, quantity: c.quantity })),
+        voucherCode: appliedVoucher?.code,
+      })
+      setPricing(result)
+    } catch (err) {
+      setCalcError(getErrorMessage(err))
+      setPricing(null)
+    } finally {
+      setCalculating(false)
+    }
+  }, [showtime, selectedSeats, selectedCombos, appliedVoucher])
+
+  // Debounce recalculate
+  useEffect(() => {
+    const timer = setTimeout(recalculate, 400)
+    return () => clearTimeout(timer)
+  }, [recalculate])
+
+  // ── Giá trị hiển thị (ưu tiên kết quả từ API, fallback tính cục bộ) ──
+  const displaySubtotal = pricing?.subtotal ?? localSubtotal
+  const displayDiscount = pricing?.discount ?? appliedVoucher?.discount ?? 0
+  const displayTotal = pricing?.total ?? localSubtotal - displayDiscount
+
+  if (!showtime || selectedSeats.length === 0) return null
+
   return (
-    <span className="flex items-center gap-2">
-      <span className={`h-4 w-4 rounded ${className}`} /> {label}
-    </span>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <Link
+          to={`/booking/${showtime.id}`}
+          className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Quay lại chọn ghế</span>
+        </Link>
+        <span className="text-xs uppercase tracking-wider text-zinc-500 font-semibold">
+          Bước 2 / 2: Thanh toán
+        </span>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+        {/* ══ CỘT TRÁI: Combo + Voucher ══ */}
+        <div className="space-y-6">
+          {/* Thông tin suất chiếu */}
+          <section className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5 backdrop-blur-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/15">
+                <Film className="h-5 w-5 text-brand-400" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg text-zinc-100">{showtime.movieTitle}</h2>
+                <div className="flex items-center gap-3 text-xs text-zinc-400">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-brand-400" />
+                    {showtime.cinema} – {showtime.room}
+                  </span>
+                  <span className="flex items-center gap-1 font-mono text-zinc-300">
+                    <Clock className="h-3 w-3 text-brand-400" />
+                    {new Date(showtime.startTime).toLocaleString('vi-VN', {
+                      weekday: 'short',
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                  {showtime.format && (
+                    <span className="rounded bg-brand-500/20 px-1.5 py-0.5 text-xs font-semibold text-brand-400">
+                      {showtime.format}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Ghế đã chọn */}
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <Ticket className="h-4 w-4 text-brand-400" />
+              <span className="text-xs text-zinc-400">Ghế:</span>
+              {selectedSeats.map((s) => (
+                <span
+                  key={s.id}
+                  className="inline-flex items-center rounded-lg border border-brand-500/40 bg-brand-500/10 px-2 py-0.5 text-xs font-semibold text-brand-300"
+                >
+                  {s.id}
+                  {s.type === 'vip' && (
+                    <span className="ml-1 text-amber-400">(VIP)</span>
+                  )}
+                  {s.type === 'couple' && (
+                    <span className="ml-1 text-pink-400">(Đôi)</span>
+                  )}
+                </span>
+              ))}
+              <span className="ml-auto text-sm font-bold text-zinc-200">
+                {fmt(ticketSubtotal)}
+              </span>
+            </div>
+          </section>
+
+          {/* Combo bắp nước */}
+          <section className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5 backdrop-blur-sm">
+            <ComboSelector value={selectedCombos} onChange={setSelectedCombos} />
+          </section>
+
+          {/* Mã giảm giá */}
+          <section className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5 backdrop-blur-sm">
+            <VoucherInput
+              subtotal={localSubtotal}
+              applied={appliedVoucher}
+              onApplied={setAppliedVoucher}
+            />
+          </section>
+        </div>
+
+        {/* ══ CỘT PHẢI: Tóm tắt đơn hàng ══ */}
+        <aside className="h-fit space-y-0 lg:sticky lg:top-8">
+          <div className="rounded-2xl border border-zinc-700/60 bg-zinc-900/90 backdrop-blur-lg shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-800/40 px-5 py-4">
+              <Receipt className="h-5 w-5 text-brand-400" />
+              <h2 className="font-bold text-base text-zinc-100">Tóm tắt đơn hàng</h2>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Vé */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Vé xem phim ({selectedSeats.length} ghế)</span>
+                  <span className="font-semibold text-zinc-200">{fmt(ticketSubtotal)}</span>
+                </div>
+                {selectedSeats.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between pl-3 text-xs text-zinc-500">
+                    <span>
+                      Ghế {s.id}{' '}
+                      {s.type === 'vip' ? (
+                        <span className="text-amber-400/80">(VIP)</span>
+                      ) : s.type === 'couple' ? (
+                        <span className="text-pink-400/80">(Đôi)</span>
+                      ) : (
+                        ''
+                      )}
+                    </span>
+                    <span>{fmt(s.price)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Combo */}
+              {selectedCombos.length > 0 && (
+                <div className="space-y-2 border-t border-zinc-800/60 pt-3">
+                  <div className="flex items-center justify-between text-xs text-zinc-400">
+                    <span>Combo bắp nước</span>
+                    <span className="font-semibold text-zinc-200">{fmt(comboSubtotal)}</span>
+                  </div>
+                  {selectedCombos.map((c) => (
+                    <div
+                      key={c.comboId}
+                      className="flex items-center justify-between pl-3 text-xs text-zinc-500"
+                    >
+                      <span>
+                        {c.name} <span className="text-zinc-600">×{c.quantity}</span>
+                      </span>
+                      <span>{fmt(c.unitPrice * c.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Tạm tính */}
+              <div className="flex items-center justify-between border-t border-zinc-800/60 pt-3 text-sm">
+                <span className="text-zinc-400">Tạm tính</span>
+                <span className="font-semibold text-zinc-200">{fmt(displaySubtotal)}</span>
+              </div>
+
+              {/* Giảm giá */}
+              {displayDiscount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-emerald-400 flex items-center gap-1">
+                    <ChevronRight className="h-3 w-3" />
+                    Giảm giá
+                    {appliedVoucher && (
+                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider">
+                        {appliedVoucher.code}
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-bold text-emerald-400">-{fmt(displayDiscount)}</span>
+                </div>
+              )}
+
+              {/* Lỗi tính tiền */}
+              {calcError && (
+                <div className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                  {calcError}
+                </div>
+              )}
+
+              {/* Tổng cộng */}
+              <div className="flex items-center justify-between border-t border-zinc-700 pt-4">
+                <span className="text-sm font-bold text-zinc-300">Tổng thanh toán</span>
+                <div className="text-right">
+                  {calculating ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-brand-400" />
+                  ) : (
+                    <>
+                      {displayDiscount > 0 && (
+                        <span className="block text-xs text-zinc-500 line-through">
+                          {fmt(displaySubtotal)}
+                        </span>
+                      )}
+                      <span className="text-2xl font-bold text-brand-400">
+                        {fmt(displayTotal)}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="border-t border-zinc-800 bg-zinc-800/30 p-5 space-y-3">
+              <button
+                type="button"
+                id="btn-confirm-payment"
+                disabled={selectedSeats.length === 0 || calculating}
+                onClick={() => alert('Chuyển sang cổng thanh toán (sẽ tích hợp)')}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 py-3.5 font-bold text-white shadow-lg shadow-brand-500/30 transition-all hover:shadow-xl hover:shadow-brand-500/40 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {calculating ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <CreditCard className="h-5 w-5" />
+                )}
+                <span>Xác nhận thanh toán</span>
+              </button>
+
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-zinc-500">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500/70" />
+                <span>Thanh toán an toàn & bảo mật</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  clearCart()
+                  navigate('/')
+                }}
+                className="block w-full text-center text-xs text-zinc-500 hover:text-red-400 transition"
+              >
+                Huỷ đơn hàng
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
   )
 }
