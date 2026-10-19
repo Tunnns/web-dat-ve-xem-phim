@@ -20,6 +20,7 @@ import {
   Table,
   Tag,
   Typography,
+  Upload,
 } from 'antd';
 import {
   DeleteOutlined,
@@ -33,7 +34,7 @@ import {
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
-import type { TableProps } from 'antd';
+import type { TableProps, UploadFile } from 'antd';
 
 import {
   createMovie,
@@ -68,7 +69,8 @@ const STATUS_LABEL: Record<MovieStatus, string> = {
 interface MovieFormValues {
   title: string;
   description: string;
-  posterUrl: string;
+  poster?: UploadFile[];
+  banner?: UploadFile[];
   trailerUrl?: string;
   duration: number;
   releaseDate: Dayjs;
@@ -77,6 +79,19 @@ interface MovieFormValues {
   actors?: string[];
   status: MovieStatus;
 }
+
+// Chuẩn hóa fileList từ Upload cho Form.Item (valuePropName="fileList")
+const normFile = (e: UploadFile[] | { fileList?: UploadFile[] }): UploadFile[] => {
+  if (Array.isArray(e)) return e;
+  return e.fileList ?? [];
+};
+
+const uploadButton = (
+  <div>
+    <PlusOutlined />
+    <div style={{ marginTop: 8 }}>Tải lên</div>
+  </div>
+);
 
 const cardStyle: React.CSSProperties = {
   height: '100%',
@@ -175,7 +190,12 @@ const Movies: React.FC = () => {
       form.setFieldsValue({
         title: editing.title,
         description: editing.description,
-        posterUrl: editing.posterUrl,
+        poster: editing.posterUrl
+          ? [{ uid: '-1', name: 'poster.jpg', status: 'done', url: editing.posterUrl }]
+          : [],
+        banner: editing.bannerUrl
+          ? [{ uid: '-2', name: 'banner.jpg', status: 'done', url: editing.bannerUrl }]
+          : [],
         trailerUrl: editing.trailerUrl,
         duration: editing.duration,
         releaseDate: dayjs(editing.releaseDate),
@@ -205,18 +225,31 @@ const Movies: React.FC = () => {
     setSaving(true);
 
     try {
-      const payload: Record<string, unknown> = {
-        title: values.title.trim(),
-        description: values.description.trim(),
-        posterUrl: values.posterUrl.trim(),
-        trailerUrl: values.trailerUrl?.trim() || undefined,
-        duration: values.duration,
-        releaseDate: values.releaseDate.toISOString(),
-        genre: values.genre ?? [],
-        director: values.director?.trim() || undefined,
-        actors: values.actors ?? [],
-        status: values.status,
-      };
+      const payload = new FormData();
+      payload.append('title', values.title.trim());
+      payload.append('description', values.description.trim());
+      payload.append('duration', String(values.duration));
+      payload.append('releaseDate', values.releaseDate.toISOString());
+      payload.append('status', values.status);
+
+      if (values.trailerUrl?.trim()) {
+        payload.append('trailerUrl', values.trailerUrl.trim());
+      }
+      if (values.director?.trim()) {
+        payload.append('director', values.director.trim());
+      }
+      (values.genre ?? []).forEach((item) => payload.append('genre[]', item));
+      (values.actors ?? []).forEach((item) => payload.append('actors[]', item));
+
+      const posterFile = values.poster?.[0]?.originFileObj;
+      if (posterFile) {
+        payload.append('poster', posterFile);
+      }
+
+      const bannerFile = values.banner?.[0]?.originFileObj;
+      if (bannerFile) {
+        payload.append('banner', bannerFile);
+      }
 
       if (editing) {
         await updateMovie(editing._id, payload);
@@ -765,6 +798,21 @@ const Movies: React.FC = () => {
               </Descriptions>
             </div>
 
+            {viewing.bannerUrl && (
+              <div style={{ marginTop: 16 }}>
+                <Text strong>Banner</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Image
+                    src={viewing.bannerUrl}
+                    alt={`${viewing.title} - banner`}
+                    width="100%"
+                    height={140}
+                    style={{ objectFit: 'cover', borderRadius: 8 }}
+                  />
+                </div>
+              </div>
+            )}
+
             <div style={{ marginTop: 20 }}>
               <Text strong>Mô tả phim</Text>
               <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
@@ -854,39 +902,59 @@ const Movies: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} sm={12}>
               <Form.Item
-                name="posterUrl"
-                label="Link poster"
+                name="poster"
+                label="Poster phim"
+                valuePropName="fileList"
+                getValueFromEvent={normFile}
                 rules={[
                   {
-                    required: true,
-                    whitespace: true,
-                    message: 'Vui lòng nhập link poster',
-                  },
-                  {
-                    type: 'url',
-                    message: 'Link poster không hợp lệ',
+                    required: !editing,
+                    message: 'Vui lòng tải lên poster phim',
                   },
                 ]}
               >
-                <Input placeholder="https://..." />
+                <Upload
+                  accept="image/*"
+                  listType="picture-card"
+                  maxCount={1}
+                  beforeUpload={() => false}
+                >
+                  {uploadButton}
+                </Upload>
               </Form.Item>
             </Col>
 
             <Col xs={24} sm={12}>
               <Form.Item
-                name="trailerUrl"
-                label="Link trailer"
-                rules={[
-                  {
-                    type: 'url',
-                    message: 'Link trailer không hợp lệ',
-                  },
-                ]}
+                name="banner"
+                label="Banner phim"
+                valuePropName="fileList"
+                getValueFromEvent={normFile}
               >
-                <Input placeholder="https://..." />
+                <Upload
+                  accept="image/*"
+                  listType="picture-card"
+                  maxCount={1}
+                  beforeUpload={() => false}
+                >
+                  {uploadButton}
+                </Upload>
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item
+            name="trailerUrl"
+            label="Link trailer"
+            rules={[
+              {
+                type: 'url',
+                message: 'Link trailer không hợp lệ',
+              },
+            ]}
+          >
+            <Input placeholder="https://..." />
+          </Form.Item>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>

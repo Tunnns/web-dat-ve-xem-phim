@@ -5,6 +5,7 @@ export interface IMovie extends Document {
   description: string;
   trailerUrl?: string;
   posterUrl: string;
+  bannerUrl?: string;
   duration: number; // in minutes
   releaseDate: Date;
   genre: string[];
@@ -21,6 +22,7 @@ const movieSchema = new Schema<IMovie>(
     description: { type: String, required: true },
     trailerUrl: { type: String },
     posterUrl: { type: String, required: true },
+    bannerUrl: { type: String },
     duration: { type: Number, required: true },
     releaseDate: { type: Date, required: true },
     genre: [{ type: String }],
