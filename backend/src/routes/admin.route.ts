@@ -21,6 +21,16 @@ import {
   createShowtime,
   updateShowtime,
   deleteShowtime,
+  getCombos,
+  getComboById,
+  createCombo,
+  updateCombo,
+  deleteCombo,
+  getVouchers,
+  getVoucherById,
+  createVoucher,
+  updateVoucher,
+  deleteVoucher,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -174,5 +184,87 @@ router.get('/showtimes/:id', getShowtimeById);
 router.post('/showtimes', showtimeCreateRules, validate, createShowtime);
 router.put('/showtimes/:id', showtimeUpdateRules, validate, updateShowtime);
 router.delete('/showtimes/:id', deleteShowtime);
+
+/* ============================ COMBO BẮP NƯỚC (Combo) ============================ */
+
+const comboCreateRules = [
+  body('name').trim().notEmpty().withMessage('Tên combo là bắt buộc'),
+  body('price').isFloat({ min: 0 }).withMessage('Giá combo phải là số không âm'),
+  body('items').optional().isArray().withMessage('Danh sách thành phần phải là mảng'),
+  body('items.*.name').optional().trim().notEmpty().withMessage('Tên thành phần không được rỗng'),
+  body('items.*.quantity')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Số lượng thành phần phải là số nguyên dương'),
+  body('image').optional().trim(),
+  body('description').optional().trim(),
+  body('isActive').optional().isBoolean().withMessage('Trạng thái phải là boolean'),
+];
+
+const comboUpdateRules = [
+  body('name').optional().trim().notEmpty().withMessage('Tên combo không được rỗng'),
+  body('price').optional().isFloat({ min: 0 }).withMessage('Giá combo phải là số không âm'),
+  body('items').optional().isArray().withMessage('Danh sách thành phần phải là mảng'),
+  body('items.*.name').optional().trim().notEmpty().withMessage('Tên thành phần không được rỗng'),
+  body('items.*.quantity')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Số lượng thành phần phải là số nguyên dương'),
+  body('image').optional().trim(),
+  body('description').optional().trim(),
+  body('isActive').optional().isBoolean().withMessage('Trạng thái phải là boolean'),
+];
+
+router.get('/combos', getCombos);
+router.get('/combos/:id', getComboById);
+router.post('/combos', comboCreateRules, validate, createCombo);
+router.put('/combos/:id', comboUpdateRules, validate, updateCombo);
+router.delete('/combos/:id', deleteCombo);
+
+/* ============================ MÃ GIẢM GIÁ (Voucher) ============================ */
+
+const voucherCreateRules = [
+  body('code').trim().notEmpty().withMessage('Mã giảm giá là bắt buộc'),
+  body('discountType').isIn(['percent', 'fixed']).withMessage('Loại giảm giá không hợp lệ'),
+  body('discountValue').isFloat({ min: 0 }).withMessage('Giá trị giảm phải là số không âm'),
+  body('maxDiscount').optional().isFloat({ min: 0 }).withMessage('Mức giảm tối đa phải là số không âm'),
+  body('minOrderValue')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Giá trị đơn tối thiểu phải là số không âm'),
+  body('startDate').isISO8601().toDate().withMessage('Ngày bắt đầu không hợp lệ'),
+  body('endDate').isISO8601().toDate().withMessage('Ngày kết thúc không hợp lệ'),
+  body('usageLimit')
+    .optional({ values: 'null' })
+    .isInt({ min: 1 })
+    .withMessage('Giới hạn lượt dùng phải là số nguyên dương'),
+  body('description').optional().trim(),
+  body('isActive').optional().isBoolean().withMessage('Trạng thái phải là boolean'),
+];
+
+const voucherUpdateRules = [
+  body('code').optional().trim().notEmpty().withMessage('Mã giảm giá không được rỗng'),
+  body('discountType').optional().isIn(['percent', 'fixed']).withMessage('Loại giảm giá không hợp lệ'),
+  body('discountValue').optional().isFloat({ min: 0 }).withMessage('Giá trị giảm phải là số không âm'),
+  body('maxDiscount').optional().isFloat({ min: 0 }).withMessage('Mức giảm tối đa phải là số không âm'),
+  body('minOrderValue')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Giá trị đơn tối thiểu phải là số không âm'),
+  body('startDate').optional().isISO8601().toDate().withMessage('Ngày bắt đầu không hợp lệ'),
+  body('endDate').optional().isISO8601().toDate().withMessage('Ngày kết thúc không hợp lệ'),
+  body('usageLimit')
+    .optional({ values: 'null' })
+    .isInt({ min: 1 })
+    .withMessage('Giới hạn lượt dùng phải là số nguyên dương'),
+  body('description').optional().trim(),
+  body('isActive').optional().isBoolean().withMessage('Trạng thái phải là boolean'),
+];
+
+router.get('/vouchers', getVouchers);
+router.get('/vouchers/:id', getVoucherById);
+router.post('/vouchers', voucherCreateRules, validate, createVoucher);
+router.put('/vouchers/:id', voucherUpdateRules, validate, updateVoucher);
+router.delete('/vouchers/:id', deleteVoucher);
 
 export default router;
