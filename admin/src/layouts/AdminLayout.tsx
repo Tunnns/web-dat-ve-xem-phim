@@ -58,10 +58,10 @@ const menuItems: MenuProps['items'] = [
     label: 'Suất chiếu',
   },
   {
-    key: '/users',
-    icon: <UserOutlined />,
-    label: 'Khách hàng',
-  },
+  key: '/users',
+  icon: <UserOutlined />,
+  label: 'Khách hàng',
+}
 ];
 
 const pageNames: Record<string, string> = {

@@ -20,6 +20,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.2",
+    "multer": "^2.5.0",
     "prisma": "^8.0.0-rc.17",
     "qrcode": "^1.5.4"
   },

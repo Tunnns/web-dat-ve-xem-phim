@@ -6,7 +6,6 @@ const baseURL =
 
 export const apiClient = axios.create({
   baseURL,
-  headers: { 'Content-Type': 'application/json' },
   timeout: 20000,
 });
 
@@ -70,5 +69,6 @@ export const getRooms = () => getList('/rooms');
 
 // Danh sách suất chiếu
 export const getShowtimes = () => getList('/showtimes');
+
 // Danh sách vé đặt
 export const getTickets = () => getList('/tickets');

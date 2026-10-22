@@ -20,6 +20,7 @@ import {
   Table,
   Tag,
   Typography,
+  Upload,
 } from 'antd';
 import {
   DeleteOutlined,
@@ -31,6 +32,7 @@ import {
   StopOutlined,
   PlusOutlined,
   SearchOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { TableProps } from 'antd';
@@ -40,6 +42,7 @@ import {
   deleteMovie,
   getMovies,
   updateMovie,
+  uploadMoviePoster,
 } from '../../api/movies';
 import { getErrorMessage } from '../../api/client';
 import type { Movie, MovieStatus } from '../../api/types';
@@ -53,11 +56,30 @@ const STATUS_OPTIONS: Array<{ value: MovieStatus; label: string }> = [
   { value: 'stopped', label: 'Ngừng chiếu' },
 ];
 
+// DÁN GENRE_OPTIONS VÀO ĐÂY
+const GENRE_OPTIONS = [
+  { value: 'Hành động', label: 'Hành động' },
+  { value: 'Phiêu lưu', label: 'Phiêu lưu' },
+  { value: 'Khoa học viễn tưởng', label: 'Khoa học viễn tưởng' },
+  { value: 'Kinh dị', label: 'Kinh dị' },
+  { value: 'Hài', label: 'Hài' },
+  { value: 'Tình cảm', label: 'Tình cảm' },
+  { value: 'Tâm lý', label: 'Tâm lý' },
+  { value: 'Hoạt hình', label: 'Hoạt hình' },
+  { value: 'Gia đình', label: 'Gia đình' },
+  { value: 'Tội phạm', label: 'Tội phạm' },
+  { value: 'Chiến tranh', label: 'Chiến tranh' },
+  { value: 'Thần thoại', label: 'Thần thoại' },
+  { value: 'Âm nhạc', label: 'Âm nhạc' },
+  { value: 'Tài liệu', label: 'Tài liệu' },
+];
+
 const STATUS_COLOR: Record<MovieStatus, string> = {
   now_showing: 'green',
   coming_soon: 'gold',
   stopped: 'volcano',
 };
+
 
 const STATUS_LABEL: Record<MovieStatus, string> = {
   now_showing: 'Đang chiếu',
@@ -98,6 +120,52 @@ const Movies: React.FC = () => {
   const [editing, setEditing] = useState<Movie | null>(null);
   const [viewing, setViewing] = useState<Movie | null>(null);
   const [saving, setSaving] = useState(false);
+  const [posterUploading, setPosterUploading] = useState(false);
+  const [posterPreview, setPosterPreview] = useState<string>('');
+
+  // Trạng thái cửa sổ xem trailer
+  const [trailerOpen, setTrailerOpen] = useState(false);
+  const [selectedTrailer, setSelectedTrailer] = useState<{
+    title: string;
+    trailerUrl?: string | null;
+  } | null>(null);
+
+  const handleWatchTrailer = (title: string, trailerUrl?: string | null) => {
+    setSelectedTrailer({ title, trailerUrl });
+    setTrailerOpen(true);
+  };
+
+  const handleCloseTrailer = () => {
+    setTrailerOpen(false);
+    setSelectedTrailer(null);
+  };
+
+  const getYouTubeEmbedUrl = (url: string): string | null => {
+    try {
+      const parsedUrl = new URL(url);
+      const hostname = parsedUrl.hostname.replace(/^www\./, '');
+      let videoId = '';
+
+      if (hostname === 'youtu.be') {
+        videoId = parsedUrl.pathname.split('/').filter(Boolean)[0] ?? '';
+      } else if (hostname === 'youtube.com' || hostname === 'm.youtube.com' || hostname === 'youtube-nocookie.com') {
+        if (parsedUrl.pathname === '/watch') {
+          videoId = parsedUrl.searchParams.get('v') ?? '';
+        } else {
+          const match = parsedUrl.pathname.match(/^\/(?:embed|shorts|live)\/([^/?]+)/);
+          videoId = match?.[1] ?? '';
+        }
+      } else {
+        return null;
+      }
+
+      return /^[\w-]{11}$/.test(videoId)
+        ? `https://www.youtube-nocookie.com/embed/${videoId}`
+        : null;
+    } catch {
+      return null;
+    }
+  };
 
   // Lấy dữ liệu thật từ API để thống kê không bị ảnh hưởng bởi bộ lọc.
   const fetchData = useCallback(async () => {
@@ -158,12 +226,51 @@ const Movies: React.FC = () => {
 
   const openCreate = () => {
     setEditing(null);
+    setPosterPreview('');
     setModalOpen(true);
   };
 
   const openEdit = (record: Movie) => {
     setEditing(record);
+    setPosterPreview(record.posterUrl ?? '');
     setModalOpen(true);
+  };
+
+  // Ảnh backend trả về thường là đường dẫn tương đối, cần ghép với địa chỉ backend.
+  const getPosterSrc = (posterUrl?: string) => {
+    if (!posterUrl) return '';
+    if (/^https?:\/\//i.test(posterUrl) || posterUrl.startsWith('data:')) {
+      return posterUrl;
+    }
+    const backendUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/admin')
+      .replace(/\/api\/admin\/?$/, '')
+      .replace(/\/$/, '');
+    return `${backendUrl}${posterUrl.startsWith('/') ? '' : '/'}${posterUrl}`;
+  };
+
+  const handlePosterUpload = async (file: File) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      message.error('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP.');
+      return false;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      message.error('Ảnh poster không được vượt quá 5 MB.');
+      return false;
+    }
+
+    setPosterUploading(true);
+    try {
+      const posterUrl = await uploadMoviePoster(file);
+      form.setFieldValue('posterUrl', posterUrl);
+      setPosterPreview(posterUrl);
+      message.success('Tải ảnh poster lên thành công.');
+    } catch (err) {
+      message.error(getErrorMessage(err));
+    } finally {
+      setPosterUploading(false);
+    }
+    return false;
   };
 
   useEffect(() => {
@@ -172,6 +279,7 @@ const Movies: React.FC = () => {
     form.resetFields();
 
     if (editing) {
+      setPosterPreview(editing.posterUrl ?? '');
       form.setFieldsValue({
         title: editing.title,
         description: editing.description,
@@ -185,7 +293,9 @@ const Movies: React.FC = () => {
         status: editing.status,
       });
     } else {
+      setPosterPreview('');
       form.setFieldsValue({
+        posterUrl: '',
         status: 'now_showing',
         genre: [],
         actors: [],
@@ -254,7 +364,7 @@ const Movies: React.FC = () => {
         <Space size={12} align="start">
           {record.posterUrl ? (
             <Image
-              src={record.posterUrl}
+              src={getPosterSrc(record.posterUrl)}
               alt={record.title}
               width={58}
               height={78}
@@ -288,9 +398,25 @@ const Movies: React.FC = () => {
               {record.title}
             </Text>
 
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.director || 'Chưa cập nhật đạo diễn'}
-            </Text>
+           <div style={{ marginTop: 6 }}>
+  <Text
+    type="secondary"
+    style={{ display: 'block', fontSize: 12 }}
+  >
+    <strong>Đạo diễn:</strong>{' '}
+    {record.director || 'Chưa cập nhật'}
+  </Text>
+
+  <Text
+    type="secondary"
+    style={{ display: 'block', fontSize: 12, marginTop: 4 }}
+  >
+    <strong>Diễn viên:</strong>{' '}
+    {record.actors?.length
+      ? record.actors.join(', ')
+      : 'Chưa cập nhật'}
+  </Text>
+</div>
 
             <div style={{ marginTop: 6 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
@@ -350,6 +476,17 @@ const Movies: React.FC = () => {
             title="Xem chi tiết"
             icon={<EyeOutlined />}
             onClick={() => setViewing(record)}
+          />
+
+          <Button
+            type="text"
+            size="small"
+            title="Xem trailer"
+            icon={<PlayCircleOutlined />}
+            disabled={!record.trailerUrl}
+            onClick={() =>
+              handleWatchTrailer(record.title, record.trailerUrl)
+            }
           />
 
           <Button
@@ -691,7 +828,7 @@ const Movies: React.FC = () => {
             >
               {viewing.posterUrl ? (
                 <Image
-                  src={viewing.posterUrl}
+                  src={getPosterSrc(viewing.posterUrl)}
                   alt={viewing.title}
                   width={150}
                   height={200}
@@ -772,18 +909,23 @@ const Movies: React.FC = () => {
               </Paragraph>
             </div>
 
-            {viewing.trailerUrl && (
-              <div style={{ marginTop: 16 }}>
-                <Text strong>Trailer: </Text>
-                <Typography.Link
-                  href={viewing.trailerUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Xem trailer
-                </Typography.Link>
-              </div>
-            )}
+            <div style={{ marginTop: 16 }}>
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                disabled={!viewing.trailerUrl}
+                onClick={() =>
+                  handleWatchTrailer(viewing.title, viewing.trailerUrl)
+                }
+              >
+                Xem trailer
+              </Button>
+              {!viewing.trailerUrl && (
+                <Text type="secondary" style={{ marginLeft: 12 }}>
+                  Phim chưa có link trailer.
+                </Text>
+              )}
+            </div>
 
             <div style={{ marginTop: 20, textAlign: 'right' }}>
               <Button
@@ -855,21 +997,68 @@ const Movies: React.FC = () => {
             <Col xs={24} sm={12}>
               <Form.Item
                 name="posterUrl"
-                label="Link poster"
+                label="Ảnh poster"
                 rules={[
                   {
                     required: true,
                     whitespace: true,
-                    message: 'Vui lòng nhập link poster',
-                  },
-                  {
-                    type: 'url',
-                    message: 'Link poster không hợp lệ',
+                    message: 'Vui lòng chọn và tải ảnh poster lên',
                   },
                 ]}
               >
-                <Input placeholder="https://..." />
+                <Input type="hidden" />
               </Form.Item>
+
+              <div style={{ marginBottom: 24 }}>
+                {posterPreview ? (
+                  <Image
+                    src={getPosterSrc(posterPreview)}
+                    alt="Xem trước poster"
+                    width={120}
+                    height={160}
+                    style={{ objectFit: 'cover', borderRadius: 8, marginBottom: 12 }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 120,
+                      height: 160,
+                      border: '1px dashed #cbd5e1',
+                      borderRadius: 8,
+                      background: '#f8fafc',
+                      color: '#94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 12,
+                      textAlign: 'center',
+                      padding: 8,
+                    }}
+                  >
+                    Chưa chọn ảnh
+                  </div>
+                )}
+
+                <Upload
+                  accept="image/jpeg,image/png,image/webp"
+                  maxCount={1}
+                  showUploadList={false}
+                  beforeUpload={(file) => handlePosterUpload(file)}
+                >
+                  <Button
+                    icon={<UploadOutlined />}
+                    loading={posterUploading}
+                    disabled={saving || posterUploading}
+                  >
+                    {posterUploading ? 'Đang tải ảnh...' : 'Chọn ảnh poster'}
+                  </Button>
+                </Upload>
+                <div style={{ marginTop: 8 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    JPG, PNG hoặc WEBP · tối đa 5 MB
+                  </Text>
+                </div>
+              </div>
             </Col>
 
             <Col xs={24} sm={12}>
@@ -929,14 +1118,27 @@ const Movies: React.FC = () => {
             </Col>
           </Row>
 
-          <Form.Item name="genre" label="Thể loại">
-            <Select
-              mode="tags"
-              placeholder="Nhập thể loại rồi nhấn Enter"
-              tokenSeparators={[',']}
-              options={[]}
-            />
-          </Form.Item>
+         <Form.Item
+  name="genre"
+  label="Thể loại"
+  rules={[
+    {
+      required: true,
+      type: 'array',
+      min: 1,
+      message: 'Vui lòng chọn ít nhất một thể loại',
+    },
+  ]}
+>
+  <Select
+    mode="multiple"
+    allowClear
+    showSearch
+    optionFilterProp="label"
+    placeholder="Chọn thể loại phim"
+    options={GENRE_OPTIONS}
+  />
+</Form.Item>
 
           <Form.Item name="director" label="Đạo diễn">
             <Input placeholder="Nhập tên đạo diễn" />
@@ -964,6 +1166,54 @@ const Movies: React.FC = () => {
             <Select options={STATUS_OPTIONS} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title={`Trailer - ${selectedTrailer?.title ?? 'Phim'}`}
+        open={trailerOpen}
+        onCancel={handleCloseTrailer}
+        footer={null}
+        width={900}
+        centered
+        destroyOnHidden
+      >
+        {selectedTrailer?.trailerUrl &&
+        getYouTubeEmbedUrl(selectedTrailer.trailerUrl.trim()) ? (
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              aspectRatio: '16 / 9',
+              background: '#000',
+              borderRadius: 8,
+              overflow: 'hidden',
+            }}
+          >
+            <iframe
+              key={selectedTrailer.trailerUrl}
+              src={getYouTubeEmbedUrl(selectedTrailer.trailerUrl.trim()) ?? undefined}
+              title={`Trailer phim ${selectedTrailer.title}`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                border: 0,
+              }}
+            />
+          </div>
+        ) : (
+          <Empty
+            description={
+              selectedTrailer?.trailerUrl
+                ? 'Link trailer không hợp lệ. Vui lòng kiểm tra link YouTube.'
+                : 'Phim này chưa có trailer.'
+            }
+          />
+        )}
       </Modal>
     </div>
   );
