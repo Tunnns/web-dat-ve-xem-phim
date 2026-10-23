@@ -26,6 +26,8 @@ export interface PricingInput {
   seats: string[]; // Danh sách mã ghế đã chọn (VD: ["A1", "A2"])
   combos?: PricingComboInput[];
   voucherCode?: string;
+  // Bỏ qua vé đang được thanh toán khi kiểm tra trùng ghế (dùng cho luồng hoàn tất vé pending)
+  excludeTicketId?: string;
 }
 
 /*
@@ -36,7 +38,7 @@ export interface PricingInput {
  * Trả về chi tiết từng khoản để client hiển thị; không ghi nhận giao dịch.
  */
 export const calculatePrice = async (input: PricingInput) => {
-  const { showtimeId, seats, combos = [], voucherCode } = input;
+  const { showtimeId, seats, combos = [], voucherCode, excludeTicketId } = input;
 
   if (!mongoose.Types.ObjectId.isValid(showtimeId)) {
     throw new AppError('ID suất chiếu không hợp lệ', 400);
@@ -77,6 +79,7 @@ export const calculatePrice = async (input: PricingInput) => {
     showtime: showtimeId,
     status: { $in: ['completed', 'pending'] },
     seats: { $in: seats },
+    ...(excludeTicketId ? { _id: { $ne: excludeTicketId } } : {}),
   }).select('seats status lockedUntil');
 
   for (const ticket of existingTickets) {

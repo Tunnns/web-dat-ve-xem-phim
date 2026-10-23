@@ -222,6 +222,99 @@ Hàm `validateVoucher(code, subtotal)` trong `src/services/voucher.service.ts` k
 | 400 | `Mã giảm giá đã hết lượt sử dụng` | vượt `usageLimit` |
 | 400 | `Đơn hàng chưa đạt giá trị tối thiểu ...` | `subtotal < minOrderValue` |
 
+### 5.4. Xác nhận thanh toán thành công & sinh vé điện tử
+
+- **`POST /api/payment/success`**
+- **Yêu cầu đăng nhập:** `Authorization: Bearer <token>` (middleware `protect`)
+
+Xử lý sau khi thanh toán thành công: tính lại tiền ở server, sinh **mã vé duy nhất + ảnh QR**, lưu vé `status: completed` vào MongoDB.
+
+**Body (JSON):**
+| Field | Kiểu | Bắt buộc | Ghi chú |
+|---|---|---|---|
+| `showtimeId` | ObjectId | ✅ | ID suất chiếu |
+| `seats` | string[] | ✅ | Mã ghế đã chọn (≥ 1 phần tử) |
+| `ticketId` | ObjectId | ❌ | Vé `pending` đang giữ ghế. Nếu truyền, API hoàn tất chính vé này thay vì tạo vé mới |
+| `combos` | array | ❌ | `[{ "comboId": "...", "quantity": 1 }]` |
+| `voucherCode` | string | ❌ | Mã giảm giá đã áp dụng |
+| `paymentMethod` | string | ❌ | Mặc định `vietqr` |
+| `paymentReference` | string | ❌ | Mã giao dịch ngân hàng. Dùng để **chống tạo vé trùng** khi callback bị gọi lại |
+
+**Ví dụ:**
+```json
+{
+  "showtimeId": "6ac32c72e4235a4005cadcac",
+  "seats": ["A1", "A2", "B5"],
+  "combos": [{ "comboId": "6ac32c72e4235a4005cadcb0", "quantity": 1 }],
+  "voucherCode": "GIAM10",
+  "paymentMethod": "vietqr",
+  "paymentReference": "MB-20261023-000123"
+}
+```
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "message": "Thanh toán thành công, vé điện tử đã được tạo",
+  "data": {
+    "ticket": {
+      "_id": "6ac32c72e4235a4005cadcff",
+      "code": "TKT-MVKI03NC-1A17DD67AF99A4A5",
+      "user": { "_id": "...", "fullName": "Nguyễn Văn A", "email": "a@example.com" },
+      "showtime": {
+        "_id": "6ac32c72e4235a4005cadcac",
+        "startTime": "2026-10-23T12:00:00.000Z",
+        "price": 95000,
+        "movie": { "title": "Phim A", "posterUrl": "..." },
+        "theater": { "name": "CineOps", "address": "..." },
+        "room": { "name": "Phòng 1" }
+      },
+      "seats": ["A1", "A2", "B5"],
+      "combos": [
+        { "comboId": "...", "name": "Combo 1 Bắp + 1 Nước", "quantity": 1, "unitPrice": 75000, "lineTotal": 75000 }
+      ],
+      "totalAmount": 324000,
+      "discount": 36000,
+      "voucherCode": "GIAM10",
+      "paymentMethod": "vietqr",
+      "paymentReference": "MB-20261023-000123",
+      "status": "completed",
+      "paidAt": "2026-10-23T11:59:00.000Z",
+      "qrCode": "data:image/png;base64,iVBORw0KGgo..."
+    },
+    "qrPayload": {
+      "v": 1,
+      "ticketId": "6ac32c72e4235a4005cadcff",
+      "code": "TKT-MVKI03NC-1A17DD67AF99A4A5",
+      "showtimeId": "6ac32c72e4235a4005cadcac",
+      "seats": ["A1", "A2", "B5"]
+    }
+  }
+}
+```
+
+**Cách hoạt động:**
+1. Server **tính lại giá** (`calculatePrice`) và kiểm tra ghế trống — không tin `totalAmount` từ client.
+2. Sinh mã vé `TKT-<thời gian>-<16 hex ngẫu nhiên>` (`src/utils/qr.util.ts`), đảm bảo duy nhất bằng unique index trên `Ticket.code` (tự thử lại tối đa 5 lần nếu trùng).
+3. Sinh ảnh QR PNG dạng **data URL** chứa JSON `{ v, ticketId, code, showtimeId, seats }` bằng thư viện `qrcode`.
+4. Lưu vé `status: completed` kèm `code`, `qrCode`, `paidAt`, danh sách combo và giảm giá vào DB.
+5. Tăng `usageCount` của voucher (nếu có) sau khi lưu vé thành công.
+
+**Idempotent:** gọi lại với cùng `paymentReference` (hoặc cùng `ticketId` đã completed) sẽ trả về đúng vé cũ, không tạo vé mới và không trừ voucher lần hai.
+
+**Các lỗi có thể gặp:**
+| HTTP | Message | Nguyên nhân |
+|---|---|---|
+| 401 | `Chưa đăng nhập` / `Token không hợp lệ...` | Thiếu/sai Bearer token |
+| 403 | `Bạn không có quyền thanh toán vé này` | Vé thuộc user khác |
+| 404 | `Không tìm thấy vé cần thanh toán` | `ticketId` không tồn tại |
+| 400 | `Vé đã bị hủy` | Vé `cancelled` |
+| 400 | `Danh sách ghế không khớp với vé đang giữ` | `seats` khác vé pending |
+| 409 | `Ghế ... đã được đặt hoặc đang được giữ` | Ghế đã có người đặt/giữ |
+| 409 | `Mã giao dịch đã được sử dụng cho đơn đặt vé khác` | `paymentReference` thuộc user khác |
+| 500 | `Không thể tạo mã vé duy nhất, vui lòng thử lại` | Trùng mã vé quá 5 lần (rất hiếm) |
+
 ---
 
 ## 6. Tổng hợp endpoint mới
@@ -231,5 +324,6 @@ Hàm `validateVoucher(code, subtotal)` trong `src/services/voucher.service.ts` k
 | GET | `/api/payment/combos` | Combo đang bán |
 | POST | `/api/payment/calculate` | Tính tiền vé + combo + voucher |
 | POST | `/api/payment/voucher/validate` | Kiểm tra mã giảm giá |
+| POST | `/api/payment/success` | Xác nhận thanh toán, sinh QR & lưu vé |
 | GET/POST/PUT/DELETE | `/api/admin/combos` | CRUD combo |
 | GET/POST/PUT/DELETE | `/api/admin/vouchers` | CRUD voucher |
