@@ -53,7 +53,7 @@ Chạy riêng lẻ từng phần:
 - **Nhiệm vụ tiếp theo cần làm:**
   - [ ] Tích hợp Upload ảnh Poster và Banner cho Phim bằng `multer` (xử lý `multipart/form-data`).
   - [ ] Thiết kế Schema và viết API quản lý Combo bắp nước (Food & Beverage) cùng Mã giảm giá (Vouchers).
-  - [ ] Viết hàm tiện ích sinh mã QR vé điện tử (chứa `ticketId`) sau khi đơn đặt vé hoàn tất.
+  - [ ] Viết hàm tiện ích sinh mã QR vé điện tử (chứa ticketId) sau khi đơn đặt vé hoàn tất.
 
 ---
 

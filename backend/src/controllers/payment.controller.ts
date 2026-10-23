@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { calculatePrice } from '../services/pricing.service';
+import { completeTicketPayment } from '../services/ticket.service';
 import { getActiveCombos } from '../services/combo.service';
 import { validateVoucher } from '../services/voucher.service';
+import { AuthRequest } from '../middlewares/auth.middleware';
 import { AppError } from '../utils/appError';
 
 const handleError = (res: Response, error: unknown): void => {
@@ -92,6 +94,35 @@ export const validateVoucherCode = async (req: Request, res: Response) => {
         minOrderValue: voucher.minOrderValue,
         discount,
       },
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+/*
+ * Xác nhận thanh toán thành công (dùng cho callback/webhook hoặc client gọi sau khi trả tiền).
+ * - Tính lại tiền ở server, kiểm tra ghế còn trống.
+ * - Sinh mã vé duy nhất + ảnh QR, lưu vé status = completed vào DB.
+ * - Nếu truyền ticketId: hoàn tất vé pending đang giữ ghế thay vì tạo vé mới.
+ */
+export const confirmPaymentSuccess = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await completeTicketPayment({
+      userId: req.user!.id,
+      ticketId: req.body.ticketId,
+      showtimeId: req.body.showtimeId,
+      seats: req.body.seats,
+      combos: req.body.combos,
+      voucherCode: req.body.voucherCode,
+      paymentMethod: req.body.paymentMethod,
+      paymentReference: req.body.paymentReference,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Thanh toán thành công, vé điện tử đã được tạo',
+      data,
     });
   } catch (error) {
     handleError(res, error);
