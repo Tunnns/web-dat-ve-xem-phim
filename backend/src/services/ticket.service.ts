@@ -271,3 +271,95 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
 
   return buildResult(savedTicket);
 };
+
+/* -------------------------------------------------------------------------- */
+/*                          Lịch sử đặt vé của user                           */
+/* -------------------------------------------------------------------------- */
+
+interface PopulatedShowtimeRef {
+  _id?: mongoose.Types.ObjectId;
+  startTime?: Date;
+}
+
+/**
+ * Lấy toàn bộ vé của một người dùng (mới nhất trước) kèm thông tin phim/rạp/phòng.
+ *
+ * Mỗi vé hoàn tất được đính kèm `qrContent` — chuỗi JSON giống hệt nội dung
+ * nhúng trong ảnh QR ở `Ticket.qrCode`. Client dùng chuỗi này để tự render
+ * mã QR (ví dụ bằng thư viện `react-qr-code`) mà không cần gửi ảnh base64.
+ */
+export const listMyTickets = async (userId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new AppError('Người dùng không hợp lệ', 401);
+  }
+
+  const tickets = await Ticket.find({ user: userId })
+    .select('-qrCode') // QR được render ở client từ qrContent, không cần gửi ảnh base64
+    .sort({ createdAt: -1 })
+    .populate([
+      {
+        path: 'showtime',
+        select: 'movie theater room startTime endTime price',
+        populate: [
+          { path: 'movie', select: 'title posterUrl duration' },
+          { path: 'theater', select: 'name address' },
+          { path: 'room', select: 'name' },
+        ],
+      },
+    ]);
+
+  const now = Date.now();
+
+  const items = tickets.map((ticket) => {
+    // Sau khi populate, `ticket.showtime` là document; trước populate là ObjectId.
+    const showtimeRef = ticket.showtime as unknown as
+      | PopulatedShowtimeRef
+      | mongoose.Types.ObjectId;
+    const showtimeId =
+      typeof showtimeRef === 'object' && showtimeRef !== null && '_id' in showtimeRef
+        ? String(showtimeRef._id)
+        : String(showtimeRef);
+
+    const qrContent = ticket.code
+      ? encodeTicketQrPayload(
+          buildTicketQrPayload({
+            ticketId: String(ticket._id),
+            code: ticket.code,
+            showtimeId,
+            seats: ticket.seats,
+          })
+        )
+      : null;
+
+    return {
+      ...ticket.toObject(),
+      qrContent,
+    };
+  });
+
+  const summary = {
+    total: items.length,
+    upcoming: 0,
+    watched: 0,
+    cancelled: 0,
+    pending: 0,
+  };
+
+  items.forEach((item) => {
+    if (item.status === 'cancelled') {
+      summary.cancelled += 1;
+      return;
+    }
+    if (item.status === 'pending') {
+      summary.pending += 1;
+      return;
+    }
+
+    const showtime = item.showtime as unknown as PopulatedShowtimeRef | undefined;
+    const startTime = showtime?.startTime ? new Date(showtime.startTime).getTime() : 0;
+    if (startTime >= now) summary.upcoming += 1;
+    else summary.watched += 1;
+  });
+
+  return { tickets: items, summary };
+};

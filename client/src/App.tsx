@@ -1,5 +1,5 @@
 import { BrowserRouter, Route, Routes, useParams, Link } from 'react-router-dom'
-import { GuestRoute } from './components/RouteGuards'
+import { GuestRoute, ProtectedRoute } from './components/RouteGuards'
 import AppLayout from './components/Layout/AppLayout'
 import Home from './pages/Home'
 import MovieDetail from './pages/MovieDetail'
@@ -9,6 +9,7 @@ import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
 import ForgotPassword from './pages/Auth/ForgotPassword'
 import ResetPassword from './pages/Auth/ResetPassword'
+import Profile from './pages/Profile/Profile'
 import { ArrowLeft } from 'lucide-react'
 
 // Wrapper cho màn hình chọn ghế theo URL /booking/:showtimeId
@@ -45,6 +46,11 @@ export default function App() {
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/booking/:showtimeId" element={<BookingSeatMapPage />} />
           <Route path="/checkout" element={<Checkout />} />
+
+          {/* Các trang yêu cầu đăng nhập */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/profile" element={<Profile />} />
+          </Route>
         </Route>
 
         {/* Authentication Routes for Guests */}
