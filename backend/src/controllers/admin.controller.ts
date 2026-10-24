@@ -4,6 +4,8 @@ import * as MovieService from '../services/movie.service';
 import * as TheaterService from '../services/theater.service';
 import * as RoomService from '../services/room.service';
 import * as ShowtimeService from '../services/showtime.service';
+import * as ComboService from '../services/combo.service';
+import * as VoucherService from '../services/voucher.service';
 
 const handleError = (res: Response, error: unknown): void => {
   if (error instanceof AppError) {
@@ -40,9 +42,34 @@ export const getMovieById = async (req: Request, res: Response) => {
   }
 };
 
+type UploadedFiles = Record<string, Array<{ filename: string }>> | undefined;
+
+const buildFileUrl = (req: Request, filename: string): string =>
+  `${req.protocol}://${req.get('host')}/uploads/${filename}`;
+
+const buildMovieData = (req: Request): Record<string, unknown> => {
+  const data: Record<string, unknown> = { ...(req.body ?? {}) };
+  const files = req.files as UploadedFiles;
+
+  if (files?.poster?.[0]?.filename) {
+    data.posterUrl = buildFileUrl(req, files.poster[0].filename);
+  }
+  if (files?.banner?.[0]?.filename) {
+    data.bannerUrl = buildFileUrl(req, files.banner[0].filename);
+  }
+
+  return data;
+};
+
 export const createMovie = async (req: Request, res: Response) => {
   try {
-    const movie = await MovieService.createMovie(req.body);
+    const data = buildMovieData(req);
+
+    if (!data.posterUrl) {
+      throw new AppError('Poster phim là bắt buộc', 400);
+    }
+
+    const movie = await MovieService.createMovie(data);
     res.status(201).json({ success: true, message: 'Tạo phim thành công', data: movie });
   } catch (error) {
     handleError(res, error);
@@ -51,7 +78,8 @@ export const createMovie = async (req: Request, res: Response) => {
 
 export const updateMovie = async (req: Request, res: Response) => {
   try {
-    const movie = await MovieService.updateMovie(req.params.id as string, req.body);
+    const data = buildMovieData(req);
+    const movie = await MovieService.updateMovie(req.params.id as string, data);
     res.status(200).json({ success: true, message: 'Cập nhật phim thành công', data: movie });
   } catch (error) {
     handleError(res, error);
@@ -207,6 +235,100 @@ export const deleteShowtime = async (req: Request, res: Response) => {
   try {
     const showtime = await ShowtimeService.deleteShowtime(req.params.id as string);
     res.status(200).json({ success: true, message: 'Xóa suất chiếu thành công', data: showtime });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+/* ============================ COMBO BẮP NƯỚC (Combo) ============================ */
+
+export const getCombos = async (req: Request, res: Response) => {
+  try {
+    const combos = await ComboService.getCombos();
+    res.status(200).json({ success: true, message: 'Lấy danh sách combo thành công', data: combos });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const getComboById = async (req: Request, res: Response) => {
+  try {
+    const combo = await ComboService.getComboById(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Lấy thông tin combo thành công', data: combo });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const createCombo = async (req: Request, res: Response) => {
+  try {
+    const combo = await ComboService.createCombo(req.body);
+    res.status(201).json({ success: true, message: 'Tạo combo thành công', data: combo });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const updateCombo = async (req: Request, res: Response) => {
+  try {
+    const combo = await ComboService.updateCombo(req.params.id as string, req.body);
+    res.status(200).json({ success: true, message: 'Cập nhật combo thành công', data: combo });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const deleteCombo = async (req: Request, res: Response) => {
+  try {
+    const combo = await ComboService.deleteCombo(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Xóa combo thành công', data: combo });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+/* ============================ MÃ GIẢM GIÁ (Voucher) ============================ */
+
+export const getVouchers = async (req: Request, res: Response) => {
+  try {
+    const vouchers = await VoucherService.getVouchers();
+    res.status(200).json({ success: true, message: 'Lấy danh sách mã giảm giá thành công', data: vouchers });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const getVoucherById = async (req: Request, res: Response) => {
+  try {
+    const voucher = await VoucherService.getVoucherById(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Lấy thông tin mã giảm giá thành công', data: voucher });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const createVoucher = async (req: Request, res: Response) => {
+  try {
+    const voucher = await VoucherService.createVoucher(req.body);
+    res.status(201).json({ success: true, message: 'Tạo mã giảm giá thành công', data: voucher });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const updateVoucher = async (req: Request, res: Response) => {
+  try {
+    const voucher = await VoucherService.updateVoucher(req.params.id as string, req.body);
+    res.status(200).json({ success: true, message: 'Cập nhật mã giảm giá thành công', data: voucher });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const deleteVoucher = async (req: Request, res: Response) => {
+  try {
+    const voucher = await VoucherService.deleteVoucher(req.params.id as string);
+    res.status(200).json({ success: true, message: 'Xóa mã giảm giá thành công', data: voucher });
   } catch (error) {
     handleError(res, error);
   }

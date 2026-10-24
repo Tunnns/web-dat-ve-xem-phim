@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Film, Search, User as UserIcon, LogOut, Ticket, Menu, X } from 'lucide-react'
+import { Film, Search, User as UserIcon, LogOut, Ticket, TicketCheck, Menu, X } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 
@@ -95,16 +95,38 @@ export default function Navbar() {
             </Link>
           )}
 
+          {/* Vé của tôi */}
+          {user && (
+            <Link
+              to="/profile"
+              title="Vé của tôi"
+              aria-label="Vé của tôi"
+              className={`hidden h-8 w-8 items-center justify-center rounded-lg border transition sm:flex ${
+                location.pathname === '/profile'
+                  ? 'border-brand-500/50 bg-brand-500/15 text-brand-400'
+                  : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-white'
+              }`}
+            >
+              <TicketCheck className="h-4 w-4" />
+            </Link>
+          )}
+
           {/* Auth section */}
           {user ? (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold">
-                  {user.fullName ? user.fullName[0].toUpperCase() : 'U'}
-                </div>
-                <span className="hidden sm:inline font-medium text-zinc-200 text-xs max-w-[120px] truncate">
-                  {user.fullName}
-                </span>
+              <div className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 py-1 pl-1 pr-1.5 text-sm">
+                <Link
+                  to="/profile"
+                  title="Hồ sơ & vé của tôi"
+                  className="flex items-center gap-2 rounded-md px-1.5 py-0.5 transition hover:bg-zinc-800"
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold">
+                    {user.fullName ? user.fullName[0].toUpperCase() : 'U'}
+                  </div>
+                  <span className="hidden sm:inline font-medium text-zinc-200 text-xs max-w-[120px] truncate">
+                    {user.fullName}
+                  </span>
+                </Link>
                 <button
                   onClick={logout}
                   title="Đăng xuất"
@@ -168,6 +190,15 @@ export default function Navbar() {
                 {item.label}
               </Link>
             ))}
+            {user && (
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white"
+              >
+                Vé của tôi
+              </Link>
+            )}
           </nav>
         </div>
       )}

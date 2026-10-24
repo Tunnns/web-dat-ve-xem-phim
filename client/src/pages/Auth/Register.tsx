@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Loader2, Lock, Mail, Phone, User } from 'lucide-react'
 import AuthLayout from '../../components/AuthLayout'
 import InputField from '../../components/InputField'
-import { authApi } from '../../api/auth.api'
 import { getErrorMessage } from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 
@@ -12,7 +11,7 @@ const PHONE_RE = /^(0|\+84)\d{9}$/
 
 export default function Register() {
   const navigate = useNavigate()
-  const setAuth = useAuthStore((s) => s.setAuth)
+  const register = useAuthStore((s) => s.register)
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -44,14 +43,12 @@ export default function Register() {
     if (!validate()) return
     setLoading(true)
     try {
-      const res = await authApi.register({
+      await register({
         fullName: form.name.trim(),
         email: form.email,
         phone: form.phone || undefined,
         password: form.password,
       })
-      if (!res.data) throw new Error('Phản hồi không hợp lệ')
-      setAuth(res.data.user, res.data.token)
       navigate('/', { replace: true })
     } catch (err) {
       setServerError(getErrorMessage(err))
