@@ -6,6 +6,7 @@ import paymentRoutes from './routes/payment.route';
 import adminRoutes from './routes/admin.route';
 import authRoutes from './routes/auth.route';
 import ticketRoutes from './routes/ticket.route';
+import bookingRoutes from './routes/booking.route';
 import connectDB from './config/db';
 import dotenv from 'dotenv';
 import { AppError } from './utils/appError';
@@ -29,6 +30,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
+app.use('/api/booking', bookingRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 

@@ -36,10 +36,13 @@ Chạy riêng lẻ từng phần:
   - [x] Thiết kế Database Schema toàn hệ thống (Users, Movies, Theaters, Rooms, Showtimes, Tickets).
   - [x] Cấu hình kết nối MongoDB thông qua Mongoose (`src/config/db.ts`).
   - [x] Tích hợp API Demo tạo mã QR thanh toán ngân hàng VietQR (`src/controllers/payment.controller.ts`, `src/routes/payment.route.ts`).
+  - [x] Xây dựng Controller và Service Đặt vé (`booking.controller.ts`, `booking.service.ts`).
+  - [x] Cài đặt thuật toán **Seat Locking** (Khóa ghế tạm thời 5 phút) lưu trạng thái ghế đang giữ để tránh 2 người cùng đặt 1 ghế.
+  - [x] API lấy sơ đồ ghế và trạng thái thời gian thực theo suất chiếu (`GET /api/booking/showtime/:showtimeId/seats` phục vụ Client SeatMap).
+  - [x] Xây dựng API Webhook / Callback xác nhận thanh toán thành công và cập nhật trạng thái vé (`Ticket: pending -> completed`, phát hành mã QR vé điện tử).
 - **Nhiệm vụ tiếp theo cần làm:**
-  - [ ] Xây dựng Controller và Service Đặt vé (`booking.controller.ts`, `booking.service.ts`).
-  - [ ] Cài đặt thuật toán **Seat Locking** (Khóa ghế tạm thời 5 phút) lưu trạng thái ghế đang giữ để tránh 2 người cùng đặt 1 ghế.
-  - [ ] Xây dựng API Webhook / Callback xác nhận thanh toán thành công và cập nhật trạng thái vé (`Ticket: pending -> paid`).
+  - [ ] Hỗ trợ kết nối API Đặt vé và Khóa ghế vào giao diện Client của Trường & Hoàng.
+  - [ ] Tích hợp kiểm thử tải đồng thời (stress test) khi nhiều người dùng cùng bấm đặt một ghế tại cùng một thời điểm.
 
 ---
 
@@ -93,7 +96,9 @@ Chạy riêng lẻ từng phần:
   - [x] Setup giao diện Admin với **Ant Design** và theme chuyên nghiệp CineOps Pro (`AdminLayout.tsx`, `AdminLayout.css`).
   - [x] Dựng giao diện và form CRUD cho Quản lý phim, Quản lý rạp, Phòng chiếu, Suất chiếu (hỗ trợ cả Grid và Table view).
   - [x] Kết nối thành công API CRUD từ backend (`client.ts`, `movies.ts`, `theaters.ts`, `rooms.ts`, `showtimes.ts`).
+  - [x] Kết nối biểu đồ thống kê Doanh thu và Số lượng vé bán trên trang Dashboard (`Dashboard.tsx`) bằng thư viện `recharts`.
+  - [x] Nâng cấp Form Thêm/Sửa Phim: hỗ trợ Upload file Poster và Trailer Modal (`Movies/index.tsx`, `TrailerModal.tsx`).
+  - [x] Dựng trang Quản lý Người dùng / Khách hàng (`src/pages/Users/index.tsx`).
 - **Nhiệm vụ tiếp theo cần làm:**
-  - [ ] Kết nối biểu đồ thống kê Doanh thu và Số lượng vé bán trên trang Dashboard (`Dashboard.tsx`) bằng thư viện `recharts`.
-  - [ ] Nâng cấp Form Thêm/Sửa Phim: hỗ trợ Upload file Poster (kết hợp với API upload `multipart/form-data` của Backend).
-  - [ ] Dựng trang Quản lý Người dùng / Khách hàng (`/users`) và hiển thị Danh sách đơn vé đã đặt.
+  - [ ] Tối ưu hóa trải nghiệm UI/UX và responsive trên thiết bị di động.
+  - [ ] Bổ sung phân quyền chi tiết cho tài khoản nhân viên / quản lý rạp.

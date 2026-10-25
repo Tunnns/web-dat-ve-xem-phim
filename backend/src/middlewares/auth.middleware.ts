@@ -31,3 +31,21 @@ export const restrictTo =
     }
     return next();
   };
+
+/* Kiểm tra token nếu có, nếu không có thì vẫn cho qua */
+export const optionalAuth = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+  const header = req.headers.authorization;
+  if (header?.startsWith('Bearer ')) {
+    try {
+      const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET as string) as {
+        id: string;
+        role: 'user' | 'admin';
+      };
+      req.user = { id: payload.id, role: payload.role };
+    } catch {
+      // Bỏ qua token không hợp lệ đối với optional route
+    }
+  }
+  return next();
+};
+
