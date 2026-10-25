@@ -50,3 +50,7 @@ export const uploadMovieImages = upload.fields([
   { name: 'poster', maxCount: 1 },
   { name: 'banner', maxCount: 1 },
 ]);
+
+// Middleware upload 1 ảnh Poster cho Phim
+export const uploadSinglePoster = upload.single('poster');
+

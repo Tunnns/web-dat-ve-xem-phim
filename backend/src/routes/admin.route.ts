@@ -32,7 +32,7 @@ import {
   updateVoucher,
   deleteVoucher,
 } from '../controllers/admin.controller';
-import { uploadMovieImages } from '../middlewares/upload.middleware';
+import { uploadMovieImages, uploadSinglePoster } from '../middlewares/upload.middleware';
 
 const router = Router();
 
@@ -88,6 +88,22 @@ const movieUpdateRules = [
     .isIn(['now_showing', 'coming_soon', 'stopped'])
     .withMessage('Trạng thái phim không hợp lệ'),
 ];
+
+router.post('/movies/upload', uploadSinglePoster, (req: Request, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Vui lòng chọn ảnh poster' });
+  }
+  const posterUrl = `/uploads/${req.file.filename}`;
+  res.status(201).json({
+    success: true,
+    message: 'Upload poster thành công',
+    data: {
+      filename: req.file.filename,
+      posterUrl,
+      imageUrl: `http://localhost:${process.env.PORT || 5000}${posterUrl}`,
+    },
+  });
+});
 
 router.get('/movies', getMovies);
 router.get('/movies/:id', getMovieById);
