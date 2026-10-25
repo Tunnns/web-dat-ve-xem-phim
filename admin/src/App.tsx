@@ -6,6 +6,7 @@ import Movies from './pages/Movies';
 import Theaters from './pages/Theaters';
 import Rooms from './pages/Rooms';
 import Showtimes from './pages/Showtimes';
+import Users from "./pages/Users";
 
 const App: React.FC = () => {
   return (
@@ -17,8 +18,7 @@ const App: React.FC = () => {
           <Route path="theaters" element={<Theaters />} />
           <Route path="rooms" element={<Rooms />} />
           <Route path="showtimes" element={<Showtimes />} />
-          <Route path="users" element={<div style={{ padding: 24 }}>Quản lý Khách hàng</div>} />
-        </Route>
+          <Route path="users" element={<Users />} />        </Route>
       </Routes>
     </BrowserRouter>
   );
