@@ -51,3 +51,4 @@ export const optionalProtect = (req: AuthRequest, _res: Response, next: NextFunc
 
 // Alias để tương thích cả 2 route booking.route.ts (optionalAuth) và ticket.route.ts (optionalProtect)
 export const optionalAuth = optionalProtect;
+ 
