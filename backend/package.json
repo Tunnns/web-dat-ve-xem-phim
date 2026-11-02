@@ -22,7 +22,7 @@
     "express-rate-limit": "^8.7.0",
     "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.10.3",
+    "mongoose": "^9.11.4",
     "multer": "^2.4.0",
     "prisma": "^7.10.1",
     "qrcode": "^1.5.4"

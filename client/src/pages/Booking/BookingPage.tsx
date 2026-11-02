@@ -124,7 +124,7 @@ export default function BookingPage() {
 
       {/* Main Seat Map Area */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-8">
-        <SeatMap seats={seats} showtimeInfo={showtimeInfo} />
+        <SeatMap showtimeId={showtimeId} seats={seats} showtimeInfo={showtimeInfo} />
       </div>
     </div>
   )

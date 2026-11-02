@@ -1,5 +1,5 @@
 export type SeatType = 'standard' | 'vip' | 'couple' | 'normal'
-export type SeatStatus = 'available' | 'booked' | 'selected' | 'maintenance'
+export type SeatStatus = 'available' | 'booked' | 'selected' | 'maintenance' | 'holding'
 
 export interface Seat {
   id: string // vd: "A5"

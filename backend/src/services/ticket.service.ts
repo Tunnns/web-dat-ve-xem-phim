@@ -1,5 +1,6 @@
 import mongoose, { HydratedDocument } from 'mongoose';
 import Ticket, { ITicket } from '../models/Ticket';
+import Showtime from '../models/Showtime';
 import { calculatePrice, PricingComboInput } from './pricing.service';
 import { redeemVoucher } from './voucher.service';
 import { AppError } from '../utils/appError';
@@ -362,4 +363,162 @@ export const listMyTickets = async (userId: string) => {
   });
 
   return { tickets: items, summary };
+};
+
+/* -------------------------------------------------------------------------- */
+/*                          Giữ ghế & Giải phóng ghế theo thời gian thực       */
+/* -------------------------------------------------------------------------- */
+
+export interface HoldSeatsInput {
+  showtimeId: string;
+  seats: string[];
+  userId?: string;
+  ticketId?: string;
+}
+
+export const holdSeatsService = async (input: HoldSeatsInput) => {
+  const { showtimeId, seats, userId, ticketId } = input;
+
+  if (!mongoose.Types.ObjectId.isValid(showtimeId)) {
+    throw new AppError('ID suất chiếu không hợp lệ', 400);
+  }
+
+  if (!Array.isArray(seats) || seats.length === 0) {
+    throw new AppError('Vui lòng chọn ít nhất một ghế', 400);
+  }
+
+  const showtime = await Showtime.findById(showtimeId);
+  if (!showtime) {
+    throw new AppError('Không tìm thấy suất chiếu', 404);
+  }
+
+  const now = new Date();
+  const lockExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // Khóa 5 phút
+
+  // Kiểm tra ghế có đang bị giữ bởi người khác hoặc đã bán hay không
+  const existingTickets = await Ticket.find({
+    showtime: showtimeId,
+    status: { $in: ['completed', 'pending'] },
+    seats: { $in: seats },
+    ...(ticketId && mongoose.Types.ObjectId.isValid(ticketId) ? { _id: { $ne: ticketId } } : {}),
+  }).select('seats status lockedUntil user');
+
+  const conflictSeats: string[] = [];
+  for (const t of existingTickets) {
+    const stillActive =
+      t.status === 'completed' || (t.status === 'pending' && !!t.lockedUntil && t.lockedUntil > now);
+    if (stillActive) {
+      t.seats.forEach((s) => {
+        if (seats.includes(s)) conflictSeats.push(s);
+      });
+    }
+  }
+
+  if (conflictSeats.length > 0) {
+    throw new AppError(
+      `Ghế [${Array.from(new Set(conflictSeats)).join(', ')}] đã có người đặt hoặc đang được giữ`,
+      409
+    );
+  }
+
+  let ticket;
+  if (ticketId && mongoose.Types.ObjectId.isValid(ticketId)) {
+    ticket = await Ticket.findOne({ _id: ticketId, status: 'pending' });
+    if (ticket) {
+      ticket.seats = seats;
+      ticket.lockedUntil = lockExpiresAt;
+      if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        ticket.user = new mongoose.Types.ObjectId(userId);
+      }
+      await ticket.save();
+    }
+  }
+
+  if (!ticket) {
+    ticket = await Ticket.create({
+      showtime: new mongoose.Types.ObjectId(showtimeId),
+      user: userId && mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : undefined,
+      seats,
+      status: 'pending',
+      totalAmount: 0,
+      lockedUntil: lockExpiresAt,
+    });
+  }
+
+  return {
+    ticketId: String(ticket._id),
+    showtimeId,
+    seats: ticket.seats,
+    lockedUntil: ticket.lockedUntil,
+  };
+};
+
+export interface ReleaseSeatsInput {
+  ticketId?: string;
+  showtimeId?: string;
+  seats?: string[];
+  userId?: string;
+}
+
+export const releaseSeatsService = async (input: ReleaseSeatsInput) => {
+  const { ticketId, showtimeId, seats } = input;
+
+  if (ticketId && mongoose.Types.ObjectId.isValid(ticketId)) {
+    await Ticket.deleteOne({ _id: ticketId, status: 'pending' });
+    return { success: true, message: 'Đã giải phóng ghế thành công' };
+  }
+
+  if (showtimeId && mongoose.Types.ObjectId.isValid(showtimeId) && Array.isArray(seats) && seats.length > 0) {
+    await Ticket.deleteMany({
+      showtime: showtimeId,
+      status: 'pending',
+      seats: { $in: seats },
+    });
+    return { success: true, message: 'Đã giải phóng ghế thành công' };
+  }
+
+  return { success: true, message: 'Không có ghế cần giải phóng' };
+};
+
+export const getShowtimeSeatsService = async (showtimeId: string, currentUserId?: string) => {
+  if (!mongoose.Types.ObjectId.isValid(showtimeId)) {
+    throw new AppError('ID suất chiếu không hợp lệ', 400);
+  }
+
+  const showtime = await Showtime.findById(showtimeId).populate('room');
+  if (!showtime) {
+    throw new AppError('Không tìm thấy suất chiếu', 404);
+  }
+
+  const now = new Date();
+  const tickets = await Ticket.find({
+    showtime: showtimeId,
+    status: { $in: ['completed', 'pending'] },
+  }).select('seats status lockedUntil user');
+
+  const bookedSeats: string[] = [];
+  const holdingSeats: Array<{ seat: string; lockedUntil: Date; isMine: boolean }> = [];
+
+  for (const t of tickets) {
+    if (t.status === 'completed') {
+      bookedSeats.push(...t.seats);
+    } else if (t.status === 'pending' && t.lockedUntil && t.lockedUntil > now) {
+      const isMine = !!(currentUserId && t.user && String(t.user) === String(currentUserId));
+      t.seats.forEach((seat) => {
+        holdingSeats.push({
+          seat,
+          lockedUntil: t.lockedUntil!,
+          isMine,
+        });
+      });
+    }
+  }
+
+  return {
+    showtimeId,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    seatLayout: (showtime.room as any)?.seatLayout || [],
+    bookedSeats,
+    holdingSeats,
+  };
 };

@@ -41,6 +41,7 @@ router.post(
     body('combos.*.comboId').isMongoId().withMessage('ID combo không hợp lệ'),
     body('combos.*.quantity').isInt({ min: 1 }).withMessage('Số lượng combo phải là số nguyên dương'),
     body('voucherCode').optional({ values: 'falsy' }).trim().notEmpty().withMessage('Mã giảm giá không hợp lệ'),
+    body('ticketId').optional({ values: 'falsy' }).isMongoId().withMessage('ID vé không hợp lệ'),
   ],
   validate,
   calculate

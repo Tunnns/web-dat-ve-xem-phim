@@ -1,3 +1,5 @@
+import { Clock } from 'lucide-react'
+
 export default function SeatLegend() {
   const legendItems = [
     {
@@ -17,8 +19,16 @@ export default function SeatLegend() {
     },
     {
       label: 'Đang chọn',
-      style: 'border border-brand-400 bg-brand-500 text-white shadow-md shadow-brand-500/50',
-      description: 'Ghế bạn đang giữ',
+      style:
+        'border border-brand-400 bg-brand-500 text-white shadow-md shadow-brand-500/50',
+      description: 'Ghế bạn đang chọn',
+    },
+    {
+      label: 'Đang giữ',
+      style:
+        'border border-amber-500/80 bg-amber-500/20 text-amber-300 cursor-not-allowed',
+      description: 'Có người đang giữ',
+      isHolding: true,
     },
     {
       label: 'Đã bán',
@@ -35,7 +45,13 @@ export default function SeatLegend() {
           <div
             className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-md font-semibold text-[10px] ${item.style}`}
           >
-            {item.isBooked ? '✕' : ''}
+            {item.isBooked ? (
+              '✕'
+            ) : item.isHolding ? (
+              <Clock className="h-3 w-3 text-amber-400" />
+            ) : (
+              ''
+            )}
           </div>
           <div className="flex flex-col">
             <span className="font-medium text-zinc-200">{item.label}</span>

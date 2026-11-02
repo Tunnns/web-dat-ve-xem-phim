@@ -206,7 +206,10 @@ export const getShowtimes = async (req: Request, res: Response) => {
 
 export const getShowtimeById = async (req: Request, res: Response) => {
   try {
-    const showtime = await ShowtimeService.getShowtimeById(req.params.id as string);
+    const showtime = await ShowtimeService.getShowtimeById(
+      req.params.id as string,
+      (req as any).user?.id
+    );
     res.status(200).json({ success: true, message: 'Lấy thông tin suất chiếu thành công', data: showtime });
   } catch (error) {
     handleError(res, error);

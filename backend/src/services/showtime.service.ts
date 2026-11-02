@@ -3,6 +3,7 @@ import Movie from '../models/Movie';
 import Theater from '../models/Theater';
 import Room from '../models/Room';
 import Showtime from '../models/Showtime';
+import Ticket from '../models/Ticket';
 import { AppError } from '../utils/appError';
 
 // Kiểm tra trùng lịch chiếu trong cùng một phòng
@@ -15,35 +16,98 @@ const assertNoOverlap = async (room: string, start: Date, end: Date, excludeId?:
   }
 };
 
-export const getShowtimes = (filters: { movie?: string; theater?: string; room?: string }) => {
+export const getShowtimes = async (filters: { movie?: string; theater?: string; room?: string }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: Record<string, any> = {};
   if (filters.movie && mongoose.Types.ObjectId.isValid(filters.movie)) filter.movie = filters.movie;
   if (filters.theater && mongoose.Types.ObjectId.isValid(filters.theater)) filter.theater = filters.theater;
   if (filters.room && mongoose.Types.ObjectId.isValid(filters.room)) filter.room = filters.room;
 
-  return Showtime.find(filter)
-    .populate('movie', 'title posterUrl duration')
-    .populate('theater', 'name address')
+  const showtimes = await Showtime.find(filter)
+    .populate('movie', 'title posterUrl bannerUrl duration genre rating ageRating')
+    .populate('theater', 'name address location hotline')
     .populate('room', 'name capacity')
     .sort({ startTime: 1 });
+
+  const now = new Date();
+  const showtimeIds = showtimes.map((s) => s._id);
+
+  // Lấy các vé đã đặt hoặc đang giữ cho tất cả các suất chiếu này
+  const tickets = await Ticket.find({
+    showtime: { $in: showtimeIds },
+    status: { $in: ['completed', 'pending'] },
+  }).select('showtime seats status lockedUntil');
+
+  const bookedCountMap = new Map<string, Set<string>>();
+  for (const t of tickets) {
+    const isHeld =
+      t.status === 'completed' || (t.status === 'pending' && !!t.lockedUntil && t.lockedUntil > now);
+    if (isHeld) {
+      const sId = String(t.showtime);
+      if (!bookedCountMap.has(sId)) {
+        bookedCountMap.set(sId, new Set<string>());
+      }
+      t.seats.forEach((seat) => bookedCountMap.get(sId)!.add(seat));
+    }
+  }
+
+  return showtimes.map((st) => {
+    const sObj = st.toObject();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const capacity = (st.room as any)?.capacity || 96;
+    const takenCount = bookedCountMap.get(String(st._id))?.size || 0;
+    const availableSeats = Math.max(0, capacity - takenCount);
+    return {
+      ...sObj,
+      availableSeats,
+      totalSeats: capacity,
+    };
+  });
 };
 
-export const getShowtimeById = async (id: string) => {
+export const getShowtimeById = async (id: string, currentUserId?: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError('ID suất chiếu không hợp lệ', 400);
   }
 
   const showtime = await Showtime.findById(id)
-    .populate('movie', 'title posterUrl duration')
-    .populate('theater', 'name address')
-    .populate('room', 'name capacity');
+    .populate('movie')
+    .populate('theater')
+    .populate('room');
 
   if (!showtime) {
     throw new AppError('Không tìm thấy suất chiếu', 404);
   }
 
-  return showtime;
+  const now = new Date();
+  const tickets = await Ticket.find({
+    showtime: id,
+    status: { $in: ['completed', 'pending'] },
+  }).select('seats status lockedUntil user');
+
+  const bookedSeats: string[] = [];
+  const holdingSeats: Array<{ seat: string; lockedUntil: Date; isMine: boolean }> = [];
+
+  for (const t of tickets) {
+    if (t.status === 'completed') {
+      bookedSeats.push(...t.seats);
+    } else if (t.status === 'pending' && t.lockedUntil && t.lockedUntil > now) {
+      const isMine = !!(currentUserId && t.user && String(t.user) === String(currentUserId));
+      t.seats.forEach((seat) => {
+        holdingSeats.push({
+          seat,
+          lockedUntil: t.lockedUntil!,
+          isMine,
+        });
+      });
+    }
+  }
+
+  return {
+    ...showtime.toObject(),
+    bookedSeats,
+    holdingSeats,
+  };
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

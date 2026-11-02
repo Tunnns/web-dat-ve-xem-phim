@@ -72,6 +72,7 @@ export const calculate = async (req: Request, res: Response) => {
       seats: req.body.seats,
       combos: req.body.combos,
       voucherCode: req.body.voucherCode,
+      excludeTicketId: req.body.ticketId,
     });
     res.status(200).json({ success: true, message: 'Tính tiền thành công', data });
   } catch (error) {

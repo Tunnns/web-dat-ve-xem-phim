@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   Star,
   Clock,
@@ -18,18 +18,16 @@ import { movieApi } from '../../api/movieApi'
 import { showtimeApi } from '../../api/showtimeApi'
 import Showtimes from './Showtimes'
 import TrailerModal from './TrailerModal'
-import { SeatMap } from '../../components/SeatMap'
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [movie, setMovie] = useState<Movie | null>(null)
   const [showtimeGroups, setShowtimeGroups] = useState<ShowtimeGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [trailerOpen, setTrailerOpen] = useState(false)
-  const [activeShowtimeId, setActiveShowtimeId] = useState<string | null>(null)
 
   const showtimesRef = useRef<HTMLDivElement>(null)
-  const seatMapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function fetchDetail() {
@@ -57,10 +55,7 @@ export default function MovieDetail() {
   }
 
   const handleSelectSlot = (showtimeId: string) => {
-    setActiveShowtimeId(showtimeId)
-    setTimeout(() => {
-      seatMapRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, 100)
+    navigate(`/booking/${showtimeId}`)
   }
 
   if (loading) {
@@ -263,33 +258,9 @@ export default function MovieDetail() {
           <Showtimes
             showtimeGroups={showtimeGroups}
             movieTitle={movie.title}
-            selectedShowtimeId={activeShowtimeId || undefined}
             onSelectSlot={handleSelectSlot}
           />
         </div>
-
-        {/* 5. Sơ đồ ghế ngồi trực tiếp (SeatMap) khi chọn suất chiếu */}
-        {activeShowtimeId && (
-          <div ref={seatMapRef} className="mt-12 scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Ticket className="h-5 w-5 text-brand-400" />
-                <h3 className="text-xl font-bold text-white">
-                  Chọn ghế ngồi cho suất chiếu
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveShowtimeId(null)}
-                className="text-xs text-zinc-400 hover:text-white"
-              >
-                Đóng sơ đồ ghế ✕
-              </button>
-            </div>
-
-            <SeatMap showtimeId={activeShowtimeId} />
-          </div>
-        )}
       </div>
 
       <TrailerModal

@@ -32,8 +32,8 @@ export const restrictTo =
     return next();
   };
 
-/* Kiểm tra token nếu có, nếu không có thì vẫn cho qua */
-export const optionalAuth = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+/* Trích xuất user nếu có Bearer token, không bắt buộc đăng nhập */
+export const optionalProtect = (req: AuthRequest, _res: Response, next: NextFunction): void => {
   const header = req.headers.authorization;
   if (header?.startsWith('Bearer ')) {
     try {
@@ -43,9 +43,11 @@ export const optionalAuth = (req: AuthRequest, _res: Response, next: NextFunctio
       };
       req.user = { id: payload.id, role: payload.role };
     } catch {
-      // Bỏ qua token không hợp lệ đối với optional route
+      // Bỏ qua nếu token không hợp lệ, coi như khách
     }
   }
   return next();
 };
 
+// Alias để tương thích cả 2 route booking.route.ts (optionalAuth) và ticket.route.ts (optionalProtect)
+export const optionalAuth = optionalProtect;

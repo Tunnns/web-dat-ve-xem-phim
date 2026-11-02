@@ -186,7 +186,7 @@ export default function Showtimes({
 
       <div className="mt-6 flex items-center gap-2 text-xs text-zinc-500">
         <Ticket className="h-4 w-4 text-brand-400" />
-        <span>Bấm vào suất chiếu bất kỳ để chọn ghế ngồi bên dưới hoặc chuyển tới màn hình chọn vé.</span>
+        <span>Bấm vào suất chiếu bất kỳ để chuyển tới màn hình chọn ghế ngồi và đặt vé trực tuyến.</span>
       </div>
     </div>
   )

@@ -28,7 +28,13 @@ const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ'
 
 export default function Checkout() {
   const navigate = useNavigate()
-  const { showtime, seats: selectedSeats, clearCart, totalPrice } = useCartStore()
+  const {
+    showtime,
+    seats: selectedSeats,
+    ticketId,
+    clearCart,
+    totalPrice,
+  } = useCartStore()
 
   // ── State ──
   const [selectedCombos, setSelectedCombos] = useState<SelectedCombo[]>([])
@@ -77,6 +83,7 @@ export default function Checkout() {
           .filter((c) => c.quantity > 0)
           .map((c) => ({ comboId: c.comboId, quantity: c.quantity })),
         voucherCode: appliedVoucher?.code,
+        ticketId: ticketId || undefined,
       })
       setPricing(result)
     } catch (err) {
@@ -85,7 +92,7 @@ export default function Checkout() {
     } finally {
       setCalculating(false)
     }
-  }, [showtime, selectedSeats, selectedCombos, appliedVoucher])
+  }, [showtime, selectedSeats, selectedCombos, appliedVoucher, ticketId])
 
   // Debounce recalculate
   useEffect(() => {

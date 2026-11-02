@@ -1,14 +1,22 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Film, MapPin, Calendar, Clock, Ticket } from 'lucide-react'
 import type { Movie } from '../../types/movie'
 import type { Theater } from '../../types/theater'
+import { showtimeApi } from '../../api/showtimeApi'
 import { MOCK_SHOWTIMES } from '../../data/mockData'
 import { getUpcomingDays } from '../../utils/date'
 
 interface QuickBookingProps {
   movies: Movie[]
   theaters: Theater[]
+}
+
+interface QuickShowtimeOption {
+  id: string
+  startTime: string
+  format: string
+  theaterId?: string
 }
 
 export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
@@ -18,16 +26,89 @@ export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
   const [selectedTheaterId, setSelectedTheaterId] = useState<string>('')
   const [selectedDate, setSelectedDate] = useState<string>(() => nextDays[0]?.iso || '')
   const [selectedShowtimeId, setSelectedShowtimeId] = useState<string>('')
+  const [backendShowtimes, setBackendShowtimes] = useState<QuickShowtimeOption[]>([])
 
-  // Lọc danh sách suất chiếu thỏa mãn Phim và Rạp đã chọn
+  // Gọi API lấy danh sách suất chiếu thật từ Backend khi chọn Phim hoặc Rạp
+  useEffect(() => {
+    if (!selectedMovieId) {
+      setBackendShowtimes([])
+      return
+    }
+
+    let isMounted = true
+    showtimeApi
+      .getShowtimes({
+        movie: selectedMovieId,
+        theater: selectedTheaterId || undefined,
+      })
+      .then((data) => {
+        if (!isMounted) return
+        if (Array.isArray(data) && data.length > 0) {
+          const list: QuickShowtimeOption[] = data.map((st: any) => {
+            const start = new Date(st.startTime)
+            const timeStr = !isNaN(start.getTime())
+              ? start.toLocaleTimeString('vi-VN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                })
+              : '10:00'
+            const roomName = st.room?.name || ''
+            const format = roomName.toLowerCase().includes('imax')
+              ? 'IMAX 2D'
+              : '2D Phụ Đề'
+            return {
+              id: String(st._id),
+              startTime: timeStr,
+              format,
+              theaterId: st.theater?._id ? String(st.theater._id) : undefined,
+            }
+          })
+          setBackendShowtimes(list)
+        } else {
+          // Fallback nếu chưa có suất chiếu thật trong DB cho phim này
+          const fallback = MOCK_SHOWTIMES.filter((st) => {
+            const matchMovie = st.movieId === selectedMovieId
+            const matchTheater =
+              !selectedTheaterId || st.theaterId === selectedTheaterId
+            return matchMovie && matchTheater
+          }).map((st) => ({
+            id: st.id,
+            startTime: st.startTime,
+            format: st.format,
+            theaterId: st.theaterId,
+          }))
+          setBackendShowtimes(fallback)
+        }
+      })
+      .catch(() => {
+        // Fallback
+        const fallback = MOCK_SHOWTIMES.filter((st) => {
+          const matchMovie = st.movieId === selectedMovieId
+          const matchTheater =
+            !selectedTheaterId || st.theaterId === selectedTheaterId
+          return matchMovie && matchTheater
+        }).map((st) => ({
+          id: st.id,
+          startTime: st.startTime,
+          format: st.format,
+          theaterId: st.theaterId,
+        }))
+        if (isMounted) setBackendShowtimes(fallback)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [selectedMovieId, selectedTheaterId])
+
+  // Lọc danh sách suất chiếu theo rạp (nếu chưa lọc ở API)
   const availableShowtimes = useMemo(() => {
     if (!selectedMovieId) return []
-    return MOCK_SHOWTIMES.filter((st) => {
-      const matchMovie = st.movieId === selectedMovieId
-      const matchTheater = !selectedTheaterId || st.theaterId === selectedTheaterId
-      return matchMovie && matchTheater
+    return backendShowtimes.filter((st) => {
+      return !selectedTheaterId || !st.theaterId || st.theaterId === selectedTheaterId
     })
-  }, [selectedMovieId, selectedTheaterId])
+  }, [selectedMovieId, selectedTheaterId, backendShowtimes])
 
   const handleBookNow = () => {
     if (selectedShowtimeId) {
@@ -128,7 +209,9 @@ export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
                 className="w-full appearance-none rounded-xl border border-zinc-700 bg-zinc-800/90 py-2.5 pl-9 pr-8 text-xs sm:text-sm text-zinc-200 disabled:opacity-50 focus:border-brand-500 focus:outline-none"
               >
                 <option value="">
-                  {availableShowtimes.length === 0 ? 'Chưa có suất' : '-- Chọn giờ chiếu --'}
+                  {availableShowtimes.length === 0
+                    ? 'Chưa có suất'
+                    : '-- Chọn giờ chiếu --'}
                 </option>
                 {availableShowtimes.map((st) => (
                   <option key={st.id} value={st.id}>

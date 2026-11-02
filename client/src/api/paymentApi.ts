@@ -59,6 +59,7 @@ export interface CalculateRequest {
   seats: string[]
   combos?: { comboId: string; quantity: number }[]
   voucherCode?: string
+  ticketId?: string
 }
 
 /* ── API Calls ── */

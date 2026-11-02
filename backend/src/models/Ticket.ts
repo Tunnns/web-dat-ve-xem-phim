@@ -10,7 +10,7 @@ export interface ITicketCombo {
 
 export interface ITicket extends Document {
   code?: string; // Mã vé duy nhất, sinh ra khi thanh toán thành công
-  user: mongoose.Types.ObjectId;
+  user?: mongoose.Types.ObjectId;
   showtime: mongoose.Types.ObjectId;
   seats: string[]; // Danh sách mã ghế đã chọn (VD: ["A1", "A2"])
   combos?: ITicketCombo[]; // Combo bắp nước mua kèm (chốt tại thời điểm thanh toán)
@@ -41,11 +41,11 @@ const ticketComboSchema = new Schema<ITicketCombo>(
 const ticketSchema = new Schema<ITicket>(
   {
     code: { type: String, trim: true, uppercase: true },
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User' },
     showtime: { type: Schema.Types.ObjectId, ref: 'Showtime', required: true },
     seats: [{ type: String, required: true }],
     combos: { type: [ticketComboSchema], default: [] },
-    totalAmount: { type: Number, required: true },
+    totalAmount: { type: Number, default: 0 },
     discount: { type: Number, default: 0, min: 0 },
     voucherCode: { type: String, trim: true, uppercase: true },
     paymentMethod: { type: String },

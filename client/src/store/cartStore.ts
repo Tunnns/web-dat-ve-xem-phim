@@ -8,8 +8,11 @@ export const LOCK_TIME_SECONDS = 300 // 5 phút khóa ghế
 interface CartState {
   showtime: ShowtimeInfo | null
   seats: Seat[]
+  ticketId: string | null // ID vé pending đang giữ ghế từ Backend
   lockExpiresAt: number | null // timestamp epoch ms
   setShowtime: (showtime: ShowtimeInfo) => void
+  setTicketId: (ticketId: string | null) => void
+  setLockExpiresAt: (expiresAt: number | null) => void
   toggleSeat: (seat: Seat, pairSeat?: Seat) => boolean
   removeSeat: (seatId: string) => void
   clearCart: () => void
@@ -25,29 +28,46 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       showtime: null,
       seats: [],
+      ticketId: null,
       lockExpiresAt: null,
 
       setShowtime: (showtime) => {
         if (get().showtime?.id !== showtime.id) {
-          set({ showtime, seats: [], lockExpiresAt: null })
+          set({ showtime, seats: [], ticketId: null, lockExpiresAt: null })
         }
       },
 
+      setTicketId: (ticketId) => set({ ticketId }),
+
+      setLockExpiresAt: (expiresAt) => set({ lockExpiresAt: expiresAt }),
+
       toggleSeat: (seat, pairSeat) => {
-        if (seat.status === 'booked' || seat.status === 'maintenance') return false
+        if (
+          seat.status === 'booked' ||
+          seat.status === 'maintenance' ||
+          seat.status === 'holding'
+        ) {
+          return false
+        }
         const { seats } = get()
         const isSelected = seats.some((s) => s.id === seat.id)
 
         // Nếu là ghế đôi có pairSeat đi kèm
         if (pairSeat) {
-          if (pairSeat.status === 'booked' || pairSeat.status === 'maintenance') return false
+          if (
+            pairSeat.status === 'booked' ||
+            pairSeat.status === 'maintenance' ||
+            pairSeat.status === 'holding'
+          ) {
+            return false
+          }
           if (isSelected) {
             // Hủy chọn cả 2 ghế
             set({
               seats: seats.filter((s) => s.id !== seat.id && s.id !== pairSeat.id),
             })
             if (get().seats.length === 0) {
-              set({ lockExpiresAt: null })
+              set({ lockExpiresAt: null, ticketId: null })
             }
             return true
           }
@@ -60,7 +80,10 @@ export const useCartStore = create<CartState>()(
           const currentExpiry = get().lockExpiresAt
           set({
             seats: newSeats,
-            lockExpiresAt: currentExpiry && currentExpiry > now ? currentExpiry : now + LOCK_TIME_SECONDS * 1000,
+            lockExpiresAt:
+              currentExpiry && currentExpiry > now
+                ? currentExpiry
+                : now + LOCK_TIME_SECONDS * 1000,
           })
           return true
         }
@@ -71,6 +94,7 @@ export const useCartStore = create<CartState>()(
           set({
             seats: remaining,
             lockExpiresAt: remaining.length === 0 ? null : get().lockExpiresAt,
+            ticketId: remaining.length === 0 ? null : get().ticketId,
           })
           return true
         }
@@ -81,7 +105,10 @@ export const useCartStore = create<CartState>()(
         const currentExpiry = get().lockExpiresAt
         set({
           seats: [...seats, seat],
-          lockExpiresAt: currentExpiry && currentExpiry > now ? currentExpiry : now + LOCK_TIME_SECONDS * 1000,
+          lockExpiresAt:
+            currentExpiry && currentExpiry > now
+              ? currentExpiry
+              : now + LOCK_TIME_SECONDS * 1000,
         })
         return true
       },
@@ -97,10 +124,17 @@ export const useCartStore = create<CartState>()(
         set({
           seats: filtered,
           lockExpiresAt: filtered.length === 0 ? null : get().lockExpiresAt,
+          ticketId: filtered.length === 0 ? null : get().ticketId,
         })
       },
 
-      clearCart: () => set({ showtime: null, seats: [], lockExpiresAt: null }),
+      clearCart: () =>
+        set({
+          showtime: null,
+          seats: [],
+          ticketId: null,
+          lockExpiresAt: null,
+        }),
 
       totalPrice: () => get().seats.reduce((sum, s) => sum + s.price, 0),
 
@@ -111,7 +145,7 @@ export const useCartStore = create<CartState>()(
       },
 
       resetLockTimer: () => {
-        set({ lockExpiresAt: null })
+        set({ lockExpiresAt: null, ticketId: null })
       },
     }),
     {
@@ -119,6 +153,7 @@ export const useCartStore = create<CartState>()(
       partialize: (s) => ({
         showtime: s.showtime,
         seats: s.seats,
+        ticketId: s.ticketId,
         lockExpiresAt: s.lockExpiresAt,
       }),
     },
