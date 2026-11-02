@@ -100,3 +100,4 @@ export const getShowtimeSeats = async (req: AuthRequest, res: Response) => {
   }
 };
 
+ 

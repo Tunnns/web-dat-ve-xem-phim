@@ -238,3 +238,4 @@ export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
     </div>
   )
 }
+ 

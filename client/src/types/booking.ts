@@ -32,3 +32,4 @@ export interface RoomLayout {
   cols: number
   seats: Seat[]
 }
+ 

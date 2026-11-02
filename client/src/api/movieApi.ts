@@ -100,3 +100,4 @@ export const movieApi = {
     return movies.filter((m) => m.status === 'coming_soon')
   },
 }
+ 

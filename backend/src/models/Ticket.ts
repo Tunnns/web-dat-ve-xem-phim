@@ -79,3 +79,4 @@ ticketSchema.index(
 );
 
 export default mongoose.model<ITicket>('Ticket', ticketSchema);
+ 
