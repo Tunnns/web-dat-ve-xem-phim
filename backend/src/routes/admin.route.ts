@@ -31,6 +31,8 @@ import {
   createVoucher,
   updateVoucher,
   deleteVoucher,
+  getUsers,
+  getTickets,
 } from '../controllers/admin.controller';
 import { uploadMovieImages, uploadSinglePoster } from '../middlewares/upload.middleware';
 
@@ -284,5 +286,12 @@ router.get('/vouchers/:id', getVoucherById);
 router.post('/vouchers', voucherCreateRules, validate, createVoucher);
 router.put('/vouchers/:id', voucherUpdateRules, validate, updateVoucher);
 router.delete('/vouchers/:id', deleteVoucher);
+
+/* ============================ NGƯỜI DÙNG & KHÁCH HÀNG ============================ */
+router.get('/users', getUsers);
+router.get('/customers', getUsers);
+
+/* ============================ VÉ ĐẶT (Tickets) ============================ */
+router.get('/tickets', getTickets);
 
 export default router;

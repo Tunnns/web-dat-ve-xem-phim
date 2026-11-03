@@ -86,5 +86,61 @@ export const paymentApi = {
     const res = await api.post('/payment/calculate', body)
     return res.data.data
   },
+
+  /** Sinh mã VietQR tự động kèm theo đăng ký đơn hàng nội bộ */
+  async generateQR(params: {
+    amount: number
+    description?: string
+    showtimeId?: string
+    seats?: string[]
+    combos?: { comboId: string; quantity: number }[]
+    voucherCode?: string
+    ticketId?: string
+    bankId?: string
+    accountNo?: string
+    accountName?: string
+  }): Promise<{
+    qrUrl: string
+    bankId: string
+    accountNo: string
+    accountName: string
+    amount: number
+    description: string
+    ticketId?: string
+  }> {
+    const res = await api.post('/payment/qr', params)
+    return res.data.data
+  },
+
+  /** Kiểm tra trạng thái giao dịch nội bộ từ cơ sở dữ liệu của dự án */
+  async checkPaymentStatus(orderCode: string): Promise<{
+    success: boolean
+    paid: boolean
+    status: 'pending' | 'completed' | 'expired' | 'not_found'
+    ticket?: any
+  }> {
+    const res = await api.get(`/payment/status/${encodeURIComponent(orderCode)}`)
+    return res.data
+  },
+
+  /** Mô phỏng thanh toán ngân hàng thành công nội bộ (phục vụ kiểm thử tức thì) */
+  async simulateTransfer(orderCode: string): Promise<any> {
+    const res = await api.post('/payment/simulate-transfer', { orderCode })
+    return res.data.data
+  },
+
+  /** Xác nhận thanh toán thành công và tạo vé */
+  async confirmPayment(body: {
+    ticketId?: string
+    showtimeId: string
+    seats: string[]
+    combos?: { comboId: string; quantity: number }[]
+    voucherCode?: string
+    paymentMethod?: string
+    paymentReference?: string
+  }): Promise<any> {
+    const res = await api.post('/payment/success', body)
+    return res.data.data
+  },
 }
  

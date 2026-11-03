@@ -2,12 +2,16 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import {
   generateVietQR,
+  checkPaymentStatus,
+  bankingWebhook,
+  sepayWebhook,
+  simulateBankTransfer,
   listCombos,
   calculate,
   validateVoucherCode,
   confirmPaymentSuccess,
 } from '../controllers/payment.controller';
-import { protect } from '../middlewares/auth.middleware';
+import { protect, optionalProtect } from '../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -24,8 +28,18 @@ const validate = (req: Request, res: Response, next: NextFunction): Response | v
   return next();
 };
 
-// Route demo sinh QR thanh toán
-router.post('/qr', generateVietQR);
+// Route sinh mã QR thanh toán VietQR độc nhất kèm pending ticket
+router.post('/qr', optionalProtect, generateVietQR);
+
+// Kiểm tra trạng thái đơn thanh toán trực tiếp từ DB dự án
+router.get('/status/:orderCode', checkPaymentStatus);
+
+// Webhook SePay va ngan hang tiep nhan bien dong so du tu dong
+router.post('/webhook', sepayWebhook);
+router.post('/sepay-webhook', sepayWebhook);
+
+// API mô phỏng biến động số dư cho mục đích kiểm thử
+router.post('/simulate-transfer', simulateBankTransfer);
 
 // Danh sách combo đang bán (phục vụ trang Checkout)
 router.get('/combos', listCombos);

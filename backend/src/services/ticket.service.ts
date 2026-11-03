@@ -16,7 +16,7 @@ import {
 const MAX_QR_ATTEMPTS = 5;
 
 export interface CompleteTicketPaymentInput {
-  userId: string;
+  userId?: string;
   showtimeId: string;
   seats: string[];
   combos?: PricingComboInput[];
@@ -99,7 +99,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
   const paymentReference = rawPaymentReference?.trim() || undefined;
   const ticketId = rawTicketId?.trim() || undefined;
 
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
+  if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
     throw new AppError('Người dùng không hợp lệ', 401);
   }
   if (!mongoose.Types.ObjectId.isValid(showtimeId)) {
@@ -111,9 +111,12 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
 
   /* ---------- 0. Chống tạo trùng khi callback thanh toán được gọi lại ---------- */
   if (paymentReference) {
-    const existingByReference = await Ticket.findOne({ paymentReference });
+    const existingByReference = await Ticket.findOne({
+      paymentReference,
+      status: 'completed',
+    });
     if (existingByReference) {
-      if (String(existingByReference.user) !== userId) {
+      if (userId && existingByReference.user && String(existingByReference.user) !== userId) {
         throw new AppError('Mã giao dịch đã được sử dụng cho đơn đặt vé khác', 409);
       }
       return buildResult(existingByReference);
@@ -123,34 +126,48 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
   /* ---------- 1. Xác định vé cần hoàn tất (nếu có) ---------- */
   let pendingTicket: HydratedDocument<ITicket> | null = null;
 
-  if (ticketId) {
-    if (!mongoose.Types.ObjectId.isValid(ticketId)) {
-      throw new AppError('ID vé không hợp lệ', 400);
-    }
-
+  if (ticketId && mongoose.Types.ObjectId.isValid(ticketId)) {
     const found = await Ticket.findById(ticketId);
-    if (!found) {
-      throw new AppError('Không tìm thấy vé cần thanh toán', 404);
-    }
-    if (String(found.user) !== userId) {
-      throw new AppError('Bạn không có quyền thanh toán vé này', 403);
-    }
-    if (found.status === 'cancelled') {
-      throw new AppError('Vé đã bị hủy', 400);
-    }
-    if (String(found.showtime) !== showtimeId) {
-      throw new AppError('Suất chiếu không khớp với vé đang giữ', 400);
-    }
-    if (normalizeSeats(found.seats) !== normalizeSeats(seats)) {
-      throw new AppError('Danh sách ghế không khớp với vé đang giữ', 400);
-    }
+    if (found) {
+      if (userId && found.user && String(found.user) !== userId) {
+        throw new AppError('Bạn không có quyền thanh toán vé này', 403);
+      }
+      if (found.status === 'cancelled') {
+        throw new AppError('Vé đã bị hủy', 400);
+      }
+      if (String(found.showtime) !== showtimeId) {
+        throw new AppError('Suất chiếu không khớp với vé đang giữ', 400);
+      }
+      if (normalizeSeats(found.seats) !== normalizeSeats(seats)) {
+        throw new AppError('Danh sách ghế không khớp với vé đang giữ', 400);
+      }
 
-    // Đã thanh toán trước đó → trả lại vé cũ (idempotent)
-    if (found.status === 'completed') {
-      return buildResult(found);
-    }
+      // Đã thanh toán trước đó → trả lại vé cũ (idempotent)
+      if (found.status === 'completed') {
+        return buildResult(found);
+      }
 
-    pendingTicket = found;
+      pendingTicket = found;
+    }
+  }
+
+  // Fallback: Tìm vé pending theo mã giao dịch paymentReference
+  if (!pendingTicket && paymentReference) {
+    const foundByRef = await Ticket.findOne({
+      paymentReference,
+      status: 'pending',
+    });
+    if (foundByRef) {
+      if (userId && foundByRef.user && String(foundByRef.user) !== userId) {
+        throw new AppError('Bạn không có quyền thanh toán vé này', 403);
+      }
+      pendingTicket = foundByRef;
+    }
+  }
+
+  // Nếu người dùng truyền ticketId nhưng không tìm thấy cả theo ID lẫn paymentReference
+  if (ticketId && !pendingTicket && !paymentReference) {
+    throw new AppError('Không tìm thấy vé cần thanh toán', 404);
   }
 
   /* ---------- 2. Tính tiền lại ở server + kiểm tra ghế trống ---------- */
@@ -201,6 +218,9 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
 
     try {
       if (pendingTicket) {
+        if (!pendingTicket.user && userId) {
+          pendingTicket.user = new mongoose.Types.ObjectId(userId);
+        }
         pendingTicket.set(paymentFields);
         savedTicket = await pendingTicket.save();
       } else {

@@ -12,6 +12,7 @@ const PHONE_RE = /^(0|\+84)\d{9}$/
 export default function Register() {
   const navigate = useNavigate()
   const register = useAuthStore((s) => s.register)
+  const logout = useAuthStore((s) => s.logout)
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -21,6 +22,7 @@ export default function Register() {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -40,6 +42,7 @@ export default function Register() {
   const onSubmit = async (ev: FormEvent) => {
     ev.preventDefault()
     setServerError('')
+    setSuccessMessage('')
     if (!validate()) return
     setLoading(true)
     try {
@@ -49,7 +52,17 @@ export default function Register() {
         phone: form.phone || undefined,
         password: form.password,
       })
-      navigate('/', { replace: true })
+      logout()
+      setSuccessMessage('Đăng ký tài khoản thành công! Đang chuyển về trang đăng nhập...')
+      setTimeout(() => {
+        navigate('/login', {
+          replace: true,
+          state: {
+            email: form.email,
+            registeredNotice: 'Đăng ký tài khoản thành công! Vui lòng đăng nhập để tiếp tục.',
+          },
+        })
+      }, 1500)
     } catch (err) {
       setServerError(getErrorMessage(err))
     } finally {
@@ -72,10 +85,16 @@ export default function Register() {
           </p>
         )}
 
+        {successMessage && (
+          <p role="status" className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+            {successMessage}
+          </p>
+        )}
+
         <button
           id="register-submit"
           type="submit"
-          disabled={loading}
+          disabled={loading || Boolean(successMessage)}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 py-3 font-semibold shadow-lg shadow-brand-500/30 transition hover:-translate-y-0.5 hover:shadow-brand-500/50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading && <Loader2 size={18} className="animate-spin" />}

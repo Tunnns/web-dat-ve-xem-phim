@@ -6,6 +6,8 @@ import * as RoomService from '../services/room.service';
 import * as ShowtimeService from '../services/showtime.service';
 import * as ComboService from '../services/combo.service';
 import * as VoucherService from '../services/voucher.service';
+import User from '../models/User';
+import Ticket from '../models/Ticket';
 
 const handleError = (res: Response, error: unknown): void => {
   if (error instanceof AppError) {
@@ -332,6 +334,77 @@ export const deleteVoucher = async (req: Request, res: Response) => {
   try {
     const voucher = await VoucherService.deleteVoucher(req.params.id as string);
     res.status(200).json({ success: true, message: 'Xóa mã giảm giá thành công', data: voucher });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+/* ============================ NGƯỜI DÙNG (Users) ============================ */
+
+export const getUsers = async (req: Request, res: Response) => {
+  try {
+    const users = await User.find()
+      .select('-password -resetPasswordToken -resetPasswordExpires')
+      .sort({ createdAt: -1 });
+
+    const formatted = users.map((u) => ({
+      _id: u._id,
+      fullName: u.fullName,
+      name: u.fullName,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+      status: 'active',
+      isActive: true,
+      createdAt: u.createdAt,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: 'Lấy danh sách người dùng thành công',
+      data: formatted,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+/* ============================ VÉ ĐẶT (Tickets) ============================ */
+
+export const getTickets = async (req: Request, res: Response) => {
+  try {
+    const tickets = await Ticket.find()
+      .populate('user', 'fullName email phone')
+      .populate({
+        path: 'showtime',
+        populate: [
+          { path: 'movie', select: 'title' },
+          { path: 'theater', select: 'name' },
+          { path: 'room', select: 'name' },
+        ],
+      })
+      .sort({ createdAt: -1 });
+
+    const formatted = tickets.map((t: any) => ({
+      _id: t._id,
+      code: t.code,
+      userEmail: t.user?.email || 'Khách vãng lai',
+      customerName: t.user?.fullName || 'Khách hàng',
+      movieTitle: t.showtime?.movie?.title || 'Phim',
+      theaterName: t.showtime?.theater?.name || 'Rạp',
+      roomName: t.showtime?.room?.name || 'Phòng',
+      seats: t.seats || [],
+      totalPrice: t.totalAmount || 0,
+      status: t.status,
+      createdAt: t.createdAt,
+      showTime: t.showtime?.startTime,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: 'Lấy danh sách vé thành công',
+      data: formatted,
+    });
   } catch (error) {
     handleError(res, error);
   }

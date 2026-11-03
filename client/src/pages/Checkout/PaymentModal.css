@@ -1,0 +1,448 @@
+/* ==========================================================================
+   Payment Modal Style - Matched from bangbangdecode/teddy_git
+   Clean Commercial Light Theme with Precision Copy Rows
+   Zero Emojis - 100% Production Ready
+   ========================================================================== */
+
+:root {
+  --teddy-primary: #2563eb;
+  --teddy-primary-hover: #1d4ed8;
+  --teddy-accent-orange: #ea580c;
+  --teddy-accent-orange-hover: #c2410c;
+  --teddy-bg-card: #ffffff;
+  --teddy-bg-subtle: #f8fafc;
+  --teddy-border: #e2e8f0;
+  --teddy-text-dark: #0f172a;
+  --teddy-text-body: #334155;
+  --teddy-text-muted: #64748b;
+}
+
+/* Modal Overlay */
+.teddy-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* Modal Box */
+.teddy-modal-box {
+  background: #ffffff;
+  width: 100%;
+  max-width: 680px;
+  border-radius: 10px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  animation: teddyModalPop 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  color: #334155;
+}
+
+@keyframes teddyModalPop {
+  0% {
+    transform: scale(0.95) translateY(8px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.teddy-modal-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.teddy-modal-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.teddy-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.teddy-modal-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.teddy-modal-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Timer ribbon */
+.teddy-timer-bar {
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #bfdbfe;
+}
+
+/* 2-Column QR Split Layout */
+.teddy-qr-split-container {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 14px;
+  align-items: stretch;
+  margin-top: 4px;
+}
+
+.teddy-qr-left-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.teddy-qr-img-box-large {
+  width: 196px;
+  height: 196px;
+  background: #ffffff;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.teddy-qr-img-box-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.teddy-qr-scan-hint {
+  font-size: 0.74rem;
+  color: #64748b;
+  text-align: center;
+  margin-top: 8px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.teddy-qr-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .teddy-qr-split-container {
+    grid-template-columns: 1fr;
+  }
+  .teddy-qr-img-box-large {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+/* Copy Row */
+.teddy-copy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.teddy-copy-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.teddy-copy-lbl {
+  font-size: 0.70rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.teddy-copy-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.teddy-copy-val.code {
+  color: #2563eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.94rem;
+}
+
+.teddy-btn-copy {
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.teddy-btn-copy:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.teddy-btn-copy.done {
+  background: #dcfce7;
+  color: #16a34a;
+  border-color: #86efac;
+}
+
+/* Auto Bank Real-time Status Notice */
+.teddy-auto-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #059669;
+  margin-top: 6px;
+}
+
+.teddy-pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: teddyPulse 1.8s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes teddyPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.teddy-btn-modal-action {
+  width: 100%;
+  height: 42px;
+  background: #ea580c;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.teddy-btn-modal-action:hover {
+  background: #c2410c;
+}
+
+.teddy-btn-modal-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Success Modal */
+.teddy-success-box {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(16, 185, 129, 0.25), 0 0 0 1px rgba(16, 185, 129, 0.2);
+  animation: teddyModalPop 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  overflow: hidden;
+  max-width: 520px;
+}
+
+.teddy-success-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.teddy-success-icon-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.25));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1);
+}
+
+.teddy-success-svg {
+  width: 48px;
+  height: 48px;
+}
+
+.teddy-success-circle {
+  stroke: #10b981;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 160;
+  stroke-dashoffset: 160;
+  animation: teddyCircleDraw 0.5s ease-out 0.1s forwards;
+}
+
+.teddy-success-check {
+  stroke: #059669;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: teddyCheckDraw 0.4s ease-out 0.4s forwards;
+}
+
+@keyframes teddyCircleDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes teddyCheckDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.teddy-success-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.teddy-success-code-highlight {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #059669;
+  font-family: monospace;
+  margin: 2px 0 4px 0;
+}
+
+.teddy-success-desc {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.teddy-receipt-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.teddy-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.84rem;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed rgba(203, 213, 225, 0.8);
+}
+
+.teddy-receipt-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.teddy-receipt-lbl {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.teddy-receipt-val {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.teddy-receipt-val.code {
+  font-family: monospace;
+  color: #2563eb;
+  font-size: 0.88rem;
+}
+
+.teddy-receipt-val.highlight {
+  color: #059669;
+  font-weight: 800;
+}
+
+.teddy-btn-success-close {
+  width: 100%;
+  height: 42px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transition: all 0.15s ease;
+}
+
+.teddy-btn-success-close:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45);
+  transform: translateY(-1px);
+}
+

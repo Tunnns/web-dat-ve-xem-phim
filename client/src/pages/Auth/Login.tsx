@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect, type FormEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2, Lock, Mail } from 'lucide-react'
 import AuthLayout from '../../components/AuthLayout'
 import InputField from '../../components/InputField'
@@ -8,13 +8,34 @@ import { useAuthStore } from '../../store/authStore'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+interface LocationState {
+  email?: string
+  registeredNotice?: string
+}
+
 export default function Login() {
+  const location = useLocation()
   const navigate = useNavigate()
   const login = useAuthStore((s) => s.login)
-  const [form, setForm] = useState({ email: '', password: '' })
+
+  const state = (location.state as LocationState) || {}
+  const [form, setForm] = useState({
+    email: state.email || '',
+    password: '',
+  })
+  const [registeredNotice, setRegisteredNotice] = useState(state.registeredNotice || '')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (state.email) {
+      setForm((prev) => ({ ...prev, email: state.email || prev.email }))
+    }
+    if (state.registeredNotice) {
+      setRegisteredNotice(state.registeredNotice)
+    }
+  }, [state.email, state.registeredNotice])
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -70,6 +91,12 @@ export default function Login() {
             Quên mật khẩu?
           </Link>
         </div>
+
+        {registeredNotice && (
+          <p role="status" className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+            {registeredNotice}
+          </p>
+        )}
 
         {serverError && (
           <p role="alert" className="mb-4 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">

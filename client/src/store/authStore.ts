@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const res = await authApi.register(payload)
           if (!res.data) throw new Error('Phản hồi không hợp lệ')
-          set({ user: res.data.user, token: res.data.token, loading: false })
+          set({ loading: false })
         } catch (err) {
           set({ loading: false, error: getErrorMessage(err) })
           throw err
