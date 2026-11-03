@@ -30,9 +30,11 @@ const validate = (req: Request, res: Response, next: NextFunction): Response | v
 
 // Route sinh mã QR thanh toán VietQR độc nhất kèm pending ticket
 router.post('/qr', optionalProtect, generateVietQR);
+router.post('/create-vietqr', optionalProtect, generateVietQR);
 
 // Kiểm tra trạng thái đơn thanh toán trực tiếp từ DB dự án
 router.get('/status/:orderCode', checkPaymentStatus);
+router.get('/check-status/:orderCode', checkPaymentStatus);
 
 // Webhook SePay va ngan hang tiep nhan bien dong so du tu dong
 router.post('/webhook', sepayWebhook);
