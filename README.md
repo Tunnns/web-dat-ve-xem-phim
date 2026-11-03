@@ -40,9 +40,11 @@ Chạy riêng lẻ từng phần:
   - [x] Cài đặt thuật toán **Seat Locking** (Khóa ghế tạm thời 5 phút) lưu trạng thái ghế đang giữ để tránh 2 người cùng đặt 1 ghế.
   - [x] API lấy sơ đồ ghế và trạng thái thời gian thực theo suất chiếu (`GET /api/booking/showtime/:showtimeId/seats` phục vụ Client SeatMap).
   - [x] Xây dựng API Webhook / Callback xác nhận thanh toán thành công và cập nhật trạng thái vé (`Ticket: pending -> completed`, phát hành mã QR vé điện tử).
+  - [x] Tích hợp thanh toán SePay Auto VietQR tự động khớp giao dịch ngân hàng theo webhook bảo mật HMAC (`/api/payment/sepay-webhook`).
+  - [x] Hỗ trợ kết nối API Đặt vé và Khóa ghế vào giao diện Client (`SeatMap.tsx`, `Checkout.tsx`).
+  - [x] Tích hợp kiểm thử tải đồng thời (stress test) chống race condition giữ ghế bằng hàng đợi khóa đồng bộ theo suất chiếu (`src/scripts/test-concurrent-seat-locking.ts`).
 - **Nhiệm vụ tiếp theo cần làm:**
-  - [ ] Hỗ trợ kết nối API Đặt vé và Khóa ghế vào giao diện Client của Trường & Hoàng.
-  - [ ] Tích hợp kiểm thử tải đồng thời (stress test) khi nhiều người dùng cùng bấm đặt một ghế tại cùng một thời điểm.
+  - [ ] Đã hoàn thành 100% toàn bộ hạng mục công việc được giao.
 
 ---
 

@@ -4,6 +4,7 @@ import Room, { IRoom } from '../models/Room';
 import Ticket, { ITicket } from '../models/Ticket';
 import { calculatePrice, PricingComboInput } from './pricing.service';
 import { AppError } from '../utils/appError';
+import { showtimeLock } from './ticket.service';
 
 export interface LockSeatsInput {
   userId: string;
@@ -40,9 +41,11 @@ const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 phút
 export const lockSeats = async (input: LockSeatsInput) => {
   const { userId, showtimeId, seats, combos = [], voucherCode, ticketId: existingTicketId } = input;
 
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new AppError('Người dùng không hợp lệ', 401);
-  }
+  const release = await showtimeLock.acquire(showtimeId);
+  try {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new AppError('Người dùng không hợp lệ', 401);
+    }
   if (!mongoose.Types.ObjectId.isValid(showtimeId)) {
     throw new AppError('ID suất chiếu không hợp lệ', 400);
   }
@@ -178,15 +181,18 @@ export const lockSeats = async (input: LockSeatsInput) => {
     }
   }
 
-  return {
-    ticketId: String(ticket._id),
-    showtimeId,
-    seats: ticket.seats,
-    totalAmount: ticket.totalAmount,
-    lockedUntil: ticket.lockedUntil,
-    expiresInSeconds: Math.max(0, Math.round((lockedUntil.getTime() - Date.now()) / 1000)),
-    pricing,
-  };
+    return {
+      ticketId: String(ticket._id),
+      showtimeId,
+      seats: ticket.seats,
+      totalAmount: ticket.totalAmount,
+      lockedUntil: ticket.lockedUntil,
+      expiresInSeconds: Math.max(0, Math.round((lockedUntil.getTime() - Date.now()) / 1000)),
+      pricing,
+    };
+  } finally {
+    release();
+  }
 };
 
 /**
