@@ -25,12 +25,12 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction): Re
 
 export const restrictTo =
   (...roles: Array<'user' | 'admin'>) =>
-  (req: AuthRequest, res: Response, next: NextFunction): Response | void => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-    }
-    return next();
-  };
+    (req: AuthRequest, res: Response, next: NextFunction): Response | void => {
+      if (!req.user || !roles.includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
+      }
+      return next();
+    };
 
 /* Trích xuất user nếu có Bearer token, không bắt buộc đăng nhập */
 export const optionalProtect = (req: AuthRequest, _res: Response, next: NextFunction): void => {
@@ -51,4 +51,3 @@ export const optionalProtect = (req: AuthRequest, _res: Response, next: NextFunc
 // Alias để tương thích cả 2 route booking.route.ts (optionalAuth) và ticket.route.ts (optionalProtect)
 export const optionalAuth = optionalProtect;
 
- 
