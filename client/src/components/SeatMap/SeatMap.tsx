@@ -38,6 +38,7 @@ export default function SeatMap({
   seats: initialSeats,
   showtimeInfo: initialShowtimeInfo,
   onProceed,
+  onSeatSelect,
 }: SeatMapProps) {
   const navigate = useNavigate()
   const [loading, setLoading] = useState<boolean>(!initialSeats && !!showtimeId)

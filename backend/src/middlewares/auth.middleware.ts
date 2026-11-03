@@ -48,10 +48,7 @@ export const optionalProtect = (req: AuthRequest, _res: Response, next: NextFunc
   }
   return next();
 };
-<<<<<<< HEAD
-
 // Alias để tương thích cả 2 route booking.route.ts (optionalAuth) và ticket.route.ts (optionalProtect)
 export const optionalAuth = optionalProtect;
-=======
->>>>>>> 389a695 (connect backend APIs and real-time seat holding)
+
  

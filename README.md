@@ -68,10 +68,12 @@ Chạy riêng lẻ từng phần:
   - [x] Dựng UI Trang chủ: Hero Banner, Danh sách phim Đang chiếu / Sắp chiếu, Thanh đặt vé nhanh (QuickBooking).
   - [x] Dựng UI Trang chi tiết phim, Trailer Modal, Chọn cụm rạp và Lịch chiếu (`MovieDetail.tsx`, `Showtimes.tsx`).
   - [x] Xử lý UI **Sơ đồ ghế ngồi** (`SeatMap.tsx`, `SeatItem.tsx`, `SeatLegend.tsx`, `SeatTimer.tsx`).
+  - [x] Thay thế dữ liệu tĩnh (mockData) bằng việc gọi API thật từ Backend (`/api/admin/movies`, `/api/admin/theaters`, `/api/admin/showtimes`).
+  - [x] Kết nối luồng điều hướng: Chọn suất chiếu tại Trang chi tiết -> Chuyển tiếp `showtimeId` đến trang chọn ghế (`/booking/:showtimeId`).
+  - [x] Kết nối tương tác gọi API giữ ghế theo thời gian thực (Seat Locking & polling trạng thái ghế từ Backend).
 - **Nhiệm vụ tiếp theo cần làm:**
-  - [ ] Thay thế dữ liệu tĩnh (mockData) bằng việc gọi API thật từ Backend (`/api/admin/movies`, `/api/admin/theaters`, `/api/admin/showtimes`).
-  - [ ] Kết nối luồng điều hướng: Chọn suất chiếu tại Trang chi tiết -> Chuyển tiếp `showtimeId` đến trang chọn ghế (`/booking/:showtimeId`).
-  - [ ] Kết nối tương tác gọi API giữ ghế theo thời gian thực (hiển thị trạng thái ghế đang giữ từ Backend).
+  - [ ] Tối ưu hóa UI/UX khi kết nối mạng chậm hoặc gián đoạn kết nối socket/polling.
+  - [ ] Bổ sung hiệu ứng chuyển cảnh và âm thanh thông báo khi giữ ghế thành công.
 
 ---
 
