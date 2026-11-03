@@ -13,6 +13,7 @@ export interface Movie {
   title: string;
   description: string;
   posterUrl: string;
+  bannerUrl?: string;
   trailerUrl?: string;
   duration: number;
   releaseDate: string;

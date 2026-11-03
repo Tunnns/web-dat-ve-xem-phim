@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon ./src/index.js",
-    "start": "node ./src/index.js",
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,18 +19,28 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.11.2",
-    "multer": "^2.5.0",
-    "prisma": "^8.0.0-rc.17",
+    "mongoose": "^9.11.4",
+    "multer": "^2.4.0",
+    "prisma": "^7.10.1",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
     "@types/node": "^26.6.3",
-    "nodemon": "^3.1.14",
+    "@types/qrcode": "^1.5.6",
+    "nodemon": "^1.14.10",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.10.1": true,
+    "prisma@7.10.1": true,
+    "nodemon@1.19.4": true
   }
 }
