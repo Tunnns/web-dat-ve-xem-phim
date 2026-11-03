@@ -23,7 +23,6 @@ import {
 import {
   DeleteOutlined,
   EditOutlined,
-  MinusCircleOutlined,
   PlusOutlined,
   SearchOutlined,
   AppstoreOutlined,
@@ -39,22 +38,53 @@ import type { Room, Seat, Theater } from '../../api/types';
 
 const { Title, Text } = Typography;
 
-const SEAT_TYPE_OPTIONS = [
-  { value: 'normal', label: 'Thường' },
-  { value: 'vip', label: 'VIP' },
-  { value: 'couple', label: 'Đôi' },
-];
+type PaintMode = 'normal' | 'vip' | 'couple' | 'maintenance';
 
-const SEAT_STATUS_OPTIONS = [
-  { value: 'available', label: 'Khả dụng' },
-  { value: 'maintenance', label: 'Bảo trì' },
+const MAX_ROWS = 26;
+const MAX_SEATS_PER_ROW = 20;
+const DEFAULT_ROWS = 8;
+const DEFAULT_SEATS_PER_ROW = 12;
+
+const PAINT_MODE_OPTIONS: Array<{
+  value: PaintMode;
+  label: string;
+  background: string;
+  border: string;
+  color: string;
+}> = [
+  {
+    value: 'normal',
+    label: 'Thường',
+    background: '#e6f4ff',
+    border: '#91caff',
+    color: '#0958a5',
+  },
+  {
+    value: 'vip',
+    label: 'VIP',
+    background: '#f9f0ff',
+    border: '#d3adf7',
+    color: '#722ed1',
+  },
+  {
+    value: 'couple',
+    label: 'Đôi',
+    background: '#fff0f6',
+    border: '#ffadd2',
+    color: '#c41d7f',
+  },
+  {
+    value: 'maintenance',
+    label: 'Bảo trì',
+    background: '#fff1f0',
+    border: '#ffa39e',
+    color: '#cf1322',
+  },
 ];
 
 interface RoomFormValues {
   name: string;
   theater: string;
-  capacity: number;
-  seatLayout?: Seat[];
 }
 
 const getTheaterId = (theater: Room['theater']): string =>
@@ -76,6 +106,9 @@ const getSeatTypeLabel = (type: string): string => {
   }
 };
 
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, value));
+
 const getRowLabel = (index: number): string => {
   let label = '';
   let number = index + 1;
@@ -89,40 +122,218 @@ const getRowLabel = (index: number): string => {
   return label;
 };
 
+/** Đọc mã ghế dạng A1, B12... để xác định hàng và số ghế. */
+const parseSeatCode = (
+  code: string,
+): { row: string; number: number } | null => {
+  const match = /^([A-Za-z]+)\s*(\d+)$/.exec(code.trim());
+
+  if (!match) return null;
+
+  return {
+    row: match[1].toUpperCase(),
+    number: Number(match[2]),
+  };
+};
+
 /**
- * Tạo đủ ghế theo sức chứa.
- * Ưu tiên giữ loại và trạng thái của ghế cũ theo vị trí.
- * Mỗi hàng có tối đa 10 ghế.
+ * Xếp loại ghế theo vị trí giống rạp thực tế:
+ * - Hàng cuối là ghế đôi (khi số ghế chẵn).
+ * - Các hàng giữa là VIP.
+ * - Các hàng còn lại là ghế thường.
  */
-const generateSeatLayout = (
-  capacity: number,
-  currentSeats: Seat[] = [],
-): Seat[] => {
-  const safeCapacity = Math.max(
+const getAutoSeatType = (
+  rowIndex: number,
+  rowCount: number,
+  seatsInRow: number,
+): Seat['type'] => {
+  if (
+    rowCount >= 3 &&
+    rowIndex === rowCount - 1 &&
+    seatsInRow >= 2 &&
+    seatsInRow % 2 === 0
+  ) {
+    return 'couple';
+  }
+
+  if (rowCount >= 4) {
+    const vipStart = Math.max(1, Math.ceil(rowCount * 0.35));
+    const vipEnd = Math.min(rowCount - 2, Math.floor(rowCount * 0.65));
+
+    if (vipEnd >= vipStart && rowIndex >= vipStart && rowIndex <= vipEnd) {
+      return 'vip';
+    }
+  }
+
+  return 'normal';
+};
+
+/** Bản đồ loại ghế chuẩn theo bố cục hiện tại của phòng. */
+const getAutoSeatTypeMap = (seats: Seat[]): Map<string, Seat['type']> => {
+  const rows = groupSeatsByRow(seats);
+  const rowIndexByLabel = new Map(
+    rows.map((row, index) => [row.row, index]),
+  );
+  const seatCountByRow = new Map(
+    rows.map((row) => [row.row, row.seats.length]),
+  );
+
+  return new Map(
+    seats.map((seat) => {
+      const parsed = parseSeatCode(seat.code);
+
+      if (!parsed) {
+        return [seat.code, seat.type] as [string, Seat['type']];
+      }
+
+      return [
+        seat.code,
+        getAutoSeatType(
+          rowIndexByLabel.get(parsed.row) ?? 0,
+          rows.length,
+          seatCountByRow.get(parsed.row) ?? 0,
+        ),
+      ] as [string, Seat['type']];
+    }),
+  );
+};
+
+/**
+ * Tạo sơ đồ ghế theo số hàng và số ghế mỗi hàng.
+ * Loại ghế được xếp tự động giống rạp thực tế; trạng thái bảo trì
+ * được giữ lại theo mã ghế.
+ */
+const buildSeatLayout = ({
+  rows,
+  seatsPerRow,
+  currentSeats = [],
+  autoArrange = true,
+}: {
+  rows: number;
+  seatsPerRow: number;
+  currentSeats?: Seat[];
+  autoArrange?: boolean;
+}): Seat[] => {
+  const safeRows = clamp(Math.floor(Number(rows) || 0), 1, MAX_ROWS);
+  const safeSeatsPerRow = clamp(
+    Math.floor(Number(seatsPerRow) || 0),
+    1,
+    MAX_SEATS_PER_ROW,
+  );
+
+  const existingSeats = new Map(
+    currentSeats.map((seat) => [seat.code.trim().toUpperCase(), seat]),
+  );
+
+  const layout: Seat[] = [];
+
+  for (let rowIndex = 0; rowIndex < safeRows; rowIndex += 1) {
+    const rowLabel = getRowLabel(rowIndex);
+
+    for (let number = 1; number <= safeSeatsPerRow; number += 1) {
+      const code = `${rowLabel}${number}`;
+      const previousSeat = existingSeats.get(code);
+
+      layout.push({
+        code,
+        type: autoArrange
+          ? getAutoSeatType(rowIndex, safeRows, safeSeatsPerRow)
+          : previousSeat?.type ?? 'normal',
+        status: previousSeat?.status ?? 'available',
+      });
+    }
+  }
+
+  return layout;
+};
+
+/** Tạo sơ đồ dự phòng cho phòng cũ chưa lưu seatLayout. */
+const buildLayoutFromCapacity = (capacity: number): Seat[] => {
+  const safeCapacity = clamp(
+    Math.floor(Number(capacity) || 0),
+    1,
+    MAX_ROWS * MAX_SEATS_PER_ROW,
+  );
+  const seatsPerRow = Math.min(safeCapacity, DEFAULT_SEATS_PER_ROW);
+  const rows = Math.ceil(safeCapacity / seatsPerRow);
+
+  // Không tự gán VIP/ghế đôi vì phòng cũ chưa có dữ liệu loại ghế.
+  return buildSeatLayout({ rows, seatsPerRow, autoArrange: false }).slice(
     0,
-    Math.min(1000, Math.floor(Number(capacity) || 0)),
+    safeCapacity,
   );
+};
 
-  const seatsByCode = new Map(
-    currentSeats.map((seat) => [
-      seat.code.trim().toUpperCase(),
-      seat,
-    ]),
-  );
+const getRoomSeatLayout = (room: Room): Seat[] => {
+  const savedLayout = room.seatLayout ?? [];
 
-  return Array.from({ length: safeCapacity }, (_, index) => {
-    const code = `${getRowLabel(Math.floor(index / 10))}${(index % 10) + 1}`;
-    const existingSeat = seatsByCode.get(code);
-    const seatAtPosition = currentSeats[index];
+  return savedLayout.length > 0
+    ? savedLayout
+    : buildLayoutFromCapacity(room.capacity);
+};
 
-    const previousSeat = existingSeat ?? seatAtPosition;
+/** Nhóm ghế theo hàng để hiển thị thành sơ đồ. */
+const groupSeatsByRow = (
+  seats: Seat[],
+): Array<{ row: string; seats: Seat[] }> => {
+  const rowMap = new Map<string, Seat[]>();
 
-    return {
-      code,
-      type: previousSeat?.type ?? 'normal',
-      status: previousSeat?.status ?? 'available',
-    } as Seat;
+  seats.forEach((seat) => {
+    const parsed = parseSeatCode(seat.code);
+    const row = parsed?.row ?? seat.code.charAt(0).toUpperCase();
+
+    if (!rowMap.has(row)) {
+      rowMap.set(row, []);
+    }
+
+    rowMap.get(row)!.push(seat);
   });
+
+  return Array.from(rowMap.entries())
+    .sort(([rowA], [rowB]) => {
+      const lengthDiff = rowA.length - rowB.length;
+      return lengthDiff !== 0 ? lengthDiff : rowA.localeCompare(rowB);
+    })
+    .map(([row, rowSeats]) => ({
+      row,
+      seats: [...rowSeats].sort((seatA, seatB) => {
+        const numberA = parseSeatCode(seatA.code)?.number ?? 0;
+        const numberB = parseSeatCode(seatB.code)?.number ?? 0;
+        return numberA - numberB;
+      }),
+    }));
+};
+
+const getMaxSeatNumber = (seats: Seat[]): number =>
+  seats.reduce((maxNumber, seat) => {
+    const parsed = parseSeatCode(seat.code);
+    return parsed ? Math.max(maxNumber, parsed.number) : maxNumber;
+  }, 0);
+
+/** Ghế đôi phải luôn đi theo cặp liền kề (1-2, 3-4...). */
+const validateCoupleSeats = (seats: Seat[]): string | null => {
+  const seatsByCode = new Map(seats.map((seat) => [seat.code, seat]));
+
+  for (const seat of seats) {
+    if (seat.type !== 'couple') continue;
+
+    const parsed = parseSeatCode(seat.code);
+
+    if (!parsed) {
+      return `Mã ghế "${seat.code}" không hợp lệ. Mã ghế phải có dạng A1, B2...`;
+    }
+
+    const pairNumber =
+      parsed.number % 2 === 1 ? parsed.number + 1 : parsed.number - 1;
+    const pairCode = `${parsed.row}${pairNumber}`;
+    const pairSeat = seatsByCode.get(pairCode);
+
+    if (!pairSeat || pairSeat.type !== 'couple') {
+      return `Ghế đôi ${seat.code} phải đi kèm ghế ${pairCode}. Vui lòng chọn cặp ghế liền kề.`;
+    }
+  }
+
+  return null;
 };
 
 const getSeatColors = (seat: Seat) => {
@@ -157,6 +368,170 @@ const getSeatColors = (seat: Seat) => {
   };
 };
 
+interface SeatGridProps {
+  seats: Seat[];
+  interactive?: boolean;
+  onSeatClick?: (seat: Seat) => void;
+}
+
+/**
+ * Sơ đồ ghế dạng lưới, có nhãn hàng hai bên giống cách
+ * bố trí ghế trong rạp chiếu phim thực tế.
+ */
+const SeatGrid: React.FC<SeatGridProps> = ({
+  seats,
+  interactive = false,
+  onSeatClick,
+}) => {
+  const rows = useMemo(() => groupSeatsByRow(seats), [seats]);
+  const maxNumber = useMemo(
+    () => Math.max(1, getMaxSeatNumber(seats)),
+    [seats],
+  );
+  const seatNumbers = useMemo(
+    () => Array.from({ length: maxNumber }, (_, index) => index + 1),
+    [maxNumber],
+  );
+  const seatSize = interactive ? 34 : 30;
+
+  return (
+    <div style={{ overflowX: 'auto', padding: '4px 0' }}>
+      <div style={{ width: 'fit-content', minWidth: '100%', margin: '0 auto' }}>
+        {rows.map(({ row, seats: rowSeats }) => {
+          const seatsByNumber = new Map(
+            rowSeats.map((seat) => [
+              parseSeatCode(seat.code)?.number ?? 0,
+              seat,
+            ]),
+          );
+
+          return (
+            <div
+              key={row}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                marginBottom: 6,
+              }}
+            >
+              <span
+                style={{
+                  width: 22,
+                  flexShrink: 0,
+                  textAlign: 'center',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#667085',
+                }}
+              >
+                {row}
+              </span>
+
+              <span style={{ width: 18, flexShrink: 0 }} />
+
+              {seatNumbers.map((number) => {
+                const seat = seatsByNumber.get(number);
+
+                return (
+                  <React.Fragment key={number}>
+                    {seat
+                      ? (() => {
+                          const colors = getSeatColors(seat);
+                          const isMaintenance = seat.status === 'maintenance';
+                          const tooltip = `${seat.code} · ${getSeatTypeLabel(
+                            seat.type,
+                          )} · ${isMaintenance ? 'Bảo trì' : 'Khả dụng'}`;
+                          const sharedStyle: React.CSSProperties = {
+                            width: seatSize,
+                            height: seatSize,
+                            flexShrink: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                            borderRadius: 7,
+                            border: `1px solid ${colors.border}`,
+                            background: colors.background,
+                            color: colors.color,
+                            fontSize: interactive ? 11 : 10,
+                            fontWeight: 700,
+                            cursor: interactive ? 'pointer' : 'default',
+                            transition: 'transform 0.15s, box-shadow 0.15s',
+                          };
+
+                          if (!interactive) {
+                            return (
+                              <span title={tooltip} style={sharedStyle}>
+                                {isMaintenance ? '✕' : number}
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <button
+                              type="button"
+                              title={tooltip}
+                              aria-label={tooltip}
+                              onClick={() => onSeatClick?.(seat)}
+                              onMouseEnter={(event) => {
+                                event.currentTarget.style.transform =
+                                  'scale(1.1)';
+                                event.currentTarget.style.boxShadow =
+                                  '0 4px 10px rgba(15, 23, 42, 0.18)';
+                              }}
+                              onMouseLeave={(event) => {
+                                event.currentTarget.style.transform =
+                                  'scale(1)';
+                                event.currentTarget.style.boxShadow = 'none';
+                              }}
+                              style={sharedStyle}
+                            >
+                              {isMaintenance ? '✕' : number}
+                            </button>
+                          );
+                        })()
+                      : (
+                        <span
+                          key={`empty-${number}`}
+                          style={{
+                            width: seatSize,
+                            height: seatSize,
+                            flexShrink: 0,
+                            borderRadius: 7,
+                            border: '1px dashed #e4e7ec',
+                            background: '#fafbfc',
+                          }}
+                        />
+                      )}
+
+                  </React.Fragment>
+                );
+              })}
+
+              <span style={{ width: 18, flexShrink: 0 }} />
+
+              <span
+                style={{
+                  width: 22,
+                  flexShrink: 0,
+                  textAlign: 'center',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#667085',
+                }}
+              >
+                {row}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const Rooms: React.FC = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm<RoomFormValues>();
@@ -171,6 +546,11 @@ const Rooms: React.FC = () => {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [theaterFilter, setTheaterFilter] = useState<string | undefined>();
+
+  const [seatLayout, setSeatLayout] = useState<Seat[]>([]);
+  const [rowCount, setRowCount] = useState(DEFAULT_ROWS);
+  const [seatsPerRow, setSeatsPerRow] = useState(DEFAULT_SEATS_PER_ROW);
+  const [paintMode, setPaintMode] = useState<PaintMode>('normal');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -244,11 +624,13 @@ const Rooms: React.FC = () => {
 
   const openCreate = () => {
     setEditing(null);
+    setPaintMode('normal');
     setModalOpen(true);
   };
 
   const openEdit = (room: Room) => {
     setEditing(room);
+    setPaintMode('normal');
     setModalOpen(true);
   };
 
@@ -258,54 +640,183 @@ const Rooms: React.FC = () => {
     form.resetFields();
 
     if (editing) {
+      const layout = getRoomSeatLayout(editing).map((seat) => ({
+        code: seat.code,
+        type: seat.type,
+        status: seat.status,
+      }));
+      const rows = groupSeatsByRow(layout);
+
       form.setFieldsValue({
         name: editing.name,
         theater: getTheaterId(editing.theater),
-        capacity: editing.capacity,
-        seatLayout: (editing.seatLayout ?? []).map((seat) => ({
-          code: seat.code,
-          type: seat.type,
-          status: seat.status,
-        })),
       });
+      setSeatLayout(layout);
+      setRowCount(Math.max(1, rows.length));
+      setSeatsPerRow(Math.max(1, getMaxSeatNumber(layout)));
     } else {
       form.setFieldsValue({
         name: '',
         theater: undefined,
-        capacity: undefined,
-        seatLayout: [],
       });
+      setSeatLayout(
+        buildSeatLayout({
+          rows: DEFAULT_ROWS,
+          seatsPerRow: DEFAULT_SEATS_PER_ROW,
+        }),
+      );
+      setRowCount(DEFAULT_ROWS);
+      setSeatsPerRow(DEFAULT_SEATS_PER_ROW);
     }
   }, [modalOpen, editing, form]);
 
-  const handleGenerateSeats = () => {
-    const capacity = Number(form.getFieldValue('capacity'));
+  const handleApplyLayout = () => {
+    const rows = clamp(Math.floor(Number(rowCount) || 0), 1, MAX_ROWS);
+    const columns = clamp(
+      Math.floor(Number(seatsPerRow) || 0),
+      1,
+      MAX_SEATS_PER_ROW,
+    );
 
-    if (!Number.isInteger(capacity) || capacity < 1) {
-      message.warning('Vui lòng nhập sức chứa phòng trước');
+    setRowCount(rows);
+    setSeatsPerRow(columns);
+
+    const applyLayout = () => {
+      setSeatLayout((currentSeats) =>
+        buildSeatLayout({
+          rows,
+          seatsPerRow: columns,
+          currentSeats,
+        }),
+      );
+      message.success(
+        `Đã tạo sơ đồ ${rows} hàng × ${columns} ghế (${rows * columns} ghế)`,
+      );
+    };
+
+    if (seatLayout.length === 0) {
+      applyLayout();
       return;
     }
-
-    if (capacity > 1000) {
-      message.warning('Sức chứa không được vượt quá 1000 ghế');
-      return;
-    }
-
-    const currentSeats = (form.getFieldValue('seatLayout') ?? []) as Seat[];
 
     Modal.confirm({
-      title: 'Tạo sơ đồ ghế tự động?',
-      content: `Tạo ${capacity} ghế theo hàng, mỗi hàng tối đa 10 ghế. Loại và trạng thái ghế cũ sẽ được giữ theo vị trí.`,
+      title: 'Tạo lại sơ đồ ghế?',
+      content: `Sơ đồ sẽ có ${rows} hàng × ${columns} ghế (${
+        rows * columns
+      } ghế). Loại ghế được xếp tự động (VIP ở hàng giữa, ghế đôi ở hàng cuối), trạng thái bảo trì được giữ theo mã ghế. Ghế nằm ngoài sơ đồ mới sẽ bị xóa.`,
       okText: 'Tạo sơ đồ',
       cancelText: 'Hủy',
-      onOk: () => {
-        form.setFieldValue(
-          'seatLayout',
-          generateSeatLayout(capacity, currentSeats),
-        );
-        message.success(`Đã tạo sơ đồ ${capacity} ghế`);
-      },
+      onOk: applyLayout,
     });
+  };
+
+  const handleAutoArrange = () => {
+    if (seatLayout.length === 0) {
+      message.warning('Vui lòng tạo sơ đồ ghế trước');
+      return;
+    }
+
+    const autoTypes = getAutoSeatTypeMap(seatLayout);
+    const changedCount = seatLayout.filter(
+      (seat) => autoTypes.get(seat.code) !== seat.type,
+    ).length;
+
+    const applyAutoArrange = () => {
+      setSeatLayout((currentSeats) => {
+        const currentAutoTypes = getAutoSeatTypeMap(currentSeats);
+
+        return currentSeats.map((seat) => ({
+          ...seat,
+          type: currentAutoTypes.get(seat.code) ?? seat.type,
+        }));
+      });
+
+      message.success(
+        'Đã xếp loại tự động: hàng giữa là VIP, hàng cuối là ghế đôi',
+      );
+    };
+
+    if (changedCount === 0) {
+      applyAutoArrange();
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Xếp loại tự động?',
+      content: `Thao tác này sẽ ghi đè loại ghế của ${changedCount} ghế bạn đã chỉnh tay (Thường/VIP/Đôi). Trạng thái bảo trì được giữ nguyên.`,
+      okText: 'Xếp loại',
+      cancelText: 'Hủy',
+      onOk: applyAutoArrange,
+    });
+  };
+
+  const handleSeatPaint = (seat: Seat) => {
+    const parsed = parseSeatCode(seat.code);
+
+    if (!parsed) {
+      message.warning(`Mã ghế "${seat.code}" không hợp lệ`);
+      return;
+    }
+
+    const pairNumber =
+      parsed.number % 2 === 1 ? parsed.number + 1 : parsed.number - 1;
+    const pairCode = `${parsed.row}${pairNumber}`;
+    const pairSeat = seatLayout.find((item) => item.code === pairCode);
+
+    if (paintMode === 'couple' && !pairSeat) {
+      message.warning(
+        `Ghế ${seat.code} không có ghế liền kề để tạo cặp ghế đôi`,
+      );
+      return;
+    }
+
+    setSeatLayout((currentSeats) =>
+      currentSeats.map((currentSeat) => {
+        const isTarget = currentSeat.code === seat.code;
+        const isPair = pairSeat?.code === currentSeat.code;
+
+        if (paintMode === 'maintenance') {
+          return isTarget
+            ? { ...currentSeat, status: 'maintenance' }
+            : currentSeat;
+        }
+
+        if (paintMode === 'couple') {
+          return isTarget || isPair
+            ? {
+                ...currentSeat,
+                type: 'couple',
+                status:
+                  currentSeat.status === 'maintenance'
+                    ? 'maintenance'
+                    : 'available',
+              }
+            : currentSeat;
+        }
+
+        if (isTarget) {
+          return { ...currentSeat, type: paintMode, status: 'available' };
+        }
+
+        // Đổi một nửa ghế đôi sang loại khác thì đổi luôn nửa còn lại
+        if (
+          seat.type === 'couple' &&
+          isPair &&
+          currentSeat.type === 'couple'
+        ) {
+          return {
+            ...currentSeat,
+            type: paintMode,
+            status:
+              currentSeat.status === 'maintenance'
+                ? 'maintenance'
+                : 'available',
+          };
+        }
+
+        return currentSeat;
+      }),
+    );
   };
 
   const handleSubmit = async () => {
@@ -317,28 +828,52 @@ const Rooms: React.FC = () => {
       return;
     }
 
-    const capacity = Number(values.capacity);
-
-    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 1000) {
-      message.error('Sức chứa phải từ 1 đến 1000 ghế');
+    if (seatLayout.length === 0) {
+      message.error('Vui lòng tạo sơ đồ ghế trước khi lưu phòng');
       return;
     }
+
+    const normalizedSeats = seatLayout.map((seat) => ({
+      code: seat.code.trim().toUpperCase(),
+      type: seat.type,
+      status: seat.status,
+    }));
+
+    const seenCodes = new Set<string>();
+
+    for (const seat of normalizedSeats) {
+      if (!parseSeatCode(seat.code)) {
+        message.error(
+          `Mã ghế "${seat.code}" không hợp lệ. Mã ghế phải có dạng A1, B2...`,
+        );
+        return;
+      }
+
+      if (seenCodes.has(seat.code)) {
+        message.error(`Mã ghế ${seat.code} bị trùng trong sơ đồ`);
+        return;
+      }
+
+      seenCodes.add(seat.code);
+    }
+
+    const coupleError = validateCoupleSeats(normalizedSeats);
+
+    if (coupleError) {
+      message.error(coupleError);
+      return;
+    }
+
+    const capacity = normalizedSeats.length;
 
     setSaving(true);
 
     try {
-      const currentSeats = values.seatLayout ?? [];
-      const completeSeatLayout = generateSeatLayout(capacity, currentSeats);
-
       const payload: Record<string, unknown> = {
         name: values.name.trim(),
         theater: values.theater,
         capacity,
-        seatLayout: completeSeatLayout.map((seat) => ({
-          code: seat.code.trim(),
-          type: seat.type,
-          status: seat.status,
-        })),
+        seatLayout: normalizedSeats,
       };
 
       if (editing) {
@@ -408,12 +943,27 @@ const Rooms: React.FC = () => {
     },
   ];
 
-  const selectedSeats = selectedRoom
-    ? generateSeatLayout(
-        Number(selectedRoom.capacity) || 0,
-        selectedRoom.seatLayout ?? [],
-      )
-    : [];
+  const selectedSeats = selectedRoom ? getRoomSeatLayout(selectedRoom) : [];
+  const selectedCoupleError = validateCoupleSeats(selectedSeats);
+  const editingCoupleError = validateCoupleSeats(seatLayout);
+
+  const seatLayoutRows = useMemo(
+    () => groupSeatsByRow(seatLayout),
+    [seatLayout],
+  );
+  const seatLayoutSeatsPerRow = useMemo(
+    () => Math.max(1, getMaxSeatNumber(seatLayout)),
+    [seatLayout],
+  );
+  const seatLayoutVipCount = seatLayout.filter(
+    (seat) => seat.type === 'vip',
+  ).length;
+  const seatLayoutCoupleCount = seatLayout.filter(
+    (seat) => seat.type === 'couple',
+  ).length;
+  const seatLayoutMaintenanceCount = seatLayout.filter(
+    (seat) => seat.status === 'maintenance',
+  ).length;
 
   const selectedAvailableSeats = selectedSeats.filter(
     (seat) => seat.status === 'available',
@@ -846,46 +1396,7 @@ const Rooms: React.FC = () => {
                   ))}
                 </div>
 
-                <div style={{ overflowX: 'auto', padding: '8px 0' }}>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(10, minmax(36px, 1fr))',
-                      gap: 8,
-                      minWidth: 420,
-                      maxWidth: 600,
-                      margin: '0 auto',
-                    }}
-                  >
-                    {selectedSeats.map((seat, index) => {
-                      const colors = getSeatColors(seat);
-
-                      return (
-                        <div
-                          key={`${seat.code}-${index}`}
-                          title={`${seat.code} · ${getSeatTypeLabel(seat.type)} · ${
-                            seat.status === 'maintenance' ? 'Bảo trì' : 'Khả dụng'
-                          }`}
-                          style={{
-                            minHeight: 42,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: 7,
-                            border: `1px solid ${colors.border}`,
-                            background: colors.background,
-                            color: colors.color,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: 4,
-                          }}
-                        >
-                          {seat.code}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <SeatGrid seats={selectedSeats} />
 
                 <Text
                   type="secondary"
@@ -896,9 +1407,24 @@ const Rooms: React.FC = () => {
                     fontSize: 12,
                   }}
                 >
-                  Đang hiển thị đủ {selectedSeats.length} ghế theo sức chứa phòng.
-                  Nếu sơ đồ chưa được lưu, các ghế bổ sung chỉ là dữ liệu hiển thị tạm thời.
+                  Sơ đồ gồm {groupSeatsByRow(selectedSeats).length} hàng và{' '}
+                  {selectedSeats.length} ghế.
                 </Text>
+
+                {selectedCoupleError && (
+                  <Text
+                    type="warning"
+                    style={{
+                      display: 'block',
+                      textAlign: 'center',
+                      marginTop: 8,
+                      fontSize: 12,
+                    }}
+                  >
+                    Sơ đồ đang có ghế đôi chưa đúng cặp. Bấm “Chỉnh sửa” rồi
+                    chọn “Xếp loại tự động” để chuẩn hóa.
+                  </Text>
+                )}
               </>
             )}
           </Card>
@@ -916,6 +1442,13 @@ const Rooms: React.FC = () => {
         width={900}
         forceRender
         destroyOnHidden
+        styles={{
+          body: {
+            maxHeight: 'calc(100vh - 220px)',
+            overflowY: 'auto',
+            paddingRight: 8,
+          },
+        }}
       >
         <Form form={form} layout="vertical" preserve={false}>
           <Row gutter={16}>
@@ -951,150 +1484,187 @@ const Rooms: React.FC = () => {
             </Col>
           </Row>
 
-          <Form.Item
-            name="capacity"
-            label="Sức chứa (số ghế)"
-            rules={[
-              { required: true, message: 'Vui lòng nhập sức chứa' },
-              {
-                type: 'number',
-                min: 1,
-                max: 1000,
-                message: 'Sức chứa phải từ 1 đến 1000 ghế',
-              },
-            ]}
-          >
-            <InputNumber
-              min={1}
-              max={1000}
-              precision={0}
-              style={{ width: '100%' }}
-              placeholder="Nhập số ghế tối đa"
-            />
-          </Form.Item>
-
           <Divider />
 
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 12,
-              marginBottom: 16,
-            }}
-          >
-            <div>
+          <Row gutter={[16, 16]} align="middle" style={{ marginBottom: 16 }}>
+            <Col xs={24} md={7}>
               <Title level={5} style={{ margin: 0 }}>
                 Cấu hình sơ đồ ghế
               </Title>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                Tạo nhanh đủ ghế theo sức chứa hoặc chỉnh sửa từng ghế.
+                Chọn số hàng, số ghế mỗi hàng rồi bấm “Áp dụng sơ đồ”.
               </Text>
-            </div>
-            <Button
-              type="primary"
-              icon={<AppstoreOutlined />}
-              onClick={handleGenerateSeats}
-            >
-              Tạo sơ đồ theo sức chứa
-            </Button>
-          </div>
+            </Col>
 
-          <Form.List name="seatLayout">
-            {(fields, { add, remove }) => (
-              <div>
-                {fields.length > 0 && (
-                  <Row gutter={8} style={{ marginBottom: 8 }}>
-                    <Col span={8}>
-                      <Text type="secondary">Mã ghế</Text>
-                    </Col>
-                    <Col span={6}>
-                      <Text type="secondary">Loại ghế</Text>
-                    </Col>
-                    <Col span={7}>
-                      <Text type="secondary">Trạng thái</Text>
-                    </Col>
-                    <Col span={3} />
-                  </Row>
-                )}
+            <Col xs={12} md={4}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Số hàng
+              </Text>
+              <InputNumber
+                min={1}
+                max={MAX_ROWS}
+                precision={0}
+                value={rowCount}
+                onChange={(value) => setRowCount(Number(value) || 1)}
+                style={{ width: '100%' }}
+              />
+            </Col>
 
-                {fields.map((field) => (
-                  <Row
-                    key={field.key}
-                    gutter={8}
-                    align="middle"
-                    style={{ marginBottom: 8 }}
-                  >
-                    <Col span={8}>
-                      <Form.Item
-                        name={[field.name, 'code']}
-                        rules={[
-                          { required: true, message: 'Nhập mã ghế' },
-                          { whitespace: true, message: 'Mã ghế không được để trống' },
-                        ]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Input placeholder="A1" />
-                      </Form.Item>
-                    </Col>
+            <Col xs={12} md={4}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Ghế mỗi hàng
+              </Text>
+              <InputNumber
+                min={1}
+                max={MAX_SEATS_PER_ROW}
+                precision={0}
+                value={seatsPerRow}
+                onChange={(value) => setSeatsPerRow(Number(value) || 1)}
+                style={{ width: '100%' }}
+              />
+            </Col>
 
-                    <Col span={6}>
-                      <Form.Item
-                        name={[field.name, 'type']}
-                        rules={[{ required: true, message: 'Chọn loại ghế' }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Select placeholder="Loại" options={SEAT_TYPE_OPTIONS} />
-                      </Form.Item>
-                    </Col>
-
-                    <Col span={7}>
-                      <Form.Item
-                        name={[field.name, 'status']}
-                        rules={[{ required: true, message: 'Chọn trạng thái' }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Select
-                          placeholder="Trạng thái"
-                          options={SEAT_STATUS_OPTIONS}
-                        />
-                      </Form.Item>
-                    </Col>
-
-                    <Col span={3} style={{ textAlign: 'center' }}>
-                      <Button
-                        danger
-                        type="text"
-                        icon={<MinusCircleOutlined />}
-                        aria-label="Xóa ghế"
-                        onClick={() => remove(field.name)}
-                      />
-                    </Col>
-                  </Row>
-                ))}
-
+            <Col xs={24} md={9}>
+              <Space
+                wrap
+                size={10}
+                style={{ width: '100%', justifyContent: 'flex-end' }}
+              >
                 <Button
-                  type="dashed"
-                  block
-                  icon={<PlusOutlined />}
-                  onClick={() =>
-                    add({ code: '', type: 'normal', status: 'available' })
-                  }
+                  type="primary"
+                  icon={<AppstoreOutlined />}
+                  onClick={handleApplyLayout}
                 >
-                  Thêm ghế thủ công
+                  Áp dụng sơ đồ
                 </Button>
 
+                <Button
+                  onClick={handleAutoArrange}
+                  title="Áp dụng lại loại ghế chuẩn (VIP hàng giữa, ghế đôi hàng cuối). Sẽ hỏi xác nhận nếu có ghế đã chỉnh tay."
+                >
+                  Xếp loại tự động
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+
+          <div
+            style={{
+              border: '1px solid #e8edf5',
+              borderRadius: 12,
+              padding: 16,
+              background: '#fbfcff',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
+              <div>
+                <Text strong>Chỉnh sửa ghế</Text>
                 <Text
                   type="secondary"
-                  style={{ display: 'block', marginTop: 12, fontSize: 12 }}
+                  style={{ display: 'block', fontSize: 12 }}
                 >
-                  Số ghế trong form hiện tại: {fields.length}. Bấm “Tạo sơ đồ theo sức chứa” để tạo đủ ghế trước khi lưu.
+                  Chọn loại ghế bên dưới rồi bấm trực tiếp vào ghế để đổi.
                 </Text>
               </div>
-            )}
-          </Form.List>
+
+              <Tag color="blue">
+                {seatLayoutRows.length} hàng · tối đa{' '}
+                {seatLayoutSeatsPerRow} ghế/hàng · {seatLayout.length} ghế
+              </Tag>
+            </div>
+
+            <Space wrap size={8} style={{ marginBottom: 12 }}>
+              {PAINT_MODE_OPTIONS.map((option) => {
+                const isActive = paintMode === option.value;
+
+                return (
+                  <Button
+                    key={option.value}
+                    size="small"
+                    onClick={() => setPaintMode(option.value)}
+                    style={{
+                      background: isActive ? option.background : '#fff',
+                      borderColor: isActive ? option.border : '#d9d9d9',
+                      color: isActive ? option.color : '#475467',
+                      fontWeight: isActive ? 700 : 400,
+                      boxShadow: isActive
+                        ? `0 0 0 2px ${option.border}55`
+                        : 'none',
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: 8,
+                        height: 8,
+                        borderRadius: 2,
+                        background: option.background,
+                        border: `1px solid ${option.border}`,
+                        marginRight: 6,
+                      }}
+                    />
+                    {option.label}
+                  </Button>
+                );
+              })}
+            </Space>
+
+            <div
+              style={{
+                padding: '10px 16px',
+                margin: '8px auto 18px',
+                maxWidth: 560,
+                textAlign: 'center',
+                color: '#667085',
+                background: '#edf1f7',
+                borderRadius: '8px 8px 24px 24px',
+                borderTop: '4px solid #aab5c5',
+                letterSpacing: 3,
+                fontWeight: 600,
+                fontSize: 12,
+              }}
+            >
+              MÀN HÌNH
+            </div>
+
+            <SeatGrid
+              seats={seatLayout}
+              interactive
+              onSeatClick={handleSeatPaint}
+            />
+
+            <div style={{ textAlign: 'center', marginTop: 14 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Sức chứa {seatLayout.length} ghế · VIP {seatLayoutVipCount} ·
+                Đôi {seatLayoutCoupleCount} · Bảo trì{' '}
+                {seatLayoutMaintenanceCount}
+              </Text>
+              <Text
+                type="secondary"
+                style={{ display: 'block', marginTop: 4, fontSize: 12 }}
+              >
+                Ghế đôi phải đi theo cặp liền kề. Lối đi nằm ở hai bên sơ đồ.
+              </Text>
+
+              {editingCoupleError && (
+                <Text
+                  type="warning"
+                  style={{ display: 'block', marginTop: 6, fontSize: 12 }}
+                >
+                  {editingCoupleError} Bấm “Xếp loại tự động” để chuẩn hóa sơ đồ.
+                </Text>
+              )}
+            </div>
+          </div>
         </Form>
       </Modal>
     </div>
