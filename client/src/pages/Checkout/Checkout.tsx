@@ -198,8 +198,8 @@ export default function Checkout() {
       if (checkRes.paid && checkRes.ticket) {
         try {
           const audio = new Audio('https://www.myinstants.com/media/sounds/buy_1.mp3')
-          audio.play().catch(() => {})
-        } catch {}
+          audio.play().catch(() => { })
+        } catch { }
 
         setCompletedTicket(checkRes.ticket)
         return
@@ -223,8 +223,8 @@ export default function Checkout() {
       const res = await paymentApi.simulateTransfer(qrData.description)
       try {
         const audio = new Audio('https://www.myinstants.com/media/sounds/buy_1.mp3')
-        audio.play().catch(() => {})
-      } catch {}
+        audio.play().catch(() => { })
+      } catch { }
       setCompletedTicket(res?.ticket || res)
     } catch (err) {
       alert(getErrorMessage(err))
@@ -244,8 +244,8 @@ export default function Checkout() {
           clearInterval(interval)
           try {
             const audio = new Audio('https://www.myinstants.com/media/sounds/buy_1.mp3')
-            audio.play().catch(() => {})
-          } catch {}
+            audio.play().catch(() => { })
+          } catch { }
           setCompletedTicket(result.ticket)
         }
       } catch (err) {
@@ -780,7 +780,7 @@ export default function Checkout() {
                       disabled={confirming}
                       onClick={() => handleFinalizePayment(qrData.description)}
                     >
-                      {confirming ? 'Đang xác thực giao dịch...' : 'Tôi đã chuyển khoản thành công'}
+                      {confirming ? 'Đang xác thực giao dịch...' : 'Kiểm tra giao dịch'}
                     </button>
 
                     <button
@@ -800,7 +800,7 @@ export default function Checkout() {
                         cursor: 'pointer',
                       }}
                     >
-                      Mô phỏng chuyển khoản thành công (Test Mode)
+                      Duyệt Bill (Test)
                     </button>
                   </>
                 ) : null}
@@ -812,4 +812,3 @@ export default function Checkout() {
     </div>
   )
 }
- 
