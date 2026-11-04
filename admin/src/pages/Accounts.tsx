@@ -23,6 +23,7 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   KeyOutlined,
   LockOutlined,
   MailOutlined,
@@ -271,6 +272,11 @@ const Accounts: React.FC = () => {
     });
   };
 
+  const openDetailModal = (account: AdminAccount) => {
+    setDetailAccount(account);
+    setDetailModalOpen(true);
+  };
+
   const openPasswordModal = (account: AdminAccount) => {
     setSelectedAccount(account);
     passwordForm.resetFields();
@@ -417,6 +423,12 @@ const Accounts: React.FC = () => {
       width: 230,
       render: (_, account) => (
         <Space size={4} wrap>
+          <Button
+            type="text"
+            title="Xem chi tiết"
+            icon={<EyeOutlined />}
+            onClick={() => openDetailModal(account)}
+          />
           <Button
             type="text"
             title="Sửa tài khoản"
