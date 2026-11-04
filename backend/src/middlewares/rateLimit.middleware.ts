@@ -1,10 +1,13 @@
 import rateLimit from 'express-rate-limit';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 /* Tạo limiter trả về cùng định dạng JSON { success, message } như các API khác */
 const createLimiter = (windowMinutes: number, max: number, message: string) =>
   rateLimit({
     windowMs: windowMinutes * 60 * 1000,
-    limit: max,
+    limit: isDev ? 10000 : max,
+    skip: (req) => isDev && (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1'),
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: { success: false, message },
@@ -13,7 +16,8 @@ const createLimiter = (windowMinutes: number, max: number, message: string) =>
 /* Đăng nhập: 10 lần / 15 phút / IP (chỉ tính các lần thất bại) */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: isDev ? 10000 : 10,
+  skip: (req) => isDev && (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1'),
   skipSuccessfulRequests: true,
   standardHeaders: 'draft-7',
   legacyHeaders: false,

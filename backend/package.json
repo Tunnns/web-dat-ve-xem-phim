@@ -27,6 +27,7 @@
     "mongoose": "^9.11.4",
     "multer": "^2.4.0",
     "prisma": "^7.10.1",
+    "puppeteer-core": "^25.16.0",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

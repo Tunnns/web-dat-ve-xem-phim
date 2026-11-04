@@ -90,12 +90,12 @@ export default function Checkout() {
     return unsub
   }, [])
 
-  // Redirect nếu chưa chọn ghế (chỉ sau khi hydrate xong)
+  // Redirect nếu chưa chọn ghế (chỉ sau khi hydrate xong và chưa hoàn tất thanh toán)
   useEffect(() => {
-    if (hydrated && (!showtime || selectedSeats.length === 0)) {
+    if (hydrated && !completedTicket && (!showtime || selectedSeats.length === 0)) {
       navigate('/', { replace: true })
     }
-  }, [hydrated, showtime, selectedSeats, navigate])
+  }, [hydrated, completedTicket, showtime, selectedSeats, navigate])
 
   // ── Tính tiền subtotal cơ bản (vé + combo) ──
   const ticketSubtotal = totalPrice()
@@ -202,7 +202,6 @@ export default function Checkout() {
         } catch {}
 
         setCompletedTicket(checkRes.ticket)
-        clearCart()
         return
       }
 
@@ -227,7 +226,6 @@ export default function Checkout() {
         audio.play().catch(() => {})
       } catch {}
       setCompletedTicket(res?.ticket || res)
-      clearCart()
     } catch (err) {
       alert(getErrorMessage(err))
     } finally {
@@ -249,7 +247,6 @@ export default function Checkout() {
             audio.play().catch(() => {})
           } catch {}
           setCompletedTicket(result.ticket)
-          clearCart()
         }
       } catch (err) {
         console.warn('Lỗi kiểm tra trạng thái vé nội bộ:', err)
