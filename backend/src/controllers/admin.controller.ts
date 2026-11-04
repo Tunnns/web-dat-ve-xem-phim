@@ -385,20 +385,21 @@ export const getTickets = async (req: Request, res: Response) => {
       })
       .sort({ createdAt: -1 });
 
-    const formatted = tickets.map((t: any) => ({
-      _id: t._id,
-      code: t.code,
-      userEmail: t.user?.email || 'Khách vãng lai',
-      customerName: t.user?.fullName || 'Khách hàng',
-      movieTitle: t.showtime?.movie?.title || 'Phim',
-      theaterName: t.showtime?.theater?.name || 'Rạp',
-      roomName: t.showtime?.room?.name || 'Phòng',
-      seats: t.seats || [],
-      totalPrice: t.totalAmount || 0,
-      status: t.status,
-      createdAt: t.createdAt,
-      showTime: t.showtime?.startTime,
-    }));
+   const formatted = tickets.map((t: any) => ({
+  _id: t._id,
+  code: t.code,
+  userEmail: t.user?.email || 'Khách vãng lai',
+  customerName: t.user?.fullName || 'Khách hàng',
+  movieTitle: t.showtime?.movie?.title || 'Phim',
+  theaterName: t.showtime?.theater?.name || 'Rạp',
+  roomName: t.showtime?.room?.name || 'Phòng',
+  seats: t.seats || [],
+  totalPrice: t.totalAmount || 0,
+  status: t.status,
+  createdAt: t.createdAt,
+  paidAt: t.paidAt,
+  showTime: t.showtime?.startTime,
+}));
 
     res.status(200).json({
       success: true,

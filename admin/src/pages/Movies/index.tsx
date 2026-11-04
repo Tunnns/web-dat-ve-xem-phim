@@ -740,7 +740,7 @@ const Movies: React.FC = () => {
               Hiển thị {filteredData.length} / {totalMovies} phim
             </Text>
           </div>
-
+            
           <Button
             icon={<PlusOutlined />}
             type="primary"
