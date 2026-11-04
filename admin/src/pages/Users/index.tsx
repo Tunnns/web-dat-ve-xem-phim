@@ -29,7 +29,7 @@ import {
   EyeOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import axios from 'axios';
+import { apiClient, getErrorMessage } from '../../api/client';
 
 const { Title, Text } = Typography;
 
@@ -45,10 +45,6 @@ type Customer = {
   isActive?: boolean;
   createdAt?: string;
 };
-
-const getApiBaseUrl = () =>
-  (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/admin')
-    .replace(/\/$/, '');
 
 const getCustomerName = (customer: Customer) =>
   customer.fullName || customer.name || customer.username || 'Chưa cập nhật';
@@ -75,18 +71,6 @@ const formatDate = (value?: string) => {
   return date.toLocaleDateString('vi-VN');
 };
 
-const getErrorText = (error: unknown) => {
-  if (axios.isAxiosError(error)) {
-    return (
-      error.response?.data?.message ||
-      error.message ||
-      'Không thể kết nối API khách hàng'
-    );
-  }
-
-  return 'Đã xảy ra lỗi khi tải khách hàng';
-};
-
 const Users: React.FC = () => {
   const { message } = App.useApp();
 
@@ -102,41 +86,8 @@ const Users: React.FC = () => {
     setLoading(true);
 
     try {
-      const baseUrl = getApiBaseUrl();
-
-      // Thử các endpoint phổ biến, không tự tạo dữ liệu giả.
-      const endpoints = [
-        `${baseUrl}/users`,
-        `${baseUrl}/customers`,
-      ];
-
-      let responseData: unknown = null;
-      let lastError: unknown;
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await axios.get(endpoint, {
-            timeout: 15000,
-          });
-
-          responseData = response.data;
-          break;
-        } catch (error) {
-          lastError = error;
-
-          // Nếu lỗi không phải 404 thì không tiếp tục thử endpoint khác.
-          if (
-            !axios.isAxiosError(error) ||
-            error.response?.status !== 404
-          ) {
-            throw error;
-          }
-        }
-      }
-
-      if (responseData === null) {
-        throw lastError ?? new Error('Không tìm thấy API khách hàng');
-      }
+      const response = await apiClient.get('/users');
+      const responseData = response.data;
 
       const body = responseData as {
         data?: unknown;
@@ -163,7 +114,7 @@ const Users: React.FC = () => {
 
       setCustomers(list as Customer[]);
     } catch (error) {
-      message.error(getErrorText(error));
+      message.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
