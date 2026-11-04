@@ -19,7 +19,6 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 // Connect to Database
 connectDB();
 
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -30,10 +29,11 @@ app.use(
     credentials: true,
   })
 );
+
 app.use(
   express.json({
-    verify: (req: any, _res, buf) => {
-      req.rawBody = buf.toString('utf8');
+    verify: (req: Request, _res: Response, buf: Buffer) => {
+      (req as Request & { rawBody?: string }).rawBody = buf.toString('utf8');
     },
   })
 );
@@ -41,7 +41,7 @@ app.use(
 // Phục vụ file upload (poster, banner) từ thư mục /uploads
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
-// Ho tro endpoint webhook tuong thich truc tiep voi URL Ngrok SePay hien tai
+// Hỗ trợ endpoint webhook tương thích trực tiếp với URL Ngrok SePay hiện tại
 app.post('/main/webhook/sepay.php', sepayWebhook);
 
 // Routes
@@ -52,28 +52,44 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Test route
-app.get('/', (req, res) => {
+app.get('/', (_req: Request, res: Response) => {
   res.send('Backend Server is running');
 });
 
 // Middleware xử lý lỗi tập trung (bao gồm lỗi từ multer)
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction): void => {
-  if (err instanceof multer.MulterError) {
-    res.status(400).json({ success: false, message: `Lỗi upload: ${err.message}` });
-    return;
-  }
+app.use(
+  (
+    err: unknown,
+    _req: Request,
+    res: Response,
+    _next: NextFunction
+  ): void => {
+    if (err instanceof multer.MulterError) {
+      res.status(400).json({
+        success: false,
+        message: `Lỗi upload: ${err.message}`,
+      });
+      return;
+    }
 
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({ success: false, message: err.message });
-    return;
-  }
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        success: false,
+        message: err.message,
+      });
+      return;
+    }
 
-  res.status(500).json({
-    success: false,
-    message: 'Lỗi máy chủ',
-    error: (err as Error).message,
-  });
-});
+    const errorMessage =
+      err instanceof Error ? err.message : 'Lỗi không xác định';
+
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ',
+      error: errorMessage,
+    });
+  }
+);
 
 app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`Server is running on http://localhost:${PORT}`);

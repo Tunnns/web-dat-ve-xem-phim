@@ -1,118 +1,326 @@
-
 .dashboard-page {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-  color: #182230;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: #1f2937;
+  min-width: 0;
 }
 
 .dashboard-heading {
   display: flex;
-  align-items: flex-end;
   justify-content: space-between;
-  gap: 22px;
-  margin-bottom: 28px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
 .dashboard-eyebrow {
-  color: #e53945;
-  font-size: 10px;
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #4776e6;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 1.8px;
+  letter-spacing: 1.5px;
 }
 
 .dashboard-heading h1 {
-  margin: 9px 0 7px;
-  color: #182230;
-  font-size: clamp(21px, 2vw, 28px);
-  font-weight: 750;
-  letter-spacing: -0.8px;
+  margin: 0;
+  color: #172033;
+  font-size: 25px;
+  font-weight: 800;
 }
 
-.dashboard-heading p,
-.panel-heading p {
-  margin: 0;
-  color: #8a94a5;
-  font-size: 12px;
-  line-height: 1.7;
+.dashboard-heading p {
+  margin: 8px 0 0;
+  color: #8b95a7;
+  font-size: 13px;
 }
 
 .dashboard-heading-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ==============================
+   HAI BỘ CHỌN NGÀY ĐỘC LẬP
+============================== */
+
+.date-filter-group {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .period-picker {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-height: 38px;
-  padding: 4px;
-  border: 1px solid #e5e9f0;
-  border-radius: 9px;
-  background: #fff;
-  color: #7c8798;
+  position: relative;
+  z-index: 20;
 }
 
-.period-picker > .anticon {
-  margin: 0 7px;
-  font-size: 13px;
-}
-
-.period-picker button {
-  padding: 7px 9px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #737e8f;
-  cursor: pointer;
-  font-size: 11px;
-}
-
-.period-picker button.active {
-  background: #fff0f1;
-  color: #d72f3c;
-  font-weight: 700;
-}
-
-.export-button,
-.view-all-button {
+.period-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid #e5e9f0;
-  border-radius: 8px;
+  gap: 10px;
+  min-width: 170px;
+  height: 40px;
+  padding: 0 13px;
+  border: 1px solid #e5eaf3;
+  border-radius: 10px;
   background: #fff;
-  color: #374151;
+  color: #526078;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.custom-date-trigger {
+  min-width: 180px;
+}
+
+.period-trigger:hover,
+.period-picker.open .period-trigger {
+  border-color: #4776e6;
+  color: #4776e6;
+  box-shadow: 0 4px 12px rgba(71, 118, 230, 0.08);
+}
+
+.period-trigger > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.period-chevron {
+  flex-shrink: 0;
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.period-picker.open .period-chevron {
+  transform: rotate(180deg);
+}
+
+.period-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 0;
+  z-index: 100;
+  padding: 15px;
+  border: 1px solid #e9edf5;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 14px 40px rgba(28, 43, 75, 0.15);
+  animation: periodDropdownIn 0.18s ease;
+}
+
+/* Chỉ mở menu của chính mục đang được rê chuột */
+.period-picker:hover .period-dropdown,
+.period-picker.open .period-dropdown {
+  display: block;
+}
+
+.quick-dropdown {
+  width: 250px;
+}
+
+.custom-dropdown {
+  width: 275px;
+}
+
+@keyframes periodDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.period-dropdown-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #26334b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.period-dropdown-title svg {
+  color: #4776e6;
+}
+
+.period-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.period-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  background: #fafbfe;
+  color: #68748a;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.period-option:hover {
+  border-color: #cbd8fb;
+  background: #f3f6ff;
+  color: #4776e6;
+}
+
+.period-option.active {
+  border-color: #4776e6;
+  background: #edf3ff;
+  color: #4776e6;
+  font-weight: 800;
+}
+
+.period-option svg {
+  font-size: 10px;
+}
+
+.period-custom {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid #edf0f5;
+}
+
+.period-custom label {
+  display: grid;
+  gap: 6px;
+  color: #7d8798;
   font-size: 11px;
   font-weight: 600;
 }
 
-.export-button:hover,
-.view-all-button:hover {
-  border-color: #e53945;
-  color: #e53945;
+.period-custom input {
+  width: 100%;
+  height: 37px;
+  padding: 0 9px;
+  border: 1px solid #e5eaf3;
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  color: #364258;
+  font-family: inherit;
+  font-size: 12px;
+  transition: border-color 0.2s;
 }
+
+.period-custom input:focus {
+  border-color: #4776e6;
+}
+
+.apply-period-button {
+  height: 38px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 8px;
+  background: #4776e6;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.apply-period-button:hover {
+  background: #315fc9;
+}
+
+.apply-period-button:disabled {
+  background: #c4cbd8;
+  cursor: not-allowed;
+}
+
+/* ==============================
+   NÚT CHỨC NĂNG
+============================== */
+
+.export-button,
+.refresh-button,
+.view-all-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #e8ecf3;
+  border-radius: 9px;
+  background: #fff;
+  color: #4b5565;
+  padding: 10px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.export-button:hover,
+.refresh-button:hover,
+.view-all-button:hover {
+  border-color: #4776e6;
+  color: #4776e6;
+}
+
+.export-button:disabled,
+.view-all-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.refresh-button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 15px;
+}
+
+/* ==============================
+   THẺ THỐNG KÊ
+============================== */
 
 .dashboard-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-  margin-bottom: 22px;
+  gap: 16px;
 }
 
 .stat-card {
   min-width: 0;
-  padding: 22px;
+  padding: 20px;
   border: 1px solid #edf0f5;
-  border-radius: 13px;
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 0 3px 12px rgba(28, 39, 60, 0.025);
+  box-shadow: 0 4px 16px rgba(26, 39, 68, 0.035);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 24px rgba(26, 39, 68, 0.075);
 }
 
 .stat-card-top {
@@ -123,228 +331,262 @@
 }
 
 .stat-title {
-  color: #788396;
+  color: #7d8798;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .stat-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   width: 42px;
   height: 42px;
-  flex-shrink: 0;
-  border-radius: 11px;
+  border-radius: 12px;
   font-size: 19px;
 }
 
 .stat-icon.red {
+  color: #e35d6a;
   background: #fff0f1;
-  color: #e53945;
 }
 
 .stat-icon.blue {
-  background: #edf5ff;
-  color: #4285ee;
+  color: #4776e6;
+  background: #edf3ff;
 }
 
 .stat-icon.purple {
+  color: #9064d8;
   background: #f4efff;
-  color: #8964d9;
 }
 
 .stat-icon.orange {
+  color: #e69a35;
   background: #fff5e7;
-  color: #e99a26;
 }
 
 .stat-value {
-  margin: 19px 0 14px;
+  margin-top: 16px;
   color: #172033;
-  font-size: clamp(24px, 2.3vw, 31px);
-  font-weight: 750;
-  letter-spacing: -1px;
+  font-size: 29px;
+  font-weight: 800;
+  letter-spacing: -0.7px;
 }
 
-.stat-footer {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.stat-change {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.stat-change.up {
-  color: #169b68;
-}
-
-.stat-change.down {
-  color: #e05260;
-}
-
-.stat-description {
-  color: #99a2b1;
-  font-size: 10px;
-}
+/* ==============================
+   KHU VỰC BIỂU ĐỒ
+============================== */
 
 .dashboard-chart-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(270px, 1fr);
-  gap: 22px;
-  margin-bottom: 22px;
+  grid-template-columns: minmax(0, 1.7fr) minmax(290px, 1fr);
+  gap: 18px;
+  align-items: stretch;
 }
 
 .dashboard-panel {
   min-width: 0;
+  padding: 22px;
   border: 1px solid #edf0f5;
-  border-radius: 13px;
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 0 3px 12px rgba(28, 39, 60, 0.025);
-}
-
-.revenue-panel,
-.ticket-panel {
-  padding: 23px;
+  box-shadow: 0 4px 16px rgba(26, 39, 68, 0.035);
 }
 
 .panel-heading {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .panel-heading h2 {
-  margin: 0 0 7px;
-  color: #202b3d;
-  font-size: 15px;
-  font-weight: 750;
+  margin: 0;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 800;
 }
 
-.panel-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: #7f899a;
+.panel-heading p {
+  margin: 6px 0 0;
+  color: #929bad;
+  font-size: 12px;
+}
+
+.panel-heading > span {
+  color: #a0a8b7;
+  font-size: 19px;
   cursor: pointer;
-  font-size: 20px;
 }
 
-.panel-more:hover {
-  background: #f5f7fb;
-}
+/* ==============================
+   DOANH THU
+============================== */
 
 .revenue-summary {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 21px;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 22px;
 }
 
-.revenue-summary > strong {
-  color: #182230;
-  font-size: 25px;
-  letter-spacing: -0.7px;
+.revenue-summary strong {
+  color: #172033;
+  font-size: 27px;
+  font-weight: 800;
 }
 
-.summary-positive {
-  padding: 5px 7px;
-  border-radius: 6px;
-  background: #e9f8f0;
-  color: #169b68;
-  font-size: 10px;
-  font-weight: 700;
+.revenue-summary small {
+  color: #8b95a7;
+  font-size: 12px;
 }
 
-.revenue-summary > small {
-  color: #98a1b0;
-  font-size: 10px;
-}
-
-.revenue-chart {
+.revenue-chart-wrapper {
   width: 100%;
-  height: 255px;
-  margin-top: 15px;
+  margin-top: 23px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid #edf0f5;
+  scrollbar-width: thin;
+  scrollbar-color: #dce3f0 transparent;
 }
+
+.revenue-chart-wrapper::-webkit-scrollbar {
+  height: 5px;
+}
+
+.revenue-chart-wrapper::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: #dce3f0;
+}
+
+.revenue-line-chart {
+  display: block;
+  width: 100%;
+  min-width: 700px;
+  height: 230px;
+  overflow: visible;
+}
+
+.chart-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 13px;
+  color: #8b95a7;
+  font-size: 11px;
+}
+
+.chart-footer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4776e6;
+  box-shadow: 0 0 0 4px #edf3ff;
+}
+
+.dashboard-empty {
+  padding: 14px;
+  margin-top: 12px;
+  border-radius: 8px;
+  background: #f8f9fc;
+  color: #8993a4;
+  font-size: 12px;
+  text-align: center;
+}
+
+.error-message {
+  color: #cf424e;
+  background: #fff1f0;
+}
+
+/* ==============================
+   BIỂU ĐỒ TRẠNG THÁI VÉ
+============================== */
 
 .ticket-chart {
+  display: grid;
+  place-items: center;
+  width: 180px;
+  height: 180px;
+  margin: 24px auto;
+  border-radius: 50%;
   position: relative;
-  width: 100%;
-  height: 210px;
-  margin: 7px auto 0;
 }
 
 .ticket-chart-center {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   display: flex;
+  width: 112px;
+  height: 112px;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
 }
 
 .ticket-chart-center strong {
-  color: #182230;
-  font-size: 25px;
-  font-weight: 750;
+  color: #172033;
+  font-size: 29px;
+  font-weight: 800;
 }
 
 .ticket-chart-center span {
-  color: #98a1b0;
-  font-size: 10px;
+  margin-top: 3px;
+  color: #8b95a7;
+  font-size: 11px;
 }
 
 .ticket-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-top: 7px;
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
 }
 
 .ticket-legend-item {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
   gap: 9px;
-  color: #778294;
-  font-size: 11px;
-}
-
-.ticket-legend-item strong {
-  color: #253044;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .legend-dot {
+  flex-shrink: 0;
   width: 9px;
   height: 9px;
   border-radius: 50%;
 }
 
+.legend-label {
+  flex: 1;
+  color: #68748a;
+}
+
+.ticket-legend-item strong {
+  color: #172033;
+  font-weight: 700;
+}
+
+.legend-percent {
+  width: 35px;
+  color: #8b95a7;
+  text-align: right;
+}
+
+/* ==============================
+   BẢNG ĐẶT VÉ
+============================== */
+
 .bookings-panel {
-  overflow: hidden;
+  padding-bottom: 8px;
 }
 
 .bookings-heading {
-  align-items: center;
-  padding: 23px 23px 18px;
+  margin-bottom: 20px;
+}
+
+.view-all-button {
+  padding: 8px 12px;
 }
 
 .bookings-table-wrap {
@@ -354,140 +596,144 @@
 
 .bookings-table {
   width: 100%;
+  min-width: 780px;
   border-collapse: collapse;
-  white-space: nowrap;
   text-align: left;
 }
 
-.bookings-table thead {
-  background: #f8f9fc;
-}
-
 .bookings-table th {
-  padding: 14px 18px;
-  color: #8b95a5;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.5px;
+  padding: 14px 12px;
+  border-bottom: 1px solid #edf0f5;
+  background: #fafbfe;
+  color: #8b95a7;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
 }
 
 .bookings-table td {
-  padding: 17px 18px;
+  padding: 15px 12px;
   border-bottom: 1px solid #f0f2f6;
-  color: #687487;
-  font-size: 11px;
+  color: #596579;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bookings-table tbody tr:hover {
+  background: #fafbff;
 }
 
 .bookings-table tbody tr:last-child td {
   border-bottom: 0;
 }
 
-.bookings-table tbody tr:hover {
-  background: #fcfcfe;
-}
-
-.booking-id {
-  color: #df3542 !important;
+.booking-price {
+  color: #172033 !important;
   font-weight: 700;
 }
 
-.booking-customer {
-  color: #263247 !important;
-  font-weight: 600;
-}
-
-.booking-amount {
-  color: #263247 !important;
-  font-weight: 700;
-}
-
-.booking-status {
+.status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 5px 9px;
+  border-radius: 20px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.booking-status.paid {
-  background: #eaf8f0;
-  color: #168457;
+.status-badge.paid {
+  color: #168653;
+  background: #e9f8f0;
 }
 
-.booking-status.pending {
-  background: #fff5e6;
-  color: #bd7a17;
+.status-badge.pending {
+  color: #bd8128;
+  background: #fff5e5;
 }
 
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
+.status-badge.cancelled {
+  color: #d34c58;
+  background: #fff0f1;
 }
 
-.table-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 15px 23px;
-  border-top: 1px solid #edf0f5;
-  color: #98a1b0;
-  font-size: 10px;
+.empty-table {
+  padding: 30px !important;
+  color: #9aa3b2 !important;
+  text-align: center;
 }
 
-@media (max-width: 1200px) {
+/* ==============================
+   RESPONSIVE
+============================== */
+
+@media (max-width: 1100px) {
   .dashboard-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-chart-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ticket-panel {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: center;
-    column-gap: 20px;
-  }
-
-  .ticket-panel .panel-heading {
-    grid-column: 1 / -1;
-  }
-
-  .ticket-chart {
-    max-width: 280px;
-  }
-
-  .ticket-legend {
-    margin-top: 0;
+    grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 650px) {
+  .dashboard-page {
+    gap: 16px;
+  }
+
   .dashboard-heading {
     align-items: flex-start;
-    flex-direction: column;
+  }
+
+  .dashboard-heading h1 {
+    font-size: 20px;
   }
 
   .dashboard-heading-actions {
     width: 100%;
-    flex-wrap: wrap;
+  }
+
+  .date-filter-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
   }
 
   .period-picker {
-    max-width: 100%;
+    min-width: 0;
+  }
+
+  .period-trigger {
+    width: 100%;
+    min-width: 0;
+    gap: 6px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+
+  .period-dropdown {
+    right: auto;
+    left: 0;
+    width: min(275px, calc(100vw - 40px));
+  }
+
+  .custom-dropdown {
+    right: 0;
+    left: auto;
+  }
+
+  .export-button {
+    flex: 1;
   }
 
   .dashboard-stats {
-    gap: 12px;
+    gap: 10px;
   }
 
   .stat-card {
-    padding: 15px;
+    padding: 14px;
   }
 
   .stat-title {
@@ -501,53 +747,24 @@
   }
 
   .stat-value {
-    font-size: 23px;
+    font-size: 24px;
   }
 
-  .revenue-panel,
-  .ticket-panel {
+  .dashboard-panel {
     padding: 16px;
   }
 
-  .ticket-panel {
-    display: block;
+  .revenue-summary strong {
+    font-size: 23px;
   }
 
   .ticket-chart {
-    max-width: 300px;
+    width: 160px;
+    height: 160px;
   }
 
-  .ticket-legend {
-    margin-top: 12px;
-  }
-
-  .bookings-heading {
-    padding: 17px;
-  }
-
-  .table-footer {
-    padding: 13px 17px;
-  }
-}
-
-@media (max-width: 420px) {
-  .dashboard-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .period-picker {
-    flex: 1;
-  }
-
-  .period-picker button {
-    padding-inline: 6px;
-  }
-
-  .export-button {
-    padding-inline: 10px;
-  }
-
-  .revenue-summary > strong {
-    font-size: 22px;
+  .ticket-chart-center {
+    width: 100px;
+    height: 100px;
   }
 }
