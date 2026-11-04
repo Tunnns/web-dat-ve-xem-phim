@@ -34,6 +34,16 @@ import {
   getUsers,
   getTickets,
 } from '../controllers/admin.controller';
+import {
+  getAdminAccounts,
+  createAdminAccount,
+  updateAdminAccount,
+  updateAdminAccountStatus,
+  resetAdminAccountPassword,
+  deleteAdminAccount,
+} from '../controllers/admin-account.controller';
+
+import { restrictTo } from '../middlewares/auth.middleware';
 import { uploadMovieImages, uploadSinglePoster } from '../middlewares/upload.middleware';
 
 const router = Router();
@@ -293,5 +303,43 @@ router.get('/customers', getUsers);
 
 /* ============================ VÉ ĐẶT (Tickets) ============================ */
 router.get('/tickets', getTickets);
+/* ============================ QUẢN LÝ TÀI KHOẢN ============================ */
+
+// Chỉ admin được quản lý tài khoản quản trị.
+router.get(
+  '/accounts',
+  restrictTo('admin'),
+  getAdminAccounts
+);
+
+router.post(
+  '/accounts',
+  restrictTo('admin'),
+  createAdminAccount
+);
+
+router.patch(
+  '/accounts/:id',
+  restrictTo('admin'),
+  updateAdminAccount
+);
+
+router.patch(
+  '/accounts/:id/status',
+  restrictTo('admin'),
+  updateAdminAccountStatus
+);
+
+router.patch(
+  '/accounts/:id/reset-password',
+  restrictTo('admin'),
+  resetAdminAccountPassword
+);
+
+router.delete(
+  '/accounts/:id',
+  restrictTo('admin'),
+  deleteAdminAccount
+);
 
 export default router;

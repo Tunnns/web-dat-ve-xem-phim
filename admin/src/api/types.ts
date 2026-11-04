@@ -82,6 +82,7 @@ export interface Showtime {
   startTime: string;
   endTime: string;
   price: number;
-  createdAt: string;
-  updatedAt: string;
+  status?: 'scheduled' | 'cancelled';
+  createdAt?: string;
+  updatedAt?: string;
 }

@@ -11,6 +11,7 @@ import bookingRoutes from './routes/booking.route';
 import connectDB from './config/db';
 import dotenv from 'dotenv';
 import { AppError } from './utils/appError';
+import { protect, restrictTo } from './middlewares/auth.middleware';
 
 dotenv.config();
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -49,8 +50,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/payment', paymentRoutes);
-app.use('/api/admin', adminRoutes);
-
+app.use(
+  '/api/admin',
+  protect,
+  restrictTo('admin', 'manager', 'staff'),
+  adminRoutes
+);
 // Test route
 app.get('/', (_req: Request, res: Response) => {
   res.send('Backend Server is running');

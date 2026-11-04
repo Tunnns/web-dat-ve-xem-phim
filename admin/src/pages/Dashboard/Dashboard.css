@@ -121,11 +121,16 @@
 }
 
 /* Chỉ mở menu của chính mục đang được rê chuột */
-.period-picker:hover .period-dropdown,
-.period-picker.open .period-dropdown {
-  display: block;
+/* Chỉ mở menu khi người dùng click vào nút */
+.period-picker .period-dropdown {
+  display: none;
+  pointer-events: none;
 }
 
+.period-picker.open .period-dropdown {
+  display: block;
+  pointer-events: auto;
+}
 .quick-dropdown {
   width: 250px;
 }
