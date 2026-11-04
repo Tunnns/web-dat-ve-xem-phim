@@ -1,13 +1,16 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type UserRole = 'user' | 'admin' | 'manager' | 'staff';
+
 export interface IUser extends Document {
   fullName: string;
   email: string;
-  password?: string; // Tùy chọn nếu có tính năng đăng nhập Google/Facebook
+  password?: string;
   phone?: string;
-  role: 'user' | 'admin';
+  role: UserRole;
+  isActive: boolean;
   avatar?: string;
-  resetPasswordToken?: string; // SHA-256 của token đặt lại mật khẩu
+  resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -15,16 +18,50 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>(
   {
-    fullName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, select: false },
-    phone: { type: String },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
-    avatar: { type: String },
-    resetPasswordToken: { type: String, select: false },
-    resetPasswordExpires: { type: Date, select: false },
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    password: {
+      type: String,
+      select: false,
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    role: {
+      type: String,
+      enum: ['user', 'admin', 'manager', 'staff'],
+      default: 'user',
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    avatar: {
+      type: String,
+    },
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 export default mongoose.model<IUser>('User', userSchema);

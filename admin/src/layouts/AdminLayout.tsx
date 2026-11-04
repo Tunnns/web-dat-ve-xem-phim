@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Layout,
@@ -24,6 +23,7 @@ import {
   BellOutlined,
   PlusOutlined,
   SettingOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
@@ -78,6 +78,12 @@ const menuDefinitions: MenuDefinition[] = [
     label: 'Khách hàng',
     roles: ['admin', 'manager', 'staff'],
   },
+  {
+    key: '/accounts',
+    icon: <TeamOutlined />,
+    label: 'Tài khoản & Phân quyền',
+    roles: ['admin'],
+  },
 ];
 
 const pageNames: Record<string, string> = {
@@ -87,6 +93,7 @@ const pageNames: Record<string, string> = {
   '/rooms': 'Phòng chiếu',
   '/showtimes': 'Suất chiếu',
   '/users': 'Khách hàng',
+  '/accounts': 'Tài khoản & Phân quyền',
 };
 
 const AdminLayout: React.FC = () => {

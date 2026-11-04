@@ -1,6 +1,6 @@
-
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { Result, Button } from 'antd';
 
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -13,11 +13,9 @@ import Theaters from './pages/Theaters';
 import Rooms from './pages/Rooms';
 import Showtimes from './pages/Showtimes';
 import Users from './pages/Users';
+import Accounts from './pages/Accounts';
 
-import { Result, Button } from 'antd';
-import { useNavigate } from 'react-router-dom';
-
-const Forbidden = () => {
+const Forbidden: React.FC = () => {
   const navigate = useNavigate();
 
   return (
@@ -52,7 +50,6 @@ const App: React.FC = () => {
             <Route path="/" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
 
-              {/* Admin và Manager */}
               <Route
                 element={
                   <ProtectedRoute allowedRoles={['admin', 'manager']} />
@@ -64,7 +61,6 @@ const App: React.FC = () => {
                 <Route path="showtimes" element={<Showtimes />} />
               </Route>
 
-              {/* Admin, Manager và Nhân viên */}
               <Route
                 element={
                   <ProtectedRoute
@@ -73,6 +69,15 @@ const App: React.FC = () => {
                 }
               >
                 <Route path="users" element={<Users />} />
+              </Route>
+
+              {/* Chỉ Admin được quản lý tài khoản quản trị */}
+              <Route
+                element={
+                  <ProtectedRoute allowedRoles={['admin']} />
+                }
+              >
+                <Route path="accounts" element={<Accounts />} />
               </Route>
             </Route>
           </Route>

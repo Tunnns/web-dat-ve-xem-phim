@@ -1,3 +1,4 @@
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   App,
@@ -20,6 +21,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
+
 import {
   AppstoreOutlined,
   TableOutlined,
@@ -32,6 +34,7 @@ import {
   SearchOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
+
 import dayjs, { type Dayjs } from 'dayjs';
 import type { TableProps } from 'antd';
 
@@ -41,11 +44,19 @@ import {
   getShowtimes,
   updateShowtime,
 } from '../../api/showtimes';
+
 import { getMovies } from '../../api/movies';
 import { getTheaters } from '../../api/theaters';
 import { getRooms } from '../../api/rooms';
 import { getErrorMessage } from '../../api/client';
-import type { Movie, Room, Showtime, Theater } from '../../api/types';
+
+import type {
+  Movie,
+  Room,
+  Showtime,
+  Theater,
+} from '../../api/types';
+
 import { formatCurrency } from '../../utils/format';
 
 const { Title, Text } = Typography;
@@ -61,6 +72,12 @@ interface ShowtimeFormValues {
 
 type IdReference = string | { _id: string };
 
+type ShowtimeDisplayStatus =
+  | 'scheduled'
+  | 'showing'
+  | 'finished'
+  | 'cancelled';
+
 const getId = (value: IdReference | null | undefined): string => {
   if (!value) return '';
   return typeof value === 'string' ? value : value._id;
@@ -74,7 +91,42 @@ const getPopulatedName = (
     | undefined,
 ): string => {
   if (!value || typeof value === 'string') return '';
+
   return value.title?.trim() || value.name?.trim() || '';
+};
+
+// Trạng thái được tính từ thời gian chiếu, không dùng ngày tạo.
+const getShowtimeStatus = (
+  record: Showtime,
+): ShowtimeDisplayStatus => {
+  if (record.status === 'cancelled') {
+    return 'cancelled';
+  }
+
+  const now = dayjs();
+  const start = dayjs(record.startTime);
+  const end = dayjs(record.endTime);
+
+  if (now.isBefore(start)) return 'scheduled';
+  if (now.isBefore(end)) return 'showing';
+
+  return 'finished';
+};
+
+const renderShowtimeStatus = (record: Showtime) => {
+  switch (getShowtimeStatus(record)) {
+    case 'cancelled':
+      return <Tag color="error">Đã hủy</Tag>;
+
+    case 'scheduled':
+      return <Tag color="success">Sắp chiếu</Tag>;
+
+    case 'showing':
+      return <Tag color="processing">Đang chiếu</Tag>;
+
+    case 'finished':
+      return <Tag>Đã kết thúc</Tag>;
+  }
 };
 
 const Showtimes: React.FC = () => {
@@ -99,16 +151,23 @@ const Showtimes: React.FC = () => {
 
   const selectedTheater = Form.useWatch('theater', form);
 
+  // Lấy dữ liệu từ API.
   const fetchData = useCallback(async () => {
     setLoading(true);
+
     try {
-      const [showtimes, moviesList, theatersList, roomsList] =
-        await Promise.all([
-          getShowtimes(),
-          getMovies(),
-          getTheaters(),
-          getRooms(),
-        ]);
+      const [
+        showtimes,
+        moviesList,
+        theatersList,
+        roomsList,
+      ] = await Promise.all([
+        getShowtimes(),
+        getMovies(),
+        getTheaters(),
+        getRooms(),
+      ]);
+
       setData(showtimes);
       setMovies(moviesList);
       setTheaters(theatersList);
@@ -124,43 +183,65 @@ const Showtimes: React.FC = () => {
     void fetchData();
   }, [fetchData]);
 
-  // Ưu tiên tên đã được populate từ API; nếu chỉ có ID thì tra cứu trong danh sách đã tải.
+  // Tên phim.
   const getMovieName = useCallback(
     (value: Showtime['movie']): string => {
       const populatedName = getPopulatedName(value);
+
       if (populatedName) return populatedName;
+
       const id = getId(value);
-      return movies.find((movie) => movie._id === id)?.title ?? 'Chưa xác định phim';
+
+      return (
+        movies.find((movie) => movie._id === id)?.title ??
+        'Chưa xác định phim'
+      );
     },
     [movies],
   );
 
+  // Tên rạp.
   const getTheaterName = useCallback(
     (value: Showtime['theater']): string => {
       const populatedName = getPopulatedName(value);
+
       if (populatedName) return populatedName;
+
       const id = getId(value);
-      return theaters.find((theater) => theater._id === id)?.name ?? 'Chưa xác định rạp';
+
+      return (
+        theaters.find((theater) => theater._id === id)?.name ??
+        'Chưa xác định rạp'
+      );
     },
     [theaters],
   );
 
+  // Tên phòng.
   const getRoomName = useCallback(
     (value: Showtime['room']): string => {
       const populatedName = getPopulatedName(value);
+
       if (populatedName) return populatedName;
+
       const id = getId(value);
-      return rooms.find((room) => room._id === id)?.name ?? 'Chưa xác định phòng';
+
+      return (
+        rooms.find((room) => room._id === id)?.name ??
+        'Chưa xác định phòng'
+      );
     },
     [rooms],
   );
 
+  // Chỉ hiển thị phòng thuộc rạp đang chọn.
   const roomOptions = useMemo(
     () =>
       rooms
         .filter(
           (room) =>
-            !selectedTheater || getId(room.theater) === selectedTheater,
+            !selectedTheater ||
+            getId(room.theater) === selectedTheater,
         )
         .map((room) => ({
           value: room._id,
@@ -169,6 +250,7 @@ const Showtimes: React.FC = () => {
     [rooms, selectedTheater],
   );
 
+  // Bộ lọc.
   const filteredData = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase('vi');
 
@@ -183,13 +265,22 @@ const Showtimes: React.FC = () => {
         theaterName.includes(keyword) ||
         roomName.includes(keyword);
 
-      const matchesMovie = !filterMovie || getId(item.movie) === filterMovie;
+      const matchesMovie =
+        !filterMovie || getId(item.movie) === filterMovie;
+
       const matchesTheater =
         !filterTheater || getId(item.theater) === filterTheater;
-      const matchesDate =
-        !filterDate || dayjs(item.startTime).isSame(filterDate, 'day');
 
-      return matchesSearch && matchesMovie && matchesTheater && matchesDate;
+      const matchesDate =
+        !filterDate ||
+        dayjs(item.startTime).isSame(filterDate, 'day');
+
+      return (
+        matchesSearch &&
+        matchesMovie &&
+        matchesTheater &&
+        matchesDate
+      );
     });
   }, [
     data,
@@ -202,15 +293,23 @@ const Showtimes: React.FC = () => {
     getRoomName,
   ]);
 
+  // Thống kê.
   const stats = useMemo(() => {
-    const today = dayjs();
-    const todayShowtimes = data.filter((item) =>
-      dayjs(item.startTime).isSame(today, 'day'),
+    const activeShowtimes = data.filter(
+      (item) => getShowtimeStatus(item) !== 'cancelled',
+    );
+
+    const todayShowtimes = activeShowtimes.filter((item) =>
+      dayjs(item.startTime).isSame(dayjs(), 'day'),
     ).length;
-    const upcomingShowtimes = data.filter((item) =>
-      dayjs(item.startTime).isAfter(today),
+
+    const upcomingShowtimes = activeShowtimes.filter(
+      (item) => getShowtimeStatus(item) === 'scheduled',
     ).length;
-    const uniqueMovies = new Set(data.map((item) => getId(item.movie))).size;
+
+    const uniqueMovies = new Set(
+      activeShowtimes.map((item) => getId(item.movie)),
+    ).size;
 
     return {
       total: data.length,
@@ -220,12 +319,14 @@ const Showtimes: React.FC = () => {
     };
   }, [data]);
 
+  // Mở form tạo.
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
     setModalOpen(true);
   };
 
+  // Mở form sửa.
   const openEdit = (record: Showtime) => {
     setEditing(record);
     setModalOpen(true);
@@ -235,6 +336,7 @@ const Showtimes: React.FC = () => {
     if (!modalOpen) return;
 
     form.resetFields();
+
     if (editing) {
       form.setFieldsValue({
         movie: getId(editing.movie),
@@ -251,8 +353,10 @@ const Showtimes: React.FC = () => {
     form.setFieldValue('room', undefined);
   };
 
+  // Tạo hoặc cập nhật suất chiếu.
   const handleSubmit = async () => {
     let values: ShowtimeFormValues;
+
     try {
       values = await form.validateFields();
     } catch {
@@ -264,7 +368,13 @@ const Showtimes: React.FC = () => {
       return;
     }
 
+    if (values.startTime.isBefore(dayjs()) && !editing) {
+      message.error('Không thể tạo suất chiếu có thời gian bắt đầu trong quá khứ');
+      return;
+    }
+
     setSaving(true);
+
     try {
       const payload: Record<string, unknown> = {
         movie: values.movie,
@@ -292,6 +402,7 @@ const Showtimes: React.FC = () => {
     }
   };
 
+  // Xóa suất chiếu.
   const handleDelete = async (id: string) => {
     try {
       await deleteShowtime(id);
@@ -302,8 +413,7 @@ const Showtimes: React.FC = () => {
     }
   };
 
-  
-  // Lấy đường dẫn poster theo đúng trường posterUrl của trang Quản lý phim.
+  // Lấy poster phim.
   const getMoviePoster = (value: Showtime['movie']): string => {
     if (value && typeof value === 'object') {
       const populatedMovie = value as {
@@ -322,7 +432,7 @@ const Showtimes: React.FC = () => {
     return movie?.posterUrl ?? '';
   };
 
-  // Ghép đường dẫn tương đối với địa chỉ backend giống trang Quản lý phim.
+  // Ghép đường dẫn ảnh với backend.
   const getPosterSrc = (posterUrl?: string | null): string => {
     if (!posterUrl) return '';
 
@@ -342,23 +452,43 @@ const Showtimes: React.FC = () => {
     return `${backendUrl}${posterUrl.startsWith('/') ? '' : '/'}${posterUrl}`;
   };
 
-
-  const getRoomCapacity = (value: Showtime['room']): number | null => {
+  // Lấy sức chứa phòng.
+  const getRoomCapacity = (
+    value: Showtime['room'],
+  ): number | null => {
     if (!value || typeof value === 'string') {
       const roomId = getId(value);
-      const room = rooms.find((item) => item._id === roomId) as
-        | (Room & { capacity?: number; seats?: number; totalSeats?: number })
+
+      const room = rooms.find(
+        (item) => item._id === roomId,
+      ) as
+        | (Room & {
+            capacity?: number;
+            seats?: number;
+            totalSeats?: number;
+          })
         | undefined;
+
       if (!room) return null;
+
       return room.capacity ?? room.totalSeats ?? room.seats ?? null;
     }
 
     const populated = value as unknown as {
-      capacity?: number; seats?: number; totalSeats?: number;
+      capacity?: number;
+      seats?: number;
+      totalSeats?: number;
     };
-    return populated.capacity ?? populated.totalSeats ?? populated.seats ?? null;
+
+    return (
+      populated.capacity ??
+      populated.totalSeats ??
+      populated.seats ??
+      null
+    );
   };
 
+  // Cột bảng.
   const columns: TableProps<Showtime>['columns'] = [
     {
       title: 'PHIM',
@@ -367,6 +497,7 @@ const Showtimes: React.FC = () => {
       render: (_, record) => (
         <Space direction="vertical" size={3}>
           <Text strong>{getMovieName(record.movie)}</Text>
+
           <Text type="secondary" style={{ fontSize: 12 }}>
             Chiếu lúc {dayjs(record.startTime).format('DD/MM/YYYY · HH:mm')}
           </Text>
@@ -392,7 +523,8 @@ const Showtimes: React.FC = () => {
       key: 'startDate',
       width: 130,
       sorter: (a, b) =>
-        dayjs(a.startTime).valueOf() - dayjs(b.startTime).valueOf(),
+        dayjs(a.startTime).valueOf() -
+        dayjs(b.startTime).valueOf(),
       render: (_, record) => (
         <Space size={6}>
           <CalendarOutlined />
@@ -423,6 +555,18 @@ const Showtimes: React.FC = () => {
       ),
     },
     {
+      title: 'NGÀY TẠO',
+      key: 'createdAt',
+      width: 120,
+      render: (_, record) => (
+        <Text type="secondary">
+          {record.createdAt
+            ? dayjs(record.createdAt).format('DD/MM/YYYY')
+            : '—'}
+        </Text>
+      ),
+    },
+    {
       title: 'GIÁ VÉ',
       key: 'price',
       width: 135,
@@ -437,17 +581,7 @@ const Showtimes: React.FC = () => {
       title: 'TRẠNG THÁI',
       key: 'status',
       width: 125,
-      render: (_, record) => {
-        const start = dayjs(record.startTime);
-        const end = dayjs(record.endTime);
-        const now = dayjs();
-
-        if (end.isBefore(now)) return <Tag>Đã kết thúc</Tag>;
-        if (start.isBefore(now) && end.isAfter(now)) {
-          return <Tag color="processing">Đang diễn ra</Tag>;
-        }
-        return <Tag color="success">Sắp chiếu</Tag>;
-      },
+      render: (_, record) => renderShowtimeStatus(record),
     },
     {
       title: 'THAO TÁC',
@@ -462,6 +596,7 @@ const Showtimes: React.FC = () => {
             onClick={() => openEdit(record)}
             title="Sửa suất chiếu"
           />
+
           <Popconfirm
             title="Xóa suất chiếu này?"
             description="Bạn có chắc chắn muốn xóa suất chiếu?"
@@ -490,10 +625,12 @@ const Showtimes: React.FC = () => {
             <Title level={2} style={{ margin: 0 }}>
               Quản lý suất chiếu
             </Title>
+
             <Text type="secondary">
               Quản lý lịch chiếu, phim, phòng và giá vé.
             </Text>
           </Col>
+
           <Col>
             <Space wrap>
               <Button
@@ -503,6 +640,7 @@ const Showtimes: React.FC = () => {
               >
                 Làm mới
               </Button>
+
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -514,6 +652,7 @@ const Showtimes: React.FC = () => {
           </Col>
         </Row>
 
+        {/* Thống kê */}
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} xl={6}>
             <Card>
@@ -524,6 +663,7 @@ const Showtimes: React.FC = () => {
               />
             </Card>
           </Col>
+
           <Col xs={24} sm={12} xl={6}>
             <Card>
               <Statistic
@@ -533,6 +673,7 @@ const Showtimes: React.FC = () => {
               />
             </Card>
           </Col>
+
           <Col xs={24} sm={12} xl={6}>
             <Card>
               <Statistic
@@ -542,6 +683,7 @@ const Showtimes: React.FC = () => {
               />
             </Card>
           </Col>
+
           <Col xs={24} sm={12} xl={6}>
             <Card>
               <Statistic
@@ -553,6 +695,7 @@ const Showtimes: React.FC = () => {
           </Col>
         </Row>
 
+        {/* Bộ lọc */}
         <Card title="Bộ lọc suất chiếu">
           <Row gutter={[12, 12]}>
             <Col xs={24} md={12} xl={6}>
@@ -564,6 +707,7 @@ const Showtimes: React.FC = () => {
                 onChange={(event) => setSearch(event.target.value)}
               />
             </Col>
+
             <Col xs={24} md={12} xl={6}>
               <Select
                 allowClear
@@ -579,6 +723,7 @@ const Showtimes: React.FC = () => {
                 }))}
               />
             </Col>
+
             <Col xs={24} md={12} xl={6}>
               <Select
                 allowClear
@@ -594,6 +739,7 @@ const Showtimes: React.FC = () => {
                 }))}
               />
             </Col>
+
             <Col xs={24} md={12} xl={6}>
               <DatePicker
                 allowClear
@@ -607,6 +753,7 @@ const Showtimes: React.FC = () => {
           </Row>
         </Card>
 
+        {/* Danh sách */}
         <Card
           title={
             <Space>
@@ -627,6 +774,7 @@ const Showtimes: React.FC = () => {
               >
                 Xóa bộ lọc
               </Button>
+
               <Button
                 type={viewMode === 'grid' ? 'primary' : 'default'}
                 icon={<AppstoreOutlined />}
@@ -634,6 +782,7 @@ const Showtimes: React.FC = () => {
                 aria-label="Xem dạng thẻ"
                 title="Xem dạng thẻ"
               />
+
               <Button
                 type={viewMode === 'table' ? 'primary' : 'default'}
                 icon={<TableOutlined />}
@@ -651,7 +800,6 @@ const Showtimes: React.FC = () => {
                 const capacity = getRoomCapacity(record.room);
                 const start = dayjs(record.startTime);
                 const end = dayjs(record.endTime);
-                const now = dayjs();
 
                 return (
                   <Col xs={24} md={12} xl={8} key={record._id}>
@@ -664,7 +812,10 @@ const Showtimes: React.FC = () => {
                               alt={getMovieName(record.movie)}
                               width={88}
                               height={132}
-                              style={{ objectFit: 'cover', borderRadius: 10 }}
+                              style={{
+                                objectFit: 'cover',
+                                borderRadius: 10,
+                              }}
                               preview
                             />
                           ) : (
@@ -681,31 +832,102 @@ const Showtimes: React.FC = () => {
                                 padding: 8,
                               }}
                             >
-                              <VideoCameraOutlined style={{ fontSize: 24, color: '#9ca3af' }} />
-                              <Text type="secondary" style={{ fontSize: 11 }}>Chưa có poster</Text>
+                              <VideoCameraOutlined
+                                style={{
+                                  fontSize: 24,
+                                  color: '#9ca3af',
+                                }}
+                              />
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                Chưa có poster
+                              </Text>
                             </div>
                           )}
                         </Col>
+
                         <Col flex="auto" style={{ minWidth: 0 }}>
-                          <Text strong style={{ fontSize: 16, display: 'block' }}>
+                          <Text
+                            strong
+                            style={{
+                              fontSize: 16,
+                              display: 'block',
+                            }}
+                          >
                             {getMovieName(record.movie)}
                           </Text>
-                          <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+
+                          <Text
+                            type="secondary"
+                            style={{
+                              display: 'block',
+                              marginTop: 6,
+                            }}
+                          >
                             Rạp: {getTheaterName(record.theater)}
                           </Text>
-                          <Text type="secondary" style={{ display: 'block' }}>
+
+                          <Text
+                            type="secondary"
+                            style={{ display: 'block' }}
+                          >
                             Phòng: {getRoomName(record.room)}
                           </Text>
-                          <div style={{ borderTop: '1px solid #f0f0f0', margin: '12px 0' }} />
+
+                          <div
+                            style={{
+                              borderTop: '1px solid #f0f0f0',
+                              margin: '12px 0',
+                            }}
+                          />
+
                           <Space direction="vertical" size={7}>
-                            <Text><CalendarOutlined />　{start.format('DD/MM/YYYY')}</Text>
-                            <Text><ClockCircleOutlined />　{start.format('HH:mm')} – {end.format('HH:mm')}</Text>
-                            <Text>♙　{capacity !== null ? `${capacity} ghế` : 'Chưa có thông tin số ghế'}</Text>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Suất chiếu #{record._id.slice(-6)}</Text>
-                            <Text strong style={{ color: '#1677ff' }}>{formatCurrency(record.price)}</Text>
-                            {end.isBefore(now) ? <Tag>Đã kết thúc</Tag> : start.isBefore(now) ? <Tag color="processing">Đang diễn ra</Tag> : <Tag color="success">Sắp chiếu</Tag>}
+                            <Text>
+                              <CalendarOutlined />　
+                              {start.format('DD/MM/YYYY')}
+                            </Text>
+
+                            <Text>
+                              <ClockCircleOutlined />　
+                              {start.format('HH:mm')} – {end.format('HH:mm')}
+                            </Text>
+
+                            <Text>
+                              ♙　
+                              {capacity !== null
+                                ? `${capacity} ghế`
+                                : 'Chưa có thông tin số ghế'}
+                            </Text>
+
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              Suất chiếu #{record._id.slice(-6)}
+                            </Text>
+
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              Ngày tạo:{' '}
+                              {record.createdAt
+                                ? dayjs(record.createdAt).format('DD/MM/YYYY')
+                                : '—'}
+                            </Text>
+
+                            <Text
+                              strong
+                              style={{ color: '#1677ff' }}
+                            >
+                              {formatCurrency(record.price)}
+                            </Text>
+
+                            {renderShowtimeStatus(record)}
+
                             <Space wrap>
-                              <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>Sửa</Button>
+                              <Button
+                                size="small"
+                                icon={<EditOutlined />}
+                                onClick={() => openEdit(record)}
+                                disabled={record.status === 'cancelled'}
+                              >
+                                Sửa
+                              </Button>
+
                               <Popconfirm
                                 title="Xóa suất chiếu này?"
                                 description="Bạn có chắc chắn muốn xóa suất chiếu?"
@@ -714,7 +936,13 @@ const Showtimes: React.FC = () => {
                                 okButtonProps={{ danger: true }}
                                 onConfirm={() => handleDelete(record._id)}
                               >
-                                <Button size="small" danger icon={<DeleteOutlined />}>Xóa</Button>
+                                <Button
+                                  size="small"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                >
+                                  Xóa
+                                </Button>
                               </Popconfirm>
                             </Space>
                           </Space>
@@ -724,9 +952,16 @@ const Showtimes: React.FC = () => {
                   </Col>
                 );
               })}
+
               {filteredData.length === 0 && (
                 <Col span={24}>
-                  <Empty description={data.length === 0 ? 'Chưa có dữ liệu suất chiếu' : 'Không tìm thấy suất chiếu phù hợp'} />
+                  <Empty
+                    description={
+                      data.length === 0
+                        ? 'Chưa có dữ liệu suất chiếu'
+                        : 'Không tìm thấy suất chiếu phù hợp'
+                    }
+                  />
                 </Col>
               )}
             </Row>
@@ -736,9 +971,17 @@ const Showtimes: React.FC = () => {
               columns={columns}
               dataSource={filteredData}
               loading={loading}
-              scroll={{ x: 1250 }}
+              scroll={{ x: 1450 }}
               locale={{
-                emptyText: <Empty description={data.length === 0 ? 'Chưa có dữ liệu suất chiếu' : 'Không tìm thấy suất chiếu phù hợp'} />,
+                emptyText: (
+                  <Empty
+                    description={
+                      data.length === 0
+                        ? 'Chưa có dữ liệu suất chiếu'
+                        : 'Không tìm thấy suất chiếu phù hợp'
+                    }
+                  />
+                ),
               }}
               pagination={{
                 defaultPageSize: 10,
@@ -751,6 +994,7 @@ const Showtimes: React.FC = () => {
         </Card>
       </Space>
 
+      {/* Form thêm và sửa */}
       <Modal
         title={editing ? 'Cập nhật suất chiếu' : 'Tạo suất chiếu mới'}
         open={modalOpen}
@@ -771,7 +1015,9 @@ const Showtimes: React.FC = () => {
           <Form.Item
             name="movie"
             label="Phim"
-            rules={[{ required: true, message: 'Vui lòng chọn phim' }]}
+            rules={[
+              { required: true, message: 'Vui lòng chọn phim' },
+            ]}
           >
             <Select
               placeholder="Chọn phim"
@@ -789,7 +1035,9 @@ const Showtimes: React.FC = () => {
               <Form.Item
                 name="theater"
                 label="Rạp chiếu"
-                rules={[{ required: true, message: 'Vui lòng chọn rạp' }]}
+                rules={[
+                  { required: true, message: 'Vui lòng chọn rạp' },
+                ]}
               >
                 <Select
                   placeholder="Chọn rạp"
@@ -803,11 +1051,14 @@ const Showtimes: React.FC = () => {
                 />
               </Form.Item>
             </Col>
+
             <Col xs={24} sm={12}>
               <Form.Item
                 name="room"
                 label="Phòng chiếu"
-                rules={[{ required: true, message: 'Vui lòng chọn phòng' }]}
+                rules={[
+                  { required: true, message: 'Vui lòng chọn phòng' },
+                ]}
               >
                 <Select
                   placeholder="Chọn phòng"
@@ -826,7 +1077,10 @@ const Showtimes: React.FC = () => {
                 name="startTime"
                 label="Thời gian bắt đầu"
                 rules={[
-                  { required: true, message: 'Vui lòng chọn giờ bắt đầu' },
+                  {
+                    required: true,
+                    message: 'Vui lòng chọn giờ bắt đầu',
+                  },
                 ]}
               >
                 <DatePicker
@@ -834,15 +1088,23 @@ const Showtimes: React.FC = () => {
                   format="DD/MM/YYYY HH:mm"
                   style={{ width: '100%' }}
                   placeholder="Chọn thời gian bắt đầu"
+                  disabledDate={(current) =>
+                    current.isBefore(dayjs().startOf('day')) &&
+                    !editing
+                  }
                 />
               </Form.Item>
             </Col>
+
             <Col xs={24} sm={12}>
               <Form.Item
                 name="endTime"
                 label="Thời gian kết thúc"
                 rules={[
-                  { required: true, message: 'Vui lòng chọn giờ kết thúc' },
+                  {
+                    required: true,
+                    message: 'Vui lòng chọn giờ kết thúc',
+                  },
                 ]}
               >
                 <DatePicker

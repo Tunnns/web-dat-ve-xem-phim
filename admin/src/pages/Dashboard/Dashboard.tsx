@@ -613,13 +613,11 @@ const Dashboard: React.FC = () => {
           <div className="date-filter-group">
 
             {/* CHỌN NHANH */}
-            <div
-              className={`period-picker ${
-                openDateMenu === 'quick' ? 'open' : ''
-              }`}
-              onMouseEnter={() => setOpenDateMenu('quick')}
-              onMouseLeave={() => setOpenDateMenu(null)}
-            >
+           <div
+  className={`period-picker ${
+    openDateMenu === 'quick' ? 'open' : ''
+  }`}
+>
               <button
                 type="button"
                 className="period-trigger"
@@ -670,12 +668,10 @@ const Dashboard: React.FC = () => {
 
             {/* CHỌN THEO NGÀY */}
             <div
-              className={`period-picker ${
-                openDateMenu === 'custom' ? 'open' : ''
-              }`}
-              onMouseEnter={() => setOpenDateMenu('custom')}
-              onMouseLeave={() => setOpenDateMenu(null)}
-            >
+  className={`period-picker ${
+    openDateMenu === 'custom' ? 'open' : ''
+  }`}
+>
               <button
                 type="button"
                 className="period-trigger custom-date-trigger"
