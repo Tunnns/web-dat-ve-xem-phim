@@ -23,13 +23,13 @@ npm run dev
 ### Tài khoản Admin mặc định:
 - **Email:** `admin@cineops.com`
 - **Mật khẩu:** `admin123`
-- **Quyền hạn:** `admin`
+- **role:** `admin`
 
 Chạy riêng lẻ từng phần:
 - Backend: `npm run dev:backend`
 - Client: `npm run dev:client`
 - Admin: `npm run dev:admin`
-
+npm start
 ---
 
 ## Phân chia công việc và Tiến độ dự án
@@ -47,7 +47,6 @@ Chạy riêng lẻ từng phần:
   - [x] Hỗ trợ kết nối API Đặt vé và Khóa ghế vào giao diện Client.
   - [x] Tích hợp kiểm thử tải đồng thời (stress test) chống race condition giữ ghế bằng hàng đợi khóa đồng bộ theo suất chiếu.
 - **Todo:**
-  - [ ] Đã hoàn thành 100% toàn bộ hạng mục công việc được giao.
 
 ---
 
