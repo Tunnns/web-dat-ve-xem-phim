@@ -112,6 +112,12 @@ export default function Checkout() {
     setCalculating(true)
     setCalcError('')
 
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(showtime.id)
+    if (!isMongoId) {
+      setCalculating(false)
+      return
+    }
+
     try {
       const result = await paymentApi.calculate({
         showtimeId: showtime.id,
