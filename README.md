@@ -20,16 +20,10 @@ npm run dev
 - **Frontend Client (Đặt vé):** `http://localhost:5173`
 - **Frontend Admin (Quản trị):** `http://localhost:5174`
 
-### Tài khoản Admin mặc định:
+### admin:
 - **Email:** `admin@cineops.com`
 - **Mật khẩu:** `admin123`
 - **role:** `admin`
-
-Chạy riêng lẻ từng phần:
-- Backend: `npm run dev:backend`
-- Client: `npm run dev:client`
-- Admin: `npm run dev:admin`
-npm start
 ---
 
 ## Phân chia công việc và Tiến độ dự án
