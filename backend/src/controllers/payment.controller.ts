@@ -76,10 +76,47 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
       }
     }
 
-    if (!pendingTicket && showtimeId && Array.isArray(seats) && seats.length > 0) {
+    // Kiem tra xung dot ghe truoc khi tao don va sinh ma VietQR
+    const targetSeats = Array.isArray(seats) && seats.length > 0 ? seats : pendingTicket?.seats || [];
+    const targetShowtimeId = showtimeId || (pendingTicket?.showtime ? String(pendingTicket.showtime) : undefined);
+    const isMongoShowtime = !!targetShowtimeId && mongoose.Types.ObjectId.isValid(targetShowtimeId);
+
+    if (isMongoShowtime && targetSeats.length > 0) {
+      const now = new Date();
+      const conflictTickets = await Ticket.find({
+        showtime: targetShowtimeId,
+        status: { $in: ['completed', 'pending'] },
+        seats: { $in: targetSeats },
+        ...(pendingTicket ? { _id: { $ne: pendingTicket._id } } : {}),
+      }).select('seats status lockedUntil user');
+
+      const conflictSeats: string[] = [];
+      for (const t of conflictTickets) {
+        const stillActive =
+          t.status === 'completed' || (t.status === 'pending' && !!t.lockedUntil && t.lockedUntil > now);
+        if (stillActive) {
+          const isMine = req.user?.id && t.user && String(t.user) === String(req.user.id);
+          if (!isMine) {
+            t.seats.forEach((s) => {
+              if (targetSeats.includes(s)) conflictSeats.push(s);
+            });
+          }
+        }
+      }
+
+      if (conflictSeats.length > 0) {
+        res.status(409).json({
+          success: false,
+          message: `Ghế [${Array.from(new Set(conflictSeats)).join(', ')}] đã có người đặt hoặc đang được giữ`,
+        });
+        return;
+      }
+    }
+
+    if (!pendingTicket && isMongoShowtime && Array.isArray(seats) && seats.length > 0) {
       pendingTicket = await Ticket.create({
         user: req.user?.id,
-        showtime: showtimeId,
+        showtime: targetShowtimeId,
         seats,
         combos: combos || [],
         totalAmount: amount || 0,

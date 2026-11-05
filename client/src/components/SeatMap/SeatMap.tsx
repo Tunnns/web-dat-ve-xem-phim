@@ -277,10 +277,8 @@ export default function SeatMap({
           if (onSeatSelect) onSeatSelect(seat)
           setWarningMessage('Không thể kết nối máy chủ đặt vé. Đang chọn ghế ở chế độ thử nghiệm.')
         } else {
-          // Lỗi khác từ backend (400, 500...), vẫn cho phép fallback chọn local để không khóa cứng UI
-          toggleSeat(seat, pairSeat)
-          if (onSeatSelect) onSeatSelect(seat)
-          setWarningMessage(err.response?.data?.message || 'Đã chọn ghế (chế độ cục bộ)')
+          setWarningMessage(err.response?.data?.message || 'Không thể chọn ghế này, vui lòng thử lại!')
+          refreshRealtimeSeats()
         }
       } finally {
         setHoldingLoading(false)

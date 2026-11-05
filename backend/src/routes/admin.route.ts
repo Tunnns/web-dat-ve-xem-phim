@@ -43,10 +43,14 @@ import {
   deleteAdminAccount,
 } from '../controllers/admin-account.controller';
 
-import { restrictTo } from '../middlewares/auth.middleware';
+import { protect, restrictTo } from '../middlewares/auth.middleware';
 import { uploadMovieImages, uploadSinglePoster } from '../middlewares/upload.middleware';
 
 const router = Router();
+
+const requireStaffOrAdmin = [protect, restrictTo('admin', 'manager', 'staff')];
+const requireAdminOrManager = [protect, restrictTo('admin', 'manager')];
+const requireSuperAdmin = [protect, restrictTo('admin')];
 
 /* Middleware kiểm tra kết quả validate từ express-validator */
 const validate = (req: Request, res: Response, next: NextFunction): Response | void => {
@@ -101,7 +105,7 @@ const movieUpdateRules = [
     .withMessage('Trạng thái phim không hợp lệ'),
 ];
 
-router.post('/movies/upload', uploadSinglePoster, (req: Request, res: Response) => {
+router.post('/movies/upload', requireAdminOrManager, uploadSinglePoster, (req: Request, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'Vui lòng chọn ảnh poster' });
   }
@@ -119,9 +123,9 @@ router.post('/movies/upload', uploadSinglePoster, (req: Request, res: Response) 
 
 router.get('/movies', getMovies);
 router.get('/movies/:id', getMovieById);
-router.post('/movies', uploadMovieImages, movieCreateRules, validate, createMovie);
-router.put('/movies/:id', uploadMovieImages, movieUpdateRules, validate, updateMovie);
-router.delete('/movies/:id', deleteMovie);
+router.post('/movies', requireAdminOrManager, uploadMovieImages, movieCreateRules, validate, createMovie);
+router.put('/movies/:id', requireAdminOrManager, uploadMovieImages, movieUpdateRules, validate, updateMovie);
+router.delete('/movies/:id', requireAdminOrManager, deleteMovie);
 
 /* ============================ RẠP (Theater) ============================ */
 
@@ -145,9 +149,9 @@ const theaterUpdateRules = [
 
 router.get('/theaters', getTheaters);
 router.get('/theaters/:id', getTheaterById);
-router.post('/theaters', theaterCreateRules, validate, createTheater);
-router.put('/theaters/:id', theaterUpdateRules, validate, updateTheater);
-router.delete('/theaters/:id', deleteTheater);
+router.post('/theaters', requireAdminOrManager, theaterCreateRules, validate, createTheater);
+router.put('/theaters/:id', requireAdminOrManager, theaterUpdateRules, validate, updateTheater);
+router.delete('/theaters/:id', requireAdminOrManager, deleteTheater);
 
 /* ============================ PHÒNG (Room) ============================ */
 
@@ -185,9 +189,9 @@ const roomUpdateRules = [
 
 router.get('/rooms', getRooms);
 router.get('/rooms/:id', getRoomById);
-router.post('/rooms', roomCreateRules, validate, createRoom);
-router.put('/rooms/:id', roomUpdateRules, validate, updateRoom);
-router.delete('/rooms/:id', deleteRoom);
+router.post('/rooms', requireAdminOrManager, roomCreateRules, validate, createRoom);
+router.put('/rooms/:id', requireAdminOrManager, roomUpdateRules, validate, updateRoom);
+router.delete('/rooms/:id', requireAdminOrManager, deleteRoom);
 
 /* ============================ SUẤT CHIẾU (Showtime) ============================ */
 
@@ -211,9 +215,9 @@ const showtimeUpdateRules = [
 
 router.get('/showtimes', getShowtimes);
 router.get('/showtimes/:id', getShowtimeById);
-router.post('/showtimes', showtimeCreateRules, validate, createShowtime);
-router.put('/showtimes/:id', showtimeUpdateRules, validate, updateShowtime);
-router.delete('/showtimes/:id', deleteShowtime);
+router.post('/showtimes', requireAdminOrManager, showtimeCreateRules, validate, createShowtime);
+router.put('/showtimes/:id', requireAdminOrManager, showtimeUpdateRules, validate, updateShowtime);
+router.delete('/showtimes/:id', requireAdminOrManager, deleteShowtime);
 
 /* ============================ COMBO BẮP NƯỚC (Combo) ============================ */
 
@@ -247,9 +251,9 @@ const comboUpdateRules = [
 
 router.get('/combos', getCombos);
 router.get('/combos/:id', getComboById);
-router.post('/combos', comboCreateRules, validate, createCombo);
-router.put('/combos/:id', comboUpdateRules, validate, updateCombo);
-router.delete('/combos/:id', deleteCombo);
+router.post('/combos', requireAdminOrManager, comboCreateRules, validate, createCombo);
+router.put('/combos/:id', requireAdminOrManager, comboUpdateRules, validate, updateCombo);
+router.delete('/combos/:id', requireAdminOrManager, deleteCombo);
 
 /* ============================ MÃ GIẢM GIÁ (Voucher) ============================ */
 
@@ -293,52 +297,52 @@ const voucherUpdateRules = [
 
 router.get('/vouchers', getVouchers);
 router.get('/vouchers/:id', getVoucherById);
-router.post('/vouchers', voucherCreateRules, validate, createVoucher);
-router.put('/vouchers/:id', voucherUpdateRules, validate, updateVoucher);
-router.delete('/vouchers/:id', deleteVoucher);
+router.post('/vouchers', requireAdminOrManager, voucherCreateRules, validate, createVoucher);
+router.put('/vouchers/:id', requireAdminOrManager, voucherUpdateRules, validate, updateVoucher);
+router.delete('/vouchers/:id', requireAdminOrManager, deleteVoucher);
 
 /* ============================ NGƯỜI DÙNG & KHÁCH HÀNG ============================ */
-router.get('/users', getUsers);
-router.get('/customers', getUsers);
+router.get('/users', requireStaffOrAdmin, getUsers);
+router.get('/customers', requireStaffOrAdmin, getUsers);
 
 /* ============================ VÉ ĐẶT (Tickets) ============================ */
-router.get('/tickets', getTickets);
+router.get('/tickets', requireStaffOrAdmin, getTickets);
 /* ============================ QUẢN LÝ TÀI KHOẢN ============================ */
 
 // Chỉ admin được quản lý tài khoản quản trị.
 router.get(
   '/accounts',
-  restrictTo('admin'),
+  requireSuperAdmin,
   getAdminAccounts
 );
 
 router.post(
   '/accounts',
-  restrictTo('admin'),
+  requireSuperAdmin,
   createAdminAccount
 );
 
 router.patch(
   '/accounts/:id',
-  restrictTo('admin'),
+  requireSuperAdmin,
   updateAdminAccount
 );
 
 router.patch(
   '/accounts/:id/status',
-  restrictTo('admin'),
+  requireSuperAdmin,
   updateAdminAccountStatus
 );
 
 router.patch(
   '/accounts/:id/reset-password',
-  restrictTo('admin'),
+  requireSuperAdmin,
   resetAdminAccountPassword
 );
 
 router.delete(
   '/accounts/:id',
-  restrictTo('admin'),
+  requireSuperAdmin,
   deleteAdminAccount
 );
 
