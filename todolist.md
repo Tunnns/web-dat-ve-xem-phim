@@ -1,0 +1,9 @@
+- thiếu chọn rạp theo khu vực
+- lỗi ngày sắp chiếu vẫn đặt vé ngày gần được (ví dụ để 2028 vẫn mua vé ở ngày gần nhất với gốc được) 
+- thiếu phần hiển thị các slot vé đã đặt (của user) bên admin dashboard, chỉ có 5 đơn gần nhất trên main dashboard
+- thêm phần hiển thị ưu đãi, giảm giá bên client
+- update suất chiếu ko fill thông tin 
+- thêm phần suất chiếu sớm
+- quá hạn giữ ghế sẽ gỡ khỏi phần "giỏ vé"
+- thêm log admin (chỉ admin được xem những tài khoản quản trị nào đang thao tác)
+- thiếu phần quản lý tài khoản user (sửa, xoá, ...)
