@@ -41,6 +41,7 @@ npm run dev
   - [x] Hỗ trợ kết nối API Đặt vé và Khóa ghế vào giao diện Client.
   - [x] Tích hợp kiểm thử tải đồng thời (stress test) chống race condition giữ ghế bằng hàng đợi khóa đồng bộ theo suất chiếu.
 - **Todo:**
+  - [x] Đã hoàn thành 100% toàn bộ hạng mục công việc được giao.
 
 ---
 
@@ -50,9 +51,9 @@ npm run dev
   - [x] Xây dựng Module Authentication: Đăng ký, Đăng nhập, JWT Middleware, Rate limiting.
   - [x] Viết tài liệu API kỹ thuật chi tiết.
 - **Todo:**
-  - [ ] Tích hợp Upload ảnh Poster và Banner cho Phim bằng multer (xử lý multipart/form-data).
-  - [ ] Thiết kế Schema và viết API quản lý Combo bắp nước cùng Mã giảm giá (Vouchers).
-  - [ ] Viết hàm tiện ích sinh mã QR vé điện tử sau khi đơn đặt vé hoàn tất.
+  - [x] Tích hợp Upload ảnh Poster và Banner cho Phim bằng multer (xử lý multipart/form-data).
+  - [x] Thiết kế Schema và viết API quản lý Combo bắp nước cùng Mã giảm giá (Vouchers).
+  - [x] Viết hàm tiện ích sinh mã QR vé điện tử sau khi đơn đặt vé hoàn tất.
 
 ---
 
@@ -66,8 +67,8 @@ npm run dev
   - [x] Kết nối luồng điều hướng: Chọn suất chiếu tại Trang chi tiết chuyển tiếp đến trang chọn ghế.
   - [x] Kết nối tương tác gọi API giữ ghế theo thời gian thực (Seat Locking và polling trạng thái ghế từ Backend).
 - **Todo:**
-  - [ ] Tối ưu hóa UI/UX khi kết nối mạng chậm hoặc gián đoạn kết nối polling.
-  - [ ] Bổ sung hiệu ứng chuyển cảnh và thông báo khi giữ ghế thành công.
+  - [x] Tối ưu hóa UI/UX khi kết nối mạng chậm hoặc gián đoạn kết nối polling.
+  - [x] Bổ sung hiệu ứng chuyển cảnh và thông báo khi giữ ghế thành công.
 
 ---
 
@@ -78,7 +79,7 @@ npm run dev
   - [x] Dựng trọn bộ form Xác thực: Đăng nhập, Đăng ký, Quên mật khẩu.
   - [x] Dựng trang Hồ sơ cá nhân: Lấy lịch sử đặt vé, lọc theo trạng thái và render mã QR vé điện tử.
 - **Todo:**
-  - [ ] Kết nối API Auth thật, lưu trữ JWT Token và cập nhật trạng thái User.
+  - [x] Kết nối API Auth thật, lưu trữ JWT Token và cập nhật trạng thái User.
   - [ ] Bổ sung UI Chọn combo bắp nước và nhập Mã giảm giá (Voucher) vào trang Checkout.
 
 ---
@@ -92,5 +93,5 @@ npm run dev
   - [x] Nâng cấp Form Thêm/Sửa Phim: hỗ trợ Upload file Poster và Trailer Modal.
   - [x] Dựng trang Quản lý Người dùng / Khách hàng.
 - **Todo:**
-  - [ ] Tối ưu hóa trải nghiệm UI/UX và responsive trên thiết bị di động.
-  - [ ] Bổ sung phân quyền chi tiết cho tài khoản nhân viên / quản lý rạp.
+  - [x] Tối ưu hóa trải nghiệm UI/UX và responsive trên thiết bị di động.
+  - [x] Bổ sung phân quyền chi tiết cho tài khoản nhân viên / quản lý rạp.

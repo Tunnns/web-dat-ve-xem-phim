@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   App,
@@ -8,13 +7,16 @@ import {
   Col,
   Descriptions,
   Empty,
+  Form,
   Input,
   Modal,
+  Popconfirm,
   Row,
   Select,
   Space,
   Spin,
   Statistic,
+  Switch,
   Table,
   Tag,
   Typography,
@@ -28,6 +30,10 @@ import {
   PhoneOutlined,
   EyeOutlined,
   ReloadOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  LockOutlined,
+  UnlockOutlined,
 } from '@ant-design/icons';
 import { apiClient, getErrorMessage } from '../../api/client';
 
@@ -46,6 +52,12 @@ type Customer = {
   createdAt?: string;
 };
 
+interface EditCustomerFormValues {
+  fullName: string;
+  phone?: string;
+  role: string;
+  isActive: boolean;
+}
 const getCustomerName = (customer: Customer) =>
   customer.fullName || customer.name || customer.username || 'Chưa cập nhật';
 
@@ -63,24 +75,26 @@ const getCustomerStatus = (customer: Customer) => {
 
 const formatDate = (value?: string) => {
   if (!value) return 'Chưa có thông tin';
-
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return 'Chưa có thông tin';
-
   return date.toLocaleDateString('vi-VN');
 };
 
 const Users: React.FC = () => {
   const { message } = App.useApp();
+  const [form] = Form.useForm<EditCustomerFormValues>();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [selectedCustomer, setSelectedCustomer] =
-    useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Modal Sửa
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -98,19 +112,13 @@ const Users: React.FC = () => {
       const list =
         Array.isArray(responseData)
           ? responseData
-          : Array.isArray(body.data)
+          : Array.isArray(body?.data)
             ? body.data
-            : Array.isArray(body.users)
+            : Array.isArray(body?.users)
               ? body.users
-              : Array.isArray(body.customers)
+              : Array.isArray(body?.customers)
                 ? body.customers
-                : null;
-
-      if (!list) {
-        throw new Error(
-          'API không trả về danh sách khách hàng theo định dạng được hỗ trợ',
-        );
-      }
+                : [];
 
       setCustomers(list as Customer[]);
     } catch (error) {
@@ -124,68 +132,124 @@ const Users: React.FC = () => {
     void fetchCustomers();
   }, []);
 
+  const openEditModal = (customer: Customer) => {
+    setEditingCustomer(customer);
+    form.setFieldsValue({
+      fullName: getCustomerName(customer),
+      phone: customer.phone || '',
+      role: customer.role || 'user',
+      isActive: customer.isActive !== false,
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCustomer) return;
+    try {
+      const values = await form.validateFields();
+      setSavingEdit(true);
+      await apiClient.put(`/users/${editingCustomer._id}`, values);
+      message.success('Cập nhật tài khoản người dùng thành công');
+      setEditModalOpen(false);
+      setEditingCustomer(null);
+      await fetchCustomers();
+    } catch (error) {
+      message.error(getErrorMessage(error));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleToggleStatus = async (customer: Customer) => {
+    try {
+      const newStatus = customer.isActive === false;
+      await apiClient.patch(`/users/${customer._id}/status`, { isActive: newStatus });
+      message.success(newStatus ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản');
+      await fetchCustomers();
+    } catch (error) {
+      message.error(getErrorMessage(error));
+    }
+  };
+
+  const handleDeleteUser = async (customer: Customer) => {
+    try {
+      await apiClient.delete(`/users/${customer._id}`);
+      message.success('Đã xóa người dùng thành công');
+      await fetchCustomers();
+    } catch (error) {
+      message.error(getErrorMessage(error));
+    }
+  };
+
   const filteredCustomers = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
-
     return customers.filter((customer) => {
+      const name = getCustomerName(customer).toLowerCase();
+      const email = (customer.email || '').toLowerCase();
+      const phone = (customer.phone || '').toLowerCase();
+      const query = searchText.trim().toLowerCase();
+
       const matchesSearch =
-        !keyword ||
-        getCustomerName(customer).toLowerCase().includes(keyword) ||
-        (customer.email || '').toLowerCase().includes(keyword) ||
-        (customer.phone || '').toLowerCase().includes(keyword);
+        !query ||
+        name.includes(query) ||
+        email.includes(query) ||
+        phone.includes(query);
 
-      const status = getCustomerStatus(customer);
+      const status =
+        customer.isActive === false || customer.status === 'blocked'
+          ? 'blocked'
+          : customer.status === 'inactive'
+            ? 'inactive'
+            : 'active';
 
-      const matchesStatus =
-        !statusFilter ||
-        (statusFilter === 'active' && status.text === 'Hoạt động') ||
-        (statusFilter === 'blocked' && status.text === 'Đã khóa') ||
-        (statusFilter === 'inactive' &&
-          status.text === 'Không hoạt động');
+      const matchesStatus = !statusFilter || status === statusFilter;
 
-      const isCustomer =
-        !customer.role ||
-        ['user', 'customer', 'client'].includes(
-          customer.role.toLowerCase(),
-        );
-
-      return matchesSearch && matchesStatus && isCustomer;
+      return matchesSearch && matchesStatus;
     });
   }, [customers, searchText, statusFilter]);
 
-  const activeCount = customers.filter(
-    (customer) =>
-      getCustomerStatus(customer).text === 'Hoạt động',
-  ).length;
+  const activeCount = useMemo(
+    () =>
+      customers.filter(
+        (c) => c.isActive !== false && c.status !== 'blocked',
+      ).length,
+    [customers],
+  );
 
-  const blockedCount = customers.filter(
-    (customer) => getCustomerStatus(customer).text === 'Đã khóa',
-  ).length;
+  const blockedCount = useMemo(
+    () =>
+      customers.filter(
+        (c) => c.isActive === false || c.status === 'blocked',
+      ).length,
+    [customers],
+  );
 
   const columns: ColumnsType<Customer> = [
     {
       title: 'Khách hàng',
-      key: 'customer',
-      render: (_, customer) => (
-        <Space size={12}>
-          <Avatar
-            size={42}
-            style={{
-              background: '#e6f4ff',
-              color: '#1677ff',
-              flexShrink: 0,
-            }}
-            icon={<UserOutlined />}
-          />
-          <div>
-            <Text strong>{getCustomerName(customer)}</Text>
-            <br />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              ID: {customer._id}
-            </Text>
-          </div>
-        </Space>
-      ),
+      key: 'name',
+      render: (_, customer) => {
+        const name = getCustomerName(customer);
+        return (
+          <Space orientation="horizontal" size={12}>
+            <Avatar
+              size={42}
+              icon={<UserOutlined />}
+              style={{
+                backgroundColor:
+                  customer.isActive === false ? '#ff4d4f' : '#1677ff',
+              }}
+            />
+            <div>
+              <Text strong style={{ display: 'block' }}>
+                {name}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                ID: {customer._id.slice(-6)} • {customer.role || 'user'}
+              </Text>
+            </div>
+          </Space>
+        );
+      },
     },
     {
       title: 'Email',
@@ -228,15 +292,50 @@ const Users: React.FC = () => {
       key: 'actions',
       align: 'center',
       render: (_, customer) => (
-        <Button
-          icon={<EyeOutlined />}
-          onClick={() => {
-            setSelectedCustomer(customer);
-            setDetailOpen(true);
-          }}
-        >
-          Chi tiết
-        </Button>
+        <Space size={6}>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => {
+              setSelectedCustomer(customer);
+              setDetailOpen(true);
+            }}
+            title="Xem chi tiết"
+          />
+
+          <Button
+            size="small"
+            type="primary"
+            ghost
+            icon={<EditOutlined />}
+            onClick={() => openEditModal(customer)}
+            title="Chỉnh sửa thông tin"
+          />
+
+          <Button
+            size="small"
+            danger={customer.isActive !== false}
+            icon={customer.isActive === false ? <UnlockOutlined /> : <LockOutlined />}
+            onClick={() => void handleToggleStatus(customer)}
+            title={customer.isActive === false ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+          />
+
+          <Popconfirm
+            title="Xác nhận xóa tài khoản?"
+            description={`Bạn có chắc chắn muốn xóa tài khoản ${getCustomerName(customer)}?`}
+            onConfirm={() => void handleDeleteUser(customer)}
+            okText="Xóa"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              title="Xóa tài khoản"
+            />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -258,7 +357,7 @@ const Users: React.FC = () => {
             Quản lý khách hàng
           </Title>
           <Text type="secondary">
-            Theo dõi thông tin và trạng thái tài khoản khách hàng
+            Theo dõi, phân quyền, sửa và khóa tài khoản khách hàng trên hệ thống
           </Text>
         </div>
 
@@ -282,9 +381,9 @@ const Users: React.FC = () => {
             }}
           >
             <Statistic
-              title="Tổng khách hàng"
+              title="Tổng người dùng"
               value={customers.length}
-              suffix="người"
+              suffix="tài khoản"
               prefix={<TeamOutlined style={{ color: '#1677ff' }} />}
             />
           </Card>
@@ -299,10 +398,10 @@ const Users: React.FC = () => {
             }}
           >
             <Statistic
-              title="Tài khoản hoạt động"
+              title="Đang hoạt động"
               value={activeCount}
-              suffix="người"
-              prefix={<UserOutlined style={{ color: '#389e0d' }} />}
+              suffix="tài khoản"
+              valueStyle={{ color: '#3f8600' }}
             />
           </Card>
         </Col>
@@ -316,10 +415,10 @@ const Users: React.FC = () => {
             }}
           >
             <Statistic
-              title="Tài khoản đã khóa"
+              title="Bị khóa"
               value={blockedCount}
-              suffix="người"
-              prefix={<UserOutlined style={{ color: '#cf1322' }} />}
+              suffix="tài khoản"
+              valueStyle={{ color: '#cf1322' }}
             />
           </Card>
         </Col>
@@ -329,23 +428,23 @@ const Users: React.FC = () => {
         bordered={false}
         style={{
           borderRadius: 12,
-          marginBottom: 20,
           boxShadow: '0 2px 10px rgba(20,40,80,0.04)',
+          marginBottom: 24,
         }}
       >
-        <Row gutter={[12, 12]} align="middle">
-          <Col xs={24} md={15}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={16}>
             <Input
-              allowClear
               size="large"
-              prefix={<SearchOutlined style={{ color: '#8c8c8c' }} />}
-              placeholder="Tìm theo tên, email hoặc số điện thoại..."
+              placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
               value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
+              onChange={(e) => setSearchText(e.target.value)}
+              allowClear
             />
           </Col>
 
-          <Col xs={24} md={9}>
+          <Col xs={24} md={8}>
             <Select
               allowClear
               size="large"
@@ -402,8 +501,9 @@ const Users: React.FC = () => {
         </Spin>
       </Card>
 
+      {/* Modal Chi Tiết */}
       <Modal
-        title="Thông tin khách hàng"
+        title="Thông tin chi tiết khách hàng"
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
         footer={[
@@ -425,7 +525,7 @@ const Users: React.FC = () => {
               {selectedCustomer.phone || 'Chưa cập nhật'}
             </Descriptions.Item>
             <Descriptions.Item label="Vai trò">
-              {selectedCustomer.role || 'user'}
+              <Tag color="cyan">{selectedCustomer.role || 'user'}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
               <Tag color={getCustomerStatus(selectedCustomer).color}>
@@ -440,6 +540,59 @@ const Users: React.FC = () => {
             </Descriptions.Item>
           </Descriptions>
         )}
+      </Modal>
+
+      {/* Modal Sửa Khách Hàng */}
+      <Modal
+        title="Cập nhật tài khoản khách hàng"
+        open={editModalOpen}
+        onOk={() => void handleSaveEdit()}
+        onCancel={() => {
+          setEditModalOpen(false);
+          setEditingCustomer(null);
+        }}
+        confirmLoading={savingEdit}
+        okText="Lưu thay đổi"
+        cancelText="Hủy"
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="fullName"
+            label="Họ và tên"
+            rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+          >
+            <Input placeholder="Nhập họ và tên khách hàng" />
+          </Form.Item>
+
+          <Form.Item name="phone" label="Số điện thoại">
+            <Input placeholder="Nhập số điện thoại" />
+          </Form.Item>
+
+          <Form.Item
+            name="role"
+            label="Vai trò"
+            rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
+          >
+            <Select
+              options={[
+                { value: 'user', label: 'Khách hàng (User)' },
+                { value: 'staff', label: 'Nhân viên (Staff)' },
+                { value: 'manager', label: 'Quản lý (Manager)' },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="isActive"
+            label="Trạng thái hoạt động"
+            valuePropName="checked"
+          >
+            <Switch
+              checkedChildren="Hoạt động"
+              unCheckedChildren="Đã khóa"
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );

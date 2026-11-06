@@ -1,21 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Film, Search, User as UserIcon, LogOut, Ticket, TicketCheck, Menu, X } from 'lucide-react'
+import { Film, Search, User as UserIcon, LogOut, Ticket, TicketCheck, Menu, X, MapPin } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
+import { useUserLocationStore } from '../../store/userLocationStore'
 
 export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
-  const { seats } = useCartStore()
+  const { seats, checkAndCleanExpired } = useCartStore()
+  const { city, nearestTheater, openLocationPrompt } = useUserLocationStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Tự động kiểm tra và dọn giỏ vé khi quá hạn giữ ghế (5 phút)
+  useEffect(() => {
+    checkAndCleanExpired()
+    const timer = setInterval(() => {
+      checkAndCleanExpired()
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [checkAndCleanExpired])
+
   const navLinks = [
     { label: 'Trang chủ', path: '/' },
-    { label: 'Phim đang chiếu', path: '/?tab=now_showing' },
-    { label: 'Phim sắp chiếu', path: '/?tab=coming_soon' },
+    { label: 'Lịch chiếu', path: '/showtimes' },
+    { label: 'Khuyến mãi & Tin tức', path: '/promotions' },
   ]
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -71,6 +82,19 @@ export default function Navbar() {
 
         {/* Right Action Bar */}
         <div className="flex items-center gap-3">
+          {/* Nút vị trí & rạp gần nhất */}
+          <button
+            type="button"
+            onClick={openLocationPrompt}
+            className="hidden sm:flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3 py-1.5 text-xs text-zinc-300 hover:border-brand-500/50 hover:text-white transition"
+            title="Nhấn để đổi khu vực hoặc tìm rạp gần nhất"
+          >
+            <MapPin className="h-3.5 w-3.5 text-brand-500" />
+            <span className="font-semibold text-zinc-200 truncate max-w-[150px]">
+              {nearestTheater ? nearestTheater.name.replace('Fivecore Cinema ', '') : city}
+            </span>
+          </button>
+
           {/* Quick Search */}
           <form onSubmit={handleSearchSubmit} className="relative hidden lg:block">
             <input

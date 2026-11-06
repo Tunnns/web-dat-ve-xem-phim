@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   VideoCameraOutlined,
   ShopOutlined,
@@ -1028,14 +1029,23 @@ const Dashboard: React.FC = () => {
             <p>5 giao dịch mới nhất</p>
           </div>
 
-          <button
-            type="button"
-            className="view-all-button"
-            onClick={exportCsv}
-            disabled={tickets.length === 0}
-          >
-            <DownloadOutlined /> Xuất danh sách
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link
+              to="/tickets"
+              className="view-all-button"
+              style={{ textDecoration: 'none', background: '#1677ff', color: '#fff', border: 'none' }}
+            >
+              Xem tất cả đơn vé ({tickets.length})
+            </Link>
+            <button
+              type="button"
+              className="view-all-button"
+              onClick={exportCsv}
+              disabled={tickets.length === 0}
+            >
+              <DownloadOutlined /> Xuất danh sách
+            </button>
+          </div>
         </div>
 
         {ticketError && (

@@ -5,20 +5,26 @@ export interface Theater {
   city: string
   hotline?: string
   image?: string
+  location?: { lat?: number; lng?: number }
+  distanceKm?: number
+}
+
+export interface ShowtimeSlot {
+  showtimeId: string
+  startTime: string
+  endTime: string
+  roomName: string
+  price: number
+  availableSeats: number
+  totalSeats: number
+  date?: string
+  isEarlyAccess?: boolean
 }
 
 export interface ShowtimeGroup {
   theater: Theater
   formats: {
     formatName: string // '2D Phụ Đề' | 'IMAX 2D'
-    slots: {
-      showtimeId: string
-      startTime: string
-      endTime: string
-      roomName: string
-      price: number
-      availableSeats: number
-      totalSeats: number
-    }[]
+    slots: ShowtimeSlot[]
   }[]
 }

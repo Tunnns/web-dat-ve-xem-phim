@@ -17,6 +17,7 @@ import {
   Select,
   Space,
   Statistic,
+  Switch,
   Table,
   Tag,
   Typography,
@@ -68,6 +69,7 @@ interface ShowtimeFormValues {
   startTime: Dayjs;
   endTime: Dayjs;
   price: number;
+  isEarlyAccess?: boolean;
 }
 
 type IdReference = string | { _id: string };
@@ -114,19 +116,28 @@ const getShowtimeStatus = (
 };
 
 const renderShowtimeStatus = (record: Showtime) => {
+  let statusTag = <Tag>Đã kết thúc</Tag>;
   switch (getShowtimeStatus(record)) {
     case 'cancelled':
-      return <Tag color="error">Đã hủy</Tag>;
-
+      statusTag = <Tag color="error">Đã hủy</Tag>;
+      break;
     case 'scheduled':
-      return <Tag color="success">Sắp chiếu</Tag>;
-
+      statusTag = <Tag color="success">Sắp chiếu</Tag>;
+      break;
     case 'showing':
-      return <Tag color="processing">Đang chiếu</Tag>;
-
+      statusTag = <Tag color="processing">Đang chiếu</Tag>;
+      break;
     case 'finished':
-      return <Tag>Đã kết thúc</Tag>;
+      statusTag = <Tag>Đã kết thúc</Tag>;
+      break;
   }
+
+  return (
+    <Space direction="vertical" size={2}>
+      {record.isEarlyAccess && <Tag color="purple">Chiếu sớm</Tag>}
+      {statusTag}
+    </Space>
+  );
 };
 
 const Showtimes: React.FC = () => {
@@ -330,12 +341,19 @@ const Showtimes: React.FC = () => {
   const openEdit = (record: Showtime) => {
     setEditing(record);
     setModalOpen(true);
+    form.setFieldsValue({
+      movie: getId(record.movie),
+      theater: getId(record.theater),
+      room: getId(record.room),
+      startTime: dayjs(record.startTime),
+      endTime: dayjs(record.endTime),
+      price: record.price,
+      isEarlyAccess: Boolean(record.isEarlyAccess),
+    });
   };
 
   useEffect(() => {
     if (!modalOpen) return;
-
-    form.resetFields();
 
     if (editing) {
       form.setFieldsValue({
@@ -345,12 +363,29 @@ const Showtimes: React.FC = () => {
         startTime: dayjs(editing.startTime),
         endTime: dayjs(editing.endTime),
         price: editing.price,
+        isEarlyAccess: Boolean(editing.isEarlyAccess),
       });
     }
   }, [modalOpen, editing, form]);
 
   const handleTheaterChange = () => {
     form.setFieldValue('room', undefined);
+  };
+
+  const handleMovieChange = (movieId: string) => {
+    const selectedMovie = movies.find((m) => m._id === movieId);
+    const start = form.getFieldValue('startTime');
+    if (start && selectedMovie?.duration) {
+      form.setFieldValue('endTime', dayjs(start).add(selectedMovie.duration, 'minute'));
+    }
+  };
+
+  const handleStartTimeChange = (start: Dayjs | null) => {
+    if (!start) return;
+    const movieId = form.getFieldValue('movie');
+    const selectedMovie = movies.find((m) => m._id === movieId);
+    const duration = selectedMovie?.duration || 120;
+    form.setFieldValue('endTime', dayjs(start).add(duration, 'minute'));
   };
 
   // Tạo hoặc cập nhật suất chiếu.
@@ -365,6 +400,11 @@ const Showtimes: React.FC = () => {
 
     if (!values.endTime.isAfter(values.startTime)) {
       message.error('Thời gian kết thúc phải sau thời gian bắt đầu');
+      return;
+    }
+
+    if (values.endTime.diff(values.startTime, 'hour') > 24) {
+      message.error('Suất chiếu không thể kéo dài hơn 24 giờ. Vui lòng kiểm tra lại ngày kết thúc');
       return;
     }
 
@@ -383,6 +423,7 @@ const Showtimes: React.FC = () => {
         startTime: values.startTime.toISOString(),
         endTime: values.endTime.toISOString(),
         price: values.price,
+        isEarlyAccess: Boolean(values.isEarlyAccess),
       };
 
       if (editing) {
@@ -463,10 +504,10 @@ const Showtimes: React.FC = () => {
         (item) => item._id === roomId,
       ) as
         | (Room & {
-            capacity?: number;
-            seats?: number;
-            totalSeats?: number;
-          })
+          capacity?: number;
+          seats?: number;
+          totalSeats?: number;
+        })
         | undefined;
 
       if (!room) return null;
@@ -882,17 +923,17 @@ const Showtimes: React.FC = () => {
 
                           <Space direction="vertical" size={7}>
                             <Text>
-                              <CalendarOutlined />　
+                              <CalendarOutlined />
                               {start.format('DD/MM/YYYY')}
                             </Text>
 
                             <Text>
-                              <ClockCircleOutlined />　
+                              <ClockCircleOutlined />
                               {start.format('HH:mm')} – {end.format('HH:mm')}
                             </Text>
 
                             <Text>
-                              ♙　
+                              ♙
                               {capacity !== null
                                 ? `${capacity} ghế`
                                 : 'Chưa có thông tin số ghế'}
@@ -1004,12 +1045,10 @@ const Showtimes: React.FC = () => {
         okText={editing ? 'Lưu thay đổi' : 'Tạo suất chiếu'}
         cancelText="Hủy"
         width={760}
-        destroyOnHidden
       >
         <Form
           form={form}
           layout="vertical"
-          preserve={false}
           style={{ marginTop: 20 }}
         >
           <Form.Item
@@ -1025,8 +1064,9 @@ const Showtimes: React.FC = () => {
               optionFilterProp="label"
               options={movies.map((movie) => ({
                 value: movie._id,
-                label: movie.title,
+                label: `${movie.title} (${movie.duration} phút)`,
               }))}
+              onChange={handleMovieChange}
             />
           </Form.Item>
 
@@ -1092,6 +1132,7 @@ const Showtimes: React.FC = () => {
                     current.isBefore(dayjs().startOf('day')) &&
                     !editing
                   }
+                  onChange={handleStartTimeChange}
                 />
               </Form.Item>
             </Col>
@@ -1106,12 +1147,35 @@ const Showtimes: React.FC = () => {
                     message: 'Vui lòng chọn giờ kết thúc',
                   },
                 ]}
+                extra={
+                  <Space style={{ marginTop: 4 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Tự động tính theo thời lượng phim.
+                    </Text>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, fontSize: 12 }}
+                      onClick={() => handleStartTimeChange(form.getFieldValue('startTime'))}
+                    >
+                      Đồng bộ lại
+                    </Button>
+                  </Space>
+                }
               >
                 <DatePicker
                   showTime
                   format="DD/MM/YYYY HH:mm"
                   style={{ width: '100%' }}
                   placeholder="Chọn thời gian kết thúc"
+                  disabledDate={(current) => {
+                    const start = form.getFieldValue('startTime');
+                    if (!start) return false;
+                    return (
+                      !current.isSame(start, 'day') &&
+                      !current.isSame(start.add(1, 'day'), 'day')
+                    );
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -1135,6 +1199,15 @@ const Showtimes: React.FC = () => {
               style={{ width: '100%' }}
               placeholder="Nhập giá vé"
             />
+          </Form.Item>
+
+          <Form.Item
+            name="isEarlyAccess"
+            label="Suất chiếu sớm"
+            valuePropName="checked"
+            extra="Bật cờ này để cho phép khán giả đặt vé xem trước ngày khởi chiếu chính thức của phim"
+          >
+            <Switch checkedChildren="Có" unCheckedChildren="Không" />
           </Form.Item>
         </Form>
       </Modal>

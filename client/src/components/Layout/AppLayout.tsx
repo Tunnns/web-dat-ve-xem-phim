@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import Navbar from '../Navbar/Navbar'
 import Footer from '../Footer/Footer'
+import { LocationPromptModal } from '../Location/LocationPromptModal'
 
 export default function AppLayout() {
   return (
@@ -10,6 +11,7 @@ export default function AppLayout() {
         <Outlet />
       </main>
       <Footer />
+      <LocationPromptModal />
     </div>
   )
 }

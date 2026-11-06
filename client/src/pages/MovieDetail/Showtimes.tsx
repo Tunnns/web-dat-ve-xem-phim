@@ -7,6 +7,8 @@ import { getUpcomingDays } from '../../utils/date'
 interface ShowtimesProps {
   showtimeGroups: ShowtimeGroup[]
   movieTitle: string
+  movieStatus?: string
+  releaseDate?: string
   selectedShowtimeId?: string
   onSelectSlot?: (showtimeId: string) => void
 }
@@ -16,6 +18,8 @@ const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ'
 export default function Showtimes({
   showtimeGroups,
   movieTitle,
+  movieStatus,
+  releaseDate,
   selectedShowtimeId,
   onSelectSlot,
 }: ShowtimesProps) {
@@ -34,13 +38,26 @@ export default function Showtimes({
     return ['Tất cả', ...Array.from(set)]
   }, [showtimeGroups])
 
-  // Lọc theo thành phố
+  // Lọc theo thành phố và ngày được chọn
   const filteredGroups = useMemo(() => {
-    return showtimeGroups.filter((g) => {
-      if (selectedCity === 'Tất cả') return true
-      return g.theater.city === selectedCity
-    })
-  }, [showtimeGroups, selectedCity])
+    return showtimeGroups
+      .filter((g) => {
+        if (selectedCity === 'Tất cả') return true
+        return g.theater.city === selectedCity
+      })
+      .map((g) => {
+        const matchingFormats = g.formats
+          .map((fmt) => {
+            const dateSlots = fmt.slots.filter(
+              (s) => !s.date || s.date === selectedDate,
+            )
+            return { ...fmt, slots: dateSlots }
+          })
+          .filter((fmt) => fmt.slots.length > 0)
+        return { ...g, formats: matchingFormats }
+      })
+      .filter((g) => g.formats.length > 0)
+  }, [showtimeGroups, selectedCity, selectedDate])
 
   const handleClickSlot = (showtimeId: string) => {
     if (onSelectSlot) {
@@ -49,6 +66,8 @@ export default function Showtimes({
       navigate(`/booking/${showtimeId}`)
     }
   }
+
+  const isMovieUpcoming = movieStatus === 'coming_soon'
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-md">
@@ -102,8 +121,19 @@ export default function Showtimes({
       {/* Theater & Showtime Groups */}
       <div className="mt-8 space-y-6">
         {filteredGroups.length === 0 ? (
-          <div className="py-12 text-center text-zinc-500">
-            Không có suất chiếu nào phù hợp tại khu vực đã chọn.
+          <div className="py-12 text-center text-zinc-400">
+            {showtimeGroups.length === 0 && isMovieUpcoming ? (
+              <div className="space-y-2">
+                <p className="text-base font-semibold text-zinc-300">
+                  Phim sắp khởi chiếu vào {releaseDate || 'sắp tới'}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Chưa có suất chiếu hoặc suất chiếu sớm mở bán cho phim này. Xin quý khách vui lòng quay lại sau.
+                </p>
+              </div>
+            ) : (
+              <p>Không có suất chiếu nào vào ngày đã chọn tại khu vực này.</p>
+            )}
           </div>
         ) : (
           filteredGroups.map((group) => (
@@ -152,6 +182,11 @@ export default function Showtimes({
                                 : 'border-zinc-700/80 bg-zinc-900/90 hover:border-brand-500 hover:bg-zinc-800'
                             }`}
                           >
+                            {slot.isEarlyAccess && (
+                              <span className="mb-1 rounded bg-purple-500/20 px-1.5 py-0.2 text-[9px] font-semibold text-purple-300 border border-purple-500/40">
+                                Chiếu sớm
+                              </span>
+                            )}
                             <span
                               className={`font-mono text-base font-bold ${
                                 isSlotSelected

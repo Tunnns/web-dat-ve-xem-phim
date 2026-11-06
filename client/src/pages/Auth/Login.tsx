@@ -5,6 +5,7 @@ import AuthLayout from '../../components/AuthLayout'
 import InputField from '../../components/InputField'
 import { getErrorMessage } from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
+import { useUserLocationStore } from '../../store/userLocationStore'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -52,6 +53,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(form)
+      useUserLocationStore.getState().openLocationPrompt()
       navigate('/', { replace: true })
     } catch (err) {
       setServerError(getErrorMessage(err))
