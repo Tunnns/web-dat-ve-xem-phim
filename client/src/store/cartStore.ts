@@ -20,6 +20,7 @@ interface CartState {
   hasSeat: (seatId: string) => boolean
   startLockTimer: () => void
   resetLockTimer: () => void
+  checkAndCleanExpired: () => boolean
 }
 
 // Giỏ vé tạm thời, lưu localStorage (key: "cart-storage")
@@ -147,6 +148,22 @@ export const useCartStore = create<CartState>()(
       resetLockTimer: () => {
         set({ lockExpiresAt: null, ticketId: null })
       },
+
+      checkAndCleanExpired: () => {
+        const { lockExpiresAt, seats } = get()
+        if (lockExpiresAt && Date.now() > lockExpiresAt) {
+          if (seats.length > 0) {
+            set({
+              showtime: null,
+              seats: [],
+              ticketId: null,
+              lockExpiresAt: null,
+            })
+            return true
+          }
+        }
+        return false
+      },
     }),
     {
       name: 'cart-storage',
@@ -156,6 +173,11 @@ export const useCartStore = create<CartState>()(
         ticketId: s.ticketId,
         lockExpiresAt: s.lockExpiresAt,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state && state.lockExpiresAt && Date.now() > state.lockExpiresAt) {
+          state.clearCart()
+        }
+      },
     },
   ),
 )

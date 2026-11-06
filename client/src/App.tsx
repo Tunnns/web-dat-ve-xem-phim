@@ -3,6 +3,8 @@ import { GuestRoute, ProtectedRoute } from './components/RouteGuards'
 import AppLayout from './components/Layout/AppLayout'
 import Home from './pages/Home'
 import MovieDetail from './pages/MovieDetail'
+import ShowtimesPage from './pages/Showtimes/ShowtimesPage'
+import PromotionsPage from './pages/Promotions/PromotionsPage'
 import { SeatMap } from './components/SeatMap'
 import Checkout from './pages/Checkout/Checkout'
 import Login from './pages/Auth/Login'
@@ -44,6 +46,8 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/movie/:id" element={<MovieDetail />} />
+          <Route path="/showtimes" element={<ShowtimesPage />} />
+          <Route path="/promotions" element={<PromotionsPage />} />
           <Route path="/booking/:showtimeId" element={<BookingSeatMapPage />} />
           <Route path="/checkout" element={<Checkout />} />
 

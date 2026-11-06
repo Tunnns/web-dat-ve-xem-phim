@@ -32,7 +32,12 @@ import {
   updateVoucher,
   deleteVoucher,
   getUsers,
+  updateUser,
+  updateUserStatus,
+  deleteUser,
   getTickets,
+  getAuditLogs,
+  getRevenue,
 } from '../controllers/admin.controller';
 import {
   getAdminAccounts,
@@ -44,7 +49,7 @@ import {
 } from '../controllers/admin-account.controller';
 
 import { protect, restrictTo } from '../middlewares/auth.middleware';
-import { uploadMovieImages, uploadSinglePoster } from '../middlewares/upload.middleware';
+import { uploadMovieImages, uploadSinglePoster, uploadSingleImage } from '../middlewares/upload.middleware';
 
 const router = Router();
 
@@ -202,6 +207,7 @@ const showtimeCreateRules = [
   body('startTime').isISO8601().toDate().withMessage('Thời gian bắt đầu không hợp lệ'),
   body('endTime').isISO8601().toDate().withMessage('Thời gian kết thúc không hợp lệ'),
   body('price').isFloat({ min: 0 }).withMessage('Giá vé phải là số dương'),
+  body('isEarlyAccess').optional().isBoolean().withMessage('Suất chiếu sớm phải là boolean'),
 ];
 
 const showtimeUpdateRules = [
@@ -211,6 +217,7 @@ const showtimeUpdateRules = [
   body('startTime').optional().isISO8601().toDate().withMessage('Thời gian bắt đầu không hợp lệ'),
   body('endTime').optional().isISO8601().toDate().withMessage('Thời gian kết thúc không hợp lệ'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Giá vé phải là số dương'),
+  body('isEarlyAccess').optional().isBoolean().withMessage('Suất chiếu sớm phải là boolean'),
 ];
 
 router.get('/showtimes', getShowtimes);
@@ -231,6 +238,7 @@ const comboCreateRules = [
     .isInt({ min: 1 })
     .withMessage('Số lượng thành phần phải là số nguyên dương'),
   body('image').optional().trim(),
+  body('flavors').optional().isArray().withMessage('Danh sách vị bắp phải là mảng'),
   body('description').optional().trim(),
   body('isActive').optional().isBoolean().withMessage('Trạng thái phải là boolean'),
 ];
@@ -245,9 +253,26 @@ const comboUpdateRules = [
     .isInt({ min: 1 })
     .withMessage('Số lượng thành phần phải là số nguyên dương'),
   body('image').optional().trim(),
+  body('flavors').optional().isArray().withMessage('Danh sách vị bắp phải là mảng'),
   body('description').optional().trim(),
   body('isActive').optional().isBoolean().withMessage('Trạng thái phải là boolean'),
 ];
+
+router.post('/combos/upload', requireAdminOrManager, uploadSingleImage, (req: Request, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Vui lòng chọn ảnh combo từ máy tính' });
+  }
+  const imageUrl = `/uploads/${req.file.filename}`;
+  res.status(201).json({
+    success: true,
+    message: 'Upload ảnh combo thành công',
+    data: {
+      filename: req.file.filename,
+      imageUrl,
+      fullUrl: `http://localhost:${process.env.PORT || 5000}${imageUrl}`,
+    },
+  });
+});
 
 router.get('/combos', getCombos);
 router.get('/combos/:id', getComboById);
@@ -304,9 +329,16 @@ router.delete('/vouchers/:id', requireAdminOrManager, deleteVoucher);
 /* ============================ NGƯỜI DÙNG & KHÁCH HÀNG ============================ */
 router.get('/users', requireStaffOrAdmin, getUsers);
 router.get('/customers', requireStaffOrAdmin, getUsers);
+router.put('/users/:id', requireAdminOrManager, updateUser);
+router.patch('/users/:id/status', requireAdminOrManager, updateUserStatus);
+router.delete('/users/:id', requireSuperAdmin, deleteUser);
 
 /* ============================ VÉ ĐẶT (Tickets) ============================ */
 router.get('/tickets', requireStaffOrAdmin, getTickets);
+
+/* ============================ NHẬT KÝ QUẢN TRỊ (Audit Logs) ============================ */
+// Chỉ Admin được xem những tài khoản quản trị nào đang thao tác
+router.get('/logs', requireSuperAdmin, getAuditLogs);
 /* ============================ QUẢN LÝ TÀI KHOẢN ============================ */
 
 // Chỉ admin được quản lý tài khoản quản trị.
@@ -345,5 +377,8 @@ router.delete(
   requireSuperAdmin,
   deleteAdminAccount
 );
+
+/* ============================ DOANH THU (Revenue) ============================ */
+router.get('/revenue', requireStaffOrAdmin, getRevenue);
 
 export default router;

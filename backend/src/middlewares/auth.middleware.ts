@@ -6,6 +6,8 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: UserRole;
+    fullName?: string;
+    email?: string;
   };
 }
 
@@ -79,6 +81,8 @@ export const protect = async (
     req.user = {
       id: user._id.toString(),
       role: user.role,
+      fullName: user.fullName,
+      email: user.email,
     };
 
     next();

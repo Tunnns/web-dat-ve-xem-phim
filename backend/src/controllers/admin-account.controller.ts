@@ -3,8 +3,18 @@ import bcrypt from 'bcryptjs';
 import User, { UserRole } from '../models/User';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { AppError } from '../utils/appError';
+import { recordAuditLog } from '../services/audit-log.service';
 
 const ADMIN_ROLES: UserRole[] = ['admin', 'manager', 'staff'];
+
+const getActorFromReq = (req: AuthRequest) => ({
+  userId: String(req.user?.id || 'unknown'),
+  userName: req.user?.fullName || 'Quản trị viên',
+  userEmail: req.user?.email || 'admin@fivecore.vn',
+  userRole: req.user?.role || 'admin',
+  ip: req.ip || (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress,
+  userAgent: (req.headers['user-agent'] as string) || '',
+});
 
 const handleError = (res: Response, error: unknown): void => {
   if (error instanceof AppError) {
@@ -128,6 +138,12 @@ export const createAdminAccount = async (
       isActive: true,
     });
 
+    void recordAuditLog({
+      ...getActorFromReq(req),
+      action: 'Tạo tài khoản quản trị',
+      target: `Tài khoản: ${account.fullName} (${account.email}) [${account.role}]`,
+    });
+
     res.status(201).json({
       success: true,
       message: 'Tạo tài khoản thành công',
@@ -222,6 +238,12 @@ export const updateAdminAccount = async (
 
     await account.save();
 
+    void recordAuditLog({
+      ...getActorFromReq(req),
+      action: 'Cập nhật tài khoản quản trị',
+      target: `Tài khoản: ${account.fullName} (${account.email}) [${account.role}]`,
+    });
+
     res.status(200).json({
       success: true,
       message: 'Cập nhật tài khoản thành công',
@@ -263,6 +285,12 @@ export const updateAdminAccountStatus = async (
 
     account.isActive = isActive;
     await account.save();
+
+    void recordAuditLog({
+      ...getActorFromReq(req),
+      action: isActive ? 'Mở khóa tài khoản quản trị' : 'Khóa tài khoản quản trị',
+      target: `Tài khoản: ${account.fullName} (${account.email})`,
+    });
 
     res.status(200).json({
       success: true,
@@ -310,6 +338,12 @@ export const resetAdminAccountPassword = async (
 
     await account.save();
 
+    void recordAuditLog({
+      ...getActorFromReq(req),
+      action: 'Đặt lại mật khẩu tài khoản quản trị',
+      target: `Tài khoản: ${account.fullName} (${account.email})`,
+    });
+
     res.status(200).json({
       success: true,
       message: 'Đặt lại mật khẩu thành công',
@@ -354,6 +388,12 @@ export const deleteAdminAccount = async (
     }
 
     await account.deleteOne();
+
+    void recordAuditLog({
+      ...getActorFromReq(req),
+      action: 'Xóa tài khoản quản trị',
+      target: `Tài khoản: ${account.fullName} (${account.email}) [${account.role}]`,
+    });
 
     res.status(200).json({
       success: true,

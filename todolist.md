@@ -1,9 +1,41 @@
-- thiếu chọn rạp theo khu vực
-- lỗi ngày sắp chiếu vẫn đặt vé ngày gần được (ví dụ để 2028 vẫn mua vé ở ngày gần nhất với gốc được) 
-- thiếu phần hiển thị các slot vé đã đặt (của user) bên admin dashboard, chỉ có 5 đơn gần nhất trên main dashboard
-- thêm phần hiển thị ưu đãi, giảm giá bên client
-- update suất chiếu ko fill thông tin 
-- thêm phần suất chiếu sớm
-- quá hạn giữ ghế sẽ gỡ khỏi phần "giỏ vé"
-- thêm log admin (chỉ admin được xem những tài khoản quản trị nào đang thao tác)
-- thiếu phần quản lý tài khoản user (sửa, xoá, ...)
+# Danh sach cong viec va trang thai trien khai
+
+- [x] 1. Thieu chon rap theo khu vuc, hien thi rap gan nhat vi tri hien tai da chon
+  - Client: `client/src/utils/distance.ts` (Haversine formula), `client/src/pages/Showtimes/ShowtimesPage.tsx` (bo loc khu vuc Ha Noi, TP.HCM, Da Nang, Can Tho; nut lay toa do GPS navigator.geolocation sap xep theo khoang cach km).
+- [x] 2. Loi ngay sap chieu van dat ve ngay gan duoc (vi du de 2028 van mua ve o ngay gan nhat)
+  - Backend: `backend/src/services/showtime.service.ts` chan tao/cap nhat suat chieu truoc ngay khoi chieu (`movie.releaseDate`) tru khi danh dau `isEarlyAccess = true`.
+  - Client: Loai bo toan bo mock slot mac dinh trong `client/src/api/showtimeApi.ts`, kiem tra ngay chat che tai `client/src/pages/Home/QuickBooking.tsx` va `client/src/pages/MovieDetail/Showtimes.tsx`.
+- [x] 3. Thieu phan hien thi cac slot ve da dat (cua user) ben admin dashboard
+  - Backend: `backend/src/controllers/admin.controller.ts` endpoint `GET /api/admin/tickets` bo sung search, date range, pagination, status filter.
+  - Admin: Trang quan ly ve tap trung `admin/src/pages/Tickets/index.tsx`, route `/tickets`, link truc tiep tu Recent Bookings tren Dashboard.
+- [x] 4. Them phan hien thi uu dai, giam gia ben client, tin tuc
+  - Client: Trang khuyen mai & tin tuc dien anh `client/src/pages/Promotions/PromotionsPage.tsx` voi 2 tab Uu dai/Voucher (sao chep ma, dieu kien, han dung) va Tin tuc/Su kien (modal chi tiet bai viet). Tich hop vao Navbar va Footer.
+- [x] 5. Update suat chieu khong fill thong tin
+  - Admin: `admin/src/pages/Showtimes/index.tsx` xu ly dong bo form state, bo `destroyOnHidden` va `preserve={false}`, goi `form.setFieldsValue` khi mo modal chinh sua de tu dong nap day du thong tin.
+- [x] 6. Them phan suat chieu som
+  - Backend: Schema `isEarlyAccess` trong `backend/src/models/Showtime.ts`, logic validation tai `backend/src/services/showtime.service.ts`.
+  - Admin: Switch toggle Chieu som trong form tao/sua suat chieu va badge tag tai bang/grid `admin/src/pages/Showtimes/index.tsx`.
+  - Client: Badge Chieu som tai `client/src/pages/Showtimes/ShowtimesPage.tsx` va `client/src/pages/MovieDetail/Showtimes.tsx`.
+- [x] 7. Qua han giu ghe se go khoi phan "gio ve"
+  - Client: `client/src/store/cartStore.ts` ham `checkAndCleanExpired()` xoa cart khi `Date.now() > lockExpiresAt`. Ticker tu dong 1 giay tai `client/src/components/Navbar/Navbar.tsx` va bo lang nghe redirect tai `client/src/pages/Checkout/Checkout.tsx`.
+- [x] 8. Them log admin (chi admin duoc xem nhung tai khoan quan tri nao dang thao tac)
+  - Backend: Model `backend/src/models/AuditLog.ts`, service `backend/src/services/audit-log.service.ts`, ghi log toan bo thao tac ghi (phim, rap, phong, suat chieu, tai khoan quan tri, khach hang), route `GET /api/admin/logs` kem middleware `requireSuperAdmin`.
+  - Admin: Trang nhat ky he thong `admin/src/pages/Logs/index.tsx`, route `/logs`, chi cho phep role `admin` truy cap.
+- [x] 9. Thieu phan quan ly tai khoan user (sua, xoa, khoa/mo khoa)
+  - Backend: `backend/src/controllers/admin.controller.ts` voi cac route `PUT /api/admin/users/:id`, `PATCH /api/admin/users/:id/status`, `DELETE /api/admin/users/:id`.
+  - Admin: Trang quan ly khach hang `admin/src/pages/Users/index.tsx` tich hop modal sua ho ten/email/so dien thoai, switch khoa/mo khoa tai khoan, xac nhan xoa khach hang.
+- [x] 10. Bao cao doanh thu, bieu do va danh sach chi tiet giao dich ben admin
+  - Backend: `backend/src/services/revenue.service.ts` tong hop doanh thu ve, combo, ty le theo phim, rap, phuong thuc thanh toan, route `GET /api/admin/revenue`.
+  - Admin: Trang `admin/src/pages/Revenue/index.tsx` voi 6 the KPI, bo loc ngay/rap/phim/thanh toan, 5 bieu do Recharts, bang chi tiet giao dich va xuat CSV.
+- [x] 11. Chon vi tri khi dang nhap thanh cong va de xuat rap chieu gan nhat
+  - Client: `client/src/store/userLocationStore.ts`, modal `client/src/components/Location/LocationPromptModal.tsx` tu dong bat sau khi dang nhap, tinh khoang cach Haversine GPS/thanh pho va de xuat rap gan nhat. Pill vi tri tren Navbar cho phep doi vi tri bat cu luc nao.
+- [x] 12. Quan ly Voucher (CRUD) ben admin
+  - Admin: Trang `admin/src/pages/Vouchers/index.tsx` voi the thong ke, bang danh sach, tim kiem, toggle kich hoat, modal tao moi/chinh sua va xoa voucher.
+- [x] 13. Quan ly Combo bap nuoc, upload anh tu may tinh va chon vi bap ngo
+  - Backend: Route `POST /api/admin/combos/upload` luu file vao uploads, ho tro truong `flavors` trong model `Combo`.
+  - Admin: Trang `admin/src/pages/Combos/index.tsx` tich hop `<Upload>` file anh tu may tinh, nhap tag vi bap ngo.
+  - Client: `client/src/components/ComboSelector/ComboSelector.tsx` cho phep khach hang chon vi bap ngo (Ngot, Pho mai, Caramel, Man) khi them vao don.
+- [x] 14. Fix loi trung suat chieu va tu dong dong bo gio ket thuc theo thoi luong phim
+  - Backend: `backend/src/services/showtime.service.ts` chan suat chieu qua 24h, thong bao chi tiet ten phim, phong chieu va khung gio xung dot (409 Conflict).
+  - Admin: `admin/src/pages/Showtimes/index.tsx` tu dong tinh gio ket thuc = bat dau + thoi luong phim, gioi han DatePicker ket thuc trong cung ngay.
+

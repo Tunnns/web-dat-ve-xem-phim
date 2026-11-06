@@ -9,10 +9,31 @@ import { AppError } from '../utils/appError';
 // Kiểm tra trùng lịch chiếu trong cùng một phòng
 const assertNoOverlap = async (room: string, start: Date, end: Date, excludeId?: string) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filter: Record<string, any> = { room, startTime: { $lt: end }, endTime: { $gt: start } };
-  if (excludeId) filter._id = { $ne: excludeId };
-  if (await Showtime.exists(filter)) {
-    throw new AppError('Phòng đã có suất chiếu khác trùng thời gian', 409);
+  const filter: Record<string, any> = {
+    room: new mongoose.Types.ObjectId(room),
+    startTime: { $lt: end },
+    endTime: { $gt: start },
+  };
+
+  if (excludeId && mongoose.Types.ObjectId.isValid(excludeId)) {
+    filter._id = { $ne: new mongoose.Types.ObjectId(excludeId) };
+  }
+
+  const conflicting = await Showtime.findOne(filter)
+    .populate('movie', 'title')
+    .populate('room', 'name');
+
+  if (conflicting) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const movieTitle = (conflicting.movie as any)?.title || 'khác';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const roomName = (conflicting.room as any)?.name || 'này';
+    const cStart = new Date(conflicting.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(conflicting.startTime).toLocaleDateString('vi-VN');
+    const cEnd = new Date(conflicting.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(conflicting.endTime).toLocaleDateString('vi-VN');
+    throw new AppError(
+      `Phòng "${roomName}" đã có suất chiếu phim "${movieTitle}" (${cStart} - ${cEnd}) trùng với khung giờ bạn chọn`,
+      409
+    );
   }
 };
 
@@ -149,6 +170,28 @@ export const createShowtime = async (data: any) => {
     throw new AppError('Thời gian bắt đầu phải trước thời gian kết thúc', 400);
   }
 
+  if (new Date(endTime).getTime() - new Date(startTime).getTime() > 24 * 60 * 60 * 1000) {
+    throw new AppError('Thời lượng suất chiếu không thể vượt quá 24 giờ', 400);
+  }
+
+  // Kiểm tra ngày khởi chiếu nếu không phải là suất chiếu sớm
+  if (movieExists.releaseDate) {
+    const releaseDate = new Date(movieExists.releaseDate);
+    const releaseDayStart = new Date(
+      releaseDate.getFullYear(),
+      releaseDate.getMonth(),
+      releaseDate.getDate()
+    ).getTime();
+    const showtimeStart = new Date(startTime).getTime();
+
+    if (showtimeStart < releaseDayStart && !data.isEarlyAccess) {
+      throw new AppError(
+        'Thời gian chiếu trước ngày khởi chiếu của phim. Vui lòng bật cờ "Suất chiếu sớm" nếu đây là suất chiếu sớm.',
+        400
+      );
+    }
+  }
+
   await assertNoOverlap(room, new Date(startTime), new Date(endTime));
 
   return Showtime.create(data);
@@ -186,10 +229,12 @@ export const updateShowtime = async (id: string, data: any) => {
   }
 
   // Gộp dữ liệu mới với dữ liệu cũ để kiểm tra nhất quán
+  const finalMovieId = data.movie ?? existing.movie;
   const finalTheater = String(data.theater ?? existing.theater);
   const finalRoom = String(data.room ?? existing.room);
   const startTime = new Date(data.startTime ?? existing.startTime);
   const endTime = new Date(data.endTime ?? existing.endTime);
+  const isEarly = data.isEarlyAccess !== undefined ? data.isEarlyAccess : existing.isEarlyAccess;
 
   if (data.theater || data.room) {
     const roomDoc = await Room.findById(finalRoom);
@@ -200,6 +245,26 @@ export const updateShowtime = async (id: string, data: any) => {
 
   if (startTime >= endTime) {
     throw new AppError('Thời gian bắt đầu phải trước thời gian kết thúc', 400);
+  }
+
+  if (endTime.getTime() - startTime.getTime() > 24 * 60 * 60 * 1000) {
+    throw new AppError('Thời lượng suất chiếu không thể vượt quá 24 giờ', 400);
+  }
+
+  const movieDoc = await Movie.findById(finalMovieId);
+  if (movieDoc?.releaseDate) {
+    const releaseDate = new Date(movieDoc.releaseDate);
+    const releaseDayStart = new Date(
+      releaseDate.getFullYear(),
+      releaseDate.getMonth(),
+      releaseDate.getDate()
+    ).getTime();
+    if (startTime.getTime() < releaseDayStart && !isEarly) {
+      throw new AppError(
+        'Thời gian chiếu trước ngày khởi chiếu của phim. Vui lòng bật cờ "Suất chiếu sớm" nếu đây là suất chiếu sớm.',
+        400
+      );
+    }
   }
 
   await assertNoOverlap(finalRoom, startTime, endTime, id);

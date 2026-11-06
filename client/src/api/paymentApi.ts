@@ -13,6 +13,7 @@ export interface Combo {
   items: ComboItem[]
   description?: string
   image?: string
+  flavors?: string[]
   isActive: boolean
 }
 

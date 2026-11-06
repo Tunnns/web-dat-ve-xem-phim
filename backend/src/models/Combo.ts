@@ -11,6 +11,7 @@ export interface ICombo extends Document {
   price: number; // Giá bán combo
   items: IComboItem[]; // Danh sách thành phần bắp/nước đi kèm
   image?: string;
+  flavors?: string[]; // Danh sách các vị bắp có thể chọn (VD: ["Ngọt", "Phô mai", "Caramel", "Mặn"])
   isActive: boolean; // Còn bán hay đã ngừng
   createdAt: Date;
   updatedAt: Date;
@@ -31,6 +32,7 @@ const comboSchema = new Schema<ICombo>(
     price: { type: Number, required: true, min: 0 },
     items: { type: [comboItemSchema], default: [] },
     image: { type: String },
+    flavors: { type: [String], default: ['Ngọt', 'Phô mai', 'Caramel', 'Mặn'] },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

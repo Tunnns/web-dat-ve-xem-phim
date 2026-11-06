@@ -3,8 +3,6 @@ import type { Theater, ShowtimeGroup } from '../types/theater'
 import type { Seat, ShowtimeInfo, SeatStatus } from '../types/booking'
 import type { Movie } from '../types/movie'
 import {
-  MOCK_THEATERS,
-  getShowtimeGroupsForMovie,
   getShowtimeSeatMapData,
 } from '../data/mockData'
 
@@ -60,6 +58,7 @@ export function groupShowtimesByTheater(showtimes: any[]): ShowtimeGroup[] {
               : 'TP. Hồ Chí Minh'),
           hotline: theater.hotline,
           image: theater.image,
+          location: theater.location,
         },
         formats: [],
       })
@@ -104,6 +103,8 @@ export function groupShowtimesByTheater(showtimes: any[]): ShowtimeGroup[] {
       price: st.price,
       availableSeats,
       totalSeats,
+      date: !isNaN(start.getTime()) ? start.toISOString().slice(0, 10) : undefined,
+      isEarlyAccess: Boolean(st.isEarlyAccess),
     })
   })
 
@@ -177,7 +178,7 @@ export const showtimeApi = {
     try {
       const res = await api.get('/admin/theaters')
       const data = res.data?.data ?? res.data
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         return data.map((t: any) => ({
           _id: String(t._id),
           name: t.name,
@@ -191,12 +192,13 @@ export const showtimeApi = {
               : 'TP. Hồ Chí Minh'),
           hotline: t.hotline,
           image: t.image,
+          location: t.location,
         }))
       }
-      return MOCK_THEATERS
+      return []
     } catch (err) {
-      console.warn('Lỗi kết nối /admin/theaters, dùng mockData:', err)
-      return MOCK_THEATERS
+      console.warn('Lỗi kết nối /admin/theaters:', err)
+      return []
     }
   },
 
@@ -225,14 +227,13 @@ export const showtimeApi = {
         params: { movie: movieId },
       })
       const showtimes = res.data?.data ?? res.data
-      if (Array.isArray(showtimes) && showtimes.length > 0) {
-        const groups = groupShowtimesByTheater(showtimes)
-        if (groups.length > 0) return groups
+      if (Array.isArray(showtimes)) {
+        return groupShowtimesByTheater(showtimes)
       }
-      return getShowtimeGroupsForMovie(movieId)
+      return []
     } catch (err) {
-      console.warn(`Lỗi kết nối /admin/showtimes?movie=${movieId}, dùng mockData:`, err)
-      return getShowtimeGroupsForMovie(movieId)
+      console.warn(`Lỗi kết nối /admin/showtimes?movie=${movieId}:`, err)
+      return []
     }
   },
 

@@ -1043,7 +1043,9 @@ const Movies: React.FC = () => {
                   accept="image/jpeg,image/png,image/webp"
                   maxCount={1}
                   showUploadList={false}
-                  beforeUpload={(file) => handlePosterUpload(file)}
+                  customRequest={({ file, onSuccess }) => {
+                    handlePosterUpload(file as File).then(() => onSuccess?.('ok'));
+                  }}
                 >
                   <Button
                     icon={<UploadOutlined />}

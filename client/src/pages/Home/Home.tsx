@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Sparkles, Film, Clapperboard, Award, ShieldCheck, Zap } from 'lucide-react'
+import { Sparkles, Film, Clapperboard, Award, Zap } from 'lucide-react'
 import type { Movie } from '../../types/movie'
 import type { Theater } from '../../types/theater'
 import { movieApi } from '../../api/movieApi'
@@ -59,7 +59,7 @@ export default function Home() {
       const matchesTab = searchQuery ? true : movie.status === activeTab
       const matchesSearch = searchQuery
         ? movie.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          movie.actors?.some((a) => a.toLowerCase().includes(searchQuery.toLowerCase()))
+        movie.actors?.some((a) => a.toLowerCase().includes(searchQuery.toLowerCase()))
         : true
       const matchesGenre =
         selectedGenre === 'Tất cả' ? true : movie.genre.includes(selectedGenre)
@@ -99,11 +99,10 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setTab('now_showing')}
-              className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm sm:text-base font-bold transition ${
-                activeTab === 'now_showing'
+              className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm sm:text-base font-bold transition ${activeTab === 'now_showing'
                   ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30'
                   : 'bg-zinc-900 text-zinc-400 hover:text-white'
-              }`}
+                }`}
             >
               <Film className="h-4 w-4" />
               <span>Phim Đang Chiếu</span>
@@ -112,11 +111,10 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setTab('coming_soon')}
-              className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm sm:text-base font-bold transition ${
-                activeTab === 'coming_soon'
+              className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm sm:text-base font-bold transition ${activeTab === 'coming_soon'
                   ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30'
                   : 'bg-zinc-900 text-zinc-400 hover:text-white'
-              }`}
+                }`}
             >
               <Clapperboard className="h-4 w-4" />
               <span>Phim Sắp Chiếu</span>
@@ -130,11 +128,10 @@ export default function Home() {
                 key={genre}
                 type="button"
                 onClick={() => setSelectedGenre(genre)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  selectedGenre === genre
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${selectedGenre === genre
                     ? 'bg-zinc-100 text-zinc-900'
                     : 'bg-zinc-900/80 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-                }`}
+                  }`}
               >
                 {genre}
               </button>
@@ -245,7 +242,7 @@ export default function Home() {
           </div>
 
           {/* Member Banner */}
-          <div className="mt-12 rounded-2xl border border-brand-500/30 bg-gradient-to-r from-brand-950/60 via-zinc-900 to-zinc-950 p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          {/* <div className="mt-12 rounded-2xl border border-brand-500/30 bg-gradient-to-r from-brand-950/60 via-zinc-900 to-zinc-950 p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-lg shadow-brand-500/30">
                 <ShieldCheck className="h-7 w-7" />
@@ -263,7 +260,7 @@ export default function Home() {
             >
               Tham gia ngay
             </button>
-          </div>
+          </div> */}
         </div>
       </section>
 

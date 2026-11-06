@@ -10,6 +10,7 @@ export interface IShowtime extends Document {
   startTime: Date;
   endTime: Date;
   price: number;
+  isEarlyAccess?: boolean;
   status: ShowtimeStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -44,6 +45,10 @@ const showtimeSchema = new Schema<IShowtime>(
       type: Number,
       required: true,
       min: 0,
+    },
+    isEarlyAccess: {
+      type: Boolean,
+      default: false,
     },
     status: {
       type: String,

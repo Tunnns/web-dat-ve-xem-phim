@@ -13,7 +13,12 @@ import Theaters from './pages/Theaters';
 import Rooms from './pages/Rooms';
 import Showtimes from './pages/Showtimes';
 import Users from './pages/Users';
+import Tickets from './pages/Tickets';
+import Revenue from './pages/Revenue';
+import Vouchers from './pages/Vouchers';
+import Combos from './pages/Combos';
 import Accounts from './pages/Accounts';
+import Logs from './pages/Logs';
 
 const Forbidden: React.FC = () => {
   const navigate = useNavigate();
@@ -59,6 +64,9 @@ const App: React.FC = () => {
                 <Route path="theaters" element={<Theaters />} />
                 <Route path="rooms" element={<Rooms />} />
                 <Route path="showtimes" element={<Showtimes />} />
+                <Route path="revenue" element={<Revenue />} />
+                <Route path="vouchers" element={<Vouchers />} />
+                <Route path="combos" element={<Combos />} />
               </Route>
 
               <Route
@@ -69,15 +77,17 @@ const App: React.FC = () => {
                 }
               >
                 <Route path="users" element={<Users />} />
+                <Route path="tickets" element={<Tickets />} />
               </Route>
 
-              {/* Chỉ Admin được quản lý tài khoản quản trị */}
+              {/* Chỉ Admin được quản lý tài khoản quản trị và xem nhật ký */}
               <Route
                 element={
                   <ProtectedRoute allowedRoles={['admin']} />
                 }
               >
                 <Route path="accounts" element={<Accounts />} />
+                <Route path="logs" element={<Logs />} />
               </Route>
             </Route>
           </Route>

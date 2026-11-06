@@ -24,6 +24,11 @@ import {
   PlusOutlined,
   SettingOutlined,
   TeamOutlined,
+  BarcodeOutlined,
+  AuditOutlined,
+  LineChartOutlined,
+  GiftOutlined,
+  CoffeeOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
@@ -79,9 +84,39 @@ const menuDefinitions: MenuDefinition[] = [
     roles: ['admin', 'manager', 'staff'],
   },
   {
+    key: '/tickets',
+    icon: <BarcodeOutlined />,
+    label: 'Quản lý vé đặt',
+    roles: ['admin', 'manager', 'staff'],
+  },
+  {
+    key: '/revenue',
+    icon: <LineChartOutlined />,
+    label: 'Báo cáo doanh thu',
+    roles: ['admin', 'manager'],
+  },
+  {
+    key: '/vouchers',
+    icon: <GiftOutlined />,
+    label: 'Mã giảm giá (Voucher)',
+    roles: ['admin', 'manager'],
+  },
+  {
+    key: '/combos',
+    icon: <CoffeeOutlined />,
+    label: 'Combo bắp nước',
+    roles: ['admin', 'manager'],
+  },
+  {
     key: '/accounts',
     icon: <TeamOutlined />,
     label: 'Tài khoản & Phân quyền',
+    roles: ['admin'],
+  },
+  {
+    key: '/logs',
+    icon: <AuditOutlined />,
+    label: 'Nhật ký quản trị',
     roles: ['admin'],
   },
 ];
@@ -93,7 +128,12 @@ const pageNames: Record<string, string> = {
   '/rooms': 'Phòng chiếu',
   '/showtimes': 'Suất chiếu',
   '/users': 'Khách hàng',
+  '/tickets': 'Quản lý vé đặt',
+  '/revenue': 'Báo cáo doanh thu',
+  '/vouchers': 'Mã giảm giá (Voucher)',
+  '/combos': 'Combo bắp nước',
   '/accounts': 'Tài khoản & Phân quyền',
+  '/logs': 'Nhật ký quản trị',
 };
 
 const AdminLayout: React.FC = () => {

@@ -41,13 +41,13 @@ export const movieApi = {
     try {
       const response = await api.get('/admin/movies')
       const rawList = response.data?.data ?? response.data
-      if (Array.isArray(rawList) && rawList.length > 0) {
+      if (Array.isArray(rawList)) {
         return rawList.map(formatMovie)
       }
-      return MOCK_MOVIES
+      return []
     } catch (err) {
-      console.warn('Lỗi kết nối /admin/movies, dùng mockData:', err)
-      return MOCK_MOVIES
+      console.warn('Lỗi kết nối /admin/movies:', err)
+      return []
     }
   },
 

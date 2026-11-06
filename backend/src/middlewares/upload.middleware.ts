@@ -37,7 +37,7 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024,
   },
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    if (file.mimetype.startsWith('image/') || ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new AppError('Chỉ chấp nhận file ảnh (JPG, PNG, WEBP, GIF)', 400));
@@ -53,4 +53,7 @@ export const uploadMovieImages = upload.fields([
 
 // Middleware upload 1 ảnh Poster cho Phim
 export const uploadSinglePoster = upload.single('poster');
+
+// Middleware upload 1 ảnh bất kỳ (Combo, Banner, Avatar)
+export const uploadSingleImage = upload.single('image');
 
