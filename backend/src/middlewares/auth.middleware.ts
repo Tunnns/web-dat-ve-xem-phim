@@ -1,53 +1,147 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import User, { UserRole } from '../models/User';
 
 export interface AuthRequest extends Request {
-  user?: { id: string; role: 'user' | 'admin' };
+  user?: {
+    id: string;
+    role: UserRole;
+    fullName?: string;
+    email?: string;
+  };
 }
 
-/* Yêu cầu header Authorization: Bearer <token> */
-export const protect = (req: AuthRequest, res: Response, next: NextFunction): Response | void => {
+interface JwtPayload {
+  id: string;
+  role: UserRole;
+}
+
+/**
+ * Kiểm tra token và trạng thái tài khoản.
+ * Nếu tài khoản bị khóa hoặc đổi quyền, token cũ
+ * cũng không thể tiếp tục sử dụng quyền cũ.
+ */
+export const protect = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   const header = req.headers.authorization;
+
   if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+    res.status(401).json({
+      success: false,
+      message: 'Vui lòng đăng nhập',
+    });
+    return;
   }
+
+  const token = header.slice(7);
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret) {
+    res.status(500).json({
+      success: false,
+      message: 'Server chưa cấu hình JWT_SECRET',
+    });
+    return;
+  }
+
+  let payload: JwtPayload;
+
   try {
-    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET as string) as {
-      id: string;
-      role: 'user' | 'admin';
-    };
-    req.user = { id: payload.id, role: payload.role };
-    return next();
+    payload = jwt.verify(token, secret) as JwtPayload;
   } catch {
-    return res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn' });
+    res.status(401).json({
+      success: false,
+      message: 'Token không hợp lệ hoặc đã hết hạn',
+    });
+    return;
+  }
+
+  try {
+    const user = await User.findById(payload.id);
+
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        message: 'Tài khoản không tồn tại',
+      });
+      return;
+    }
+
+    if (user.isActive === false) {
+      res.status(403).json({
+        success: false,
+        message: 'Tài khoản đã bị khóa',
+      });
+      return;
+    }
+
+    req.user = {
+      id: user._id.toString(),
+      role: user.role,
+      fullName: user.fullName,
+      email: user.email,
+    };
+
+    next();
+  } catch (error) {
+    next(error);
   }
 };
 
+/**
+ * Chỉ cho phép các vai trò được chỉ định truy cập.
+ */
 export const restrictTo =
-  (...roles: Array<'user' | 'admin'>) =>
-    (req: AuthRequest, res: Response, next: NextFunction): Response | void => {
-      if (!req.user || !roles.includes(req.user.role)) {
-        return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-      }
-      return next();
-    };
+  (...roles: UserRole[]) =>
+  (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ): void => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền thực hiện thao tác này',
+      });
+      return;
+    }
 
-/* Trích xuất user nếu có Bearer token, không bắt buộc đăng nhập */
-export const optionalProtect = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+    next();
+  };
+
+/**
+ * Lấy thông tin token nếu có, không bắt buộc đăng nhập.
+ * Dùng cho các route công khai như booking.
+ */
+export const optionalProtect = (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+): void => {
   const header = req.headers.authorization;
-  if (header?.startsWith('Bearer ')) {
+  const secret = process.env.JWT_SECRET;
+
+  if (header?.startsWith('Bearer ') && secret) {
     try {
-      const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET as string) as {
-        id: string;
-        role: 'user' | 'admin';
+      const payload = jwt.verify(
+        header.slice(7),
+        secret
+      ) as JwtPayload;
+
+      req.user = {
+        id: payload.id,
+        role: payload.role,
       };
-      req.user = { id: payload.id, role: payload.role };
     } catch {
-      // Bỏ qua nếu token không hợp lệ, coi như khách
+      // Token không hợp lệ: tiếp tục như khách chưa đăng nhập.
     }
   }
-  return next();
-};
-// Alias để tương thích cả 2 route booking.route.ts (optionalAuth) và ticket.route.ts (optionalProtect)
-export const optionalAuth = optionalProtect;
 
+  next();
+};
+
+// Giữ tương thích với các route cũ.
+export const optionalAuth = optionalProtect;

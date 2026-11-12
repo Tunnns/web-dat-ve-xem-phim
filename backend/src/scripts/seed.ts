@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
 import Movie from '../models/Movie';
 import Theater from '../models/Theater';
 import Room from '../models/Room';
 import Showtime from '../models/Showtime';
 import Combo from '../models/Combo';
 import Voucher from '../models/Voucher';
+import User from '../models/User';
 
 dotenv.config();
 
@@ -43,6 +45,19 @@ async function seedData() {
       Combo.deleteMany({}),
       Voucher.deleteMany({}),
     ]);
+
+    // 0. Default Admin User
+    const existingAdmin = await User.findOne({ email: 'admin@cineops.com' });
+    if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      await User.create({
+        fullName: 'Administrator',
+        email: 'admin@cineops.com',
+        password: hashedPassword,
+        phone: '0901234567',
+        role: 'admin',
+      });
+    }
 
     // 1. Theaters
     const theaters = await Theater.insertMany([

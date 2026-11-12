@@ -4,10 +4,58 @@ import axios from 'axios';
 const baseURL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api/admin';
 
+// Key lưu phiên đăng nhập riêng của ứng dụng Admin
+export const ADMIN_AUTH_STORAGE = 'cineops-auth-storage';
+
 export const apiClient = axios.create({
   baseURL,
   timeout: 20000,
 });
+
+// Tự động lấy JWT và gửi lên Backend
+apiClient.interceptors.request.use(
+  (config) => {
+    try {
+      const savedAuth = localStorage.getItem(ADMIN_AUTH_STORAGE);
+
+      if (savedAuth) {
+        const parsed = JSON.parse(savedAuth);
+
+        // Hỗ trợ cấu trúc Zustand persist và cấu trúc thông thường
+        const token =
+          parsed?.state?.token ??
+          parsed?.token ??
+          null;
+
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    } catch {
+      // Dữ liệu đăng nhập lỗi thì không gửi token
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+// Tự xử lý khi token hết hạn hoặc không hợp lệ
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem(ADMIN_AUTH_STORAGE);
+
+      // Chỉ chuyển hướng nếu đang ở ứng dụng Admin
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 interface ValidationError {
   msg?: string;
@@ -45,17 +93,12 @@ export const getErrorMessage = (error: unknown): string => {
   return 'Đã xảy ra lỗi không xác định';
 };
 
-// Hàm lấy dữ liệu danh sách từ API
+// Lấy dữ liệu danh sách từ API
 const getList = async (endpoint: string): Promise<any[]> => {
   const response = await apiClient.get(endpoint);
-
   const result = response.data?.data ?? response.data;
 
-  if (Array.isArray(result)) {
-    return result;
-  }
-
-  return [];
+  return Array.isArray(result) ? result : [];
 };
 
 // Danh sách phim
@@ -72,3 +115,32 @@ export const getShowtimes = () => getList('/showtimes');
 
 // Danh sách vé đặt
 export const getTickets = () => getList('/tickets');
+
+// Báo cáo thống kê doanh thu
+export const getRevenue = (params?: {
+  startDate?: string;
+  endDate?: string;
+  theaterId?: string;
+  movieId?: string;
+  paymentMethod?: string;
+}) => apiClient.get('/revenue', { params });
+
+// Quản lý mã giảm giá (Vouchers)
+export const getVouchers = () => getList('/vouchers');
+export const getVoucherById = (id: string) => apiClient.get(`/vouchers/${id}`);
+export const createVoucher = (payload: any) => apiClient.post('/vouchers', payload);
+export const updateVoucher = (id: string, payload: any) => apiClient.put(`/vouchers/${id}`, payload);
+export const deleteVoucher = (id: string) => apiClient.delete(`/vouchers/${id}`);
+
+// Quản lý Combo bắp nước
+export const getCombos = () => getList('/combos');
+export const getComboById = (id: string) => apiClient.get(`/combos/${id}`);
+export const createCombo = (payload: any) => apiClient.post('/combos', payload);
+export const updateCombo = (id: string, payload: any) => apiClient.put(`/combos/${id}`, payload);
+export const deleteCombo = (id: string) => apiClient.delete(`/combos/${id}`);
+export const uploadComboImage = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('image', file);
+  const res = await apiClient.post('/combos/upload', formData);
+  return res.data?.data?.imageUrl || res.data?.imageUrl;
+};

@@ -1,0 +1,218 @@
+
+.accounts-page {
+  min-height: 100%;
+  padding: 26px;
+  background: #f4f7fc;
+  color: #172033;
+}
+
+.accounts-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.accounts-heading h2 {
+  margin: 8px 0 5px !important;
+  color: #172033 !important;
+  font-size: 28px !important;
+  font-weight: 750 !important;
+}
+
+.accounts-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2463eb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.accounts-statistics {
+  margin-bottom: 20px;
+}
+
+.account-stat-card,
+.accounts-filter-card,
+.accounts-table-card,
+.accounts-permission-card {
+  border: 1px solid #edf0f6 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 5px 20px rgba(28, 48, 90, 0.045);
+}
+
+.account-stat-card {
+  height: 100%;
+}
+
+.account-stat-card .ant-statistic-title {
+  color: #718096;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.account-stat-card .ant-statistic-content {
+  margin: 9px 0;
+  color: #172033;
+  font-size: 27px;
+  font-weight: 750;
+}
+
+.account-stat-card .ant-statistic-content-prefix {
+  margin-right: 10px;
+  color: #2463eb;
+  font-size: 21px;
+}
+
+.account-stat-card .ant-typography {
+  font-size: 12px;
+}
+
+.accounts-filter-card {
+  margin-bottom: 18px;
+}
+
+.accounts-filter-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.accounts-filter-heading h5 {
+  margin: 0 0 5px !important;
+  font-weight: 700 !important;
+}
+
+.account-filter-select {
+  width: 100%;
+}
+
+.accounts-table-card .ant-card-body {
+  padding: 8px 20px 18px;
+}
+
+.accounts-table-card .ant-table-thead > tr > th {
+  padding-top: 17px;
+  padding-bottom: 17px;
+  background: #f7f9fd;
+  color: #718096;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.5px;
+}
+
+.accounts-table-card .ant-table-tbody > tr > td {
+  padding-top: 17px;
+  padding-bottom: 17px;
+}
+
+.accounts-table-card .ant-table-tbody > tr:hover > td {
+  background: #f7faff !important;
+}
+
+.account-name {
+  display: inline-block;
+  max-width: 180px;
+  color: #172033;
+}
+
+.account-id {
+  max-width: 190px;
+  overflow: hidden;
+  color: #9aa4b5;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+.account-muted-icon {
+  color: #9aa4b5;
+}
+
+.accounts-permission-card {
+  margin-top: 20px;
+}
+
+.permission-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 20px;
+  color: #2463eb;
+  font-size: 25px;
+}
+
+.permission-card-heading h5 {
+  margin: 0 0 5px !important;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.permission-card-heading .ant-typography {
+  font-size: 12px;
+}
+
+.permission-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.permission-table {
+  width: 100%;
+  min-width: 550px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.permission-table th,
+.permission-table td {
+  padding: 13px 15px;
+  border: 1px solid #edf0f6;
+  text-align: center;
+}
+
+.permission-table th {
+  background: #f5f8ff;
+  color: #43516a;
+  font-weight: 700;
+}
+
+.permission-table td:first-child,
+.permission-table th:first-child {
+  text-align: left;
+}
+
+.permission-table td {
+  color: #586579;
+}
+
+.permission-note {
+  display: block;
+  margin-top: 15px;
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .accounts-page {
+    padding: 15px;
+  }
+
+  .accounts-heading {
+    align-items: flex-start;
+  }
+
+  .accounts-heading h2 {
+    font-size: 23px !important;
+  }
+
+  .accounts-table-card .ant-card-body {
+    padding: 8px;
+  }
+}

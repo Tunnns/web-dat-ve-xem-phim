@@ -43,6 +43,7 @@ export interface Seat {
   code: string;
   type: SeatType;
   status: SeatStatus;
+  surcharge?: number; // Phụ phí riêng (ghi đè phụ phí theo loại)
 }
 
 export interface Room {
@@ -50,6 +51,7 @@ export interface Room {
   name: string;
   theater: string | { _id: string; name: string; address: string };
   seatLayout: Seat[];
+  seatSurcharges?: Partial<Record<SeatType, number>>;
   capacity: number;
   createdAt: string;
   updatedAt: string;
@@ -82,6 +84,43 @@ export interface Showtime {
   startTime: string;
   endTime: string;
   price: number;
-  createdAt: string;
-  updatedAt: string;
+  isEarlyAccess?: boolean;
+  status?: 'scheduled' | 'cancelled';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Voucher {
+  _id: string;
+  code: string;
+  description?: string;
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  maxDiscount?: number | null;
+  minOrderValue: number;
+  startDate: string;
+  endDate: string;
+  usageLimit?: number | null;
+  usageCount: number;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ComboItem {
+  name: string;
+  quantity: number;
+}
+
+export interface Combo {
+  _id: string;
+  name: string;
+  description?: string;
+  price: number;
+  items: ComboItem[];
+  image?: string;
+  flavors?: string[];
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }

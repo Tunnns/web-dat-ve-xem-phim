@@ -39,6 +39,7 @@ export default function Checkout() {
     ticketId,
     clearCart,
     totalPrice,
+    checkAndCleanExpired,
   } = useCartStore()
 
   // State
@@ -90,12 +91,22 @@ export default function Checkout() {
     return unsub
   }, [])
 
-  // Redirect nếu chưa chọn ghế (chỉ sau khi hydrate xong)
+  // Redirect nếu chưa chọn ghế hoặc vé đã hết hạn giữ chỗ
   useEffect(() => {
-    if (hydrated && (!showtime || selectedSeats.length === 0)) {
+    if (hydrated && !completedTicket && (!showtime || selectedSeats.length === 0)) {
       navigate('/', { replace: true })
     }
-  }, [hydrated, showtime, selectedSeats, navigate])
+  }, [hydrated, completedTicket, showtime, selectedSeats, navigate])
+
+  useEffect(() => {
+    if (completedTicket) return
+    const interval = setInterval(() => {
+      if (checkAndCleanExpired()) {
+        navigate('/', { replace: true })
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [completedTicket, checkAndCleanExpired, navigate])
 
   // ── Tính tiền subtotal cơ bản (vé + combo) ──
   const ticketSubtotal = totalPrice()
@@ -111,6 +122,12 @@ export default function Checkout() {
 
     setCalculating(true)
     setCalcError('')
+
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(showtime.id)
+    if (!isMongoId) {
+      setCalculating(false)
+      return
+    }
 
     try {
       const result = await paymentApi.calculate({
@@ -198,11 +215,10 @@ export default function Checkout() {
       if (checkRes.paid && checkRes.ticket) {
         try {
           const audio = new Audio('https://www.myinstants.com/media/sounds/buy_1.mp3')
-          audio.play().catch(() => {})
-        } catch {}
+          audio.play().catch(() => { })
+        } catch { }
 
         setCompletedTicket(checkRes.ticket)
-        clearCart()
         return
       }
 
@@ -224,10 +240,9 @@ export default function Checkout() {
       const res = await paymentApi.simulateTransfer(qrData.description)
       try {
         const audio = new Audio('https://www.myinstants.com/media/sounds/buy_1.mp3')
-        audio.play().catch(() => {})
-      } catch {}
+        audio.play().catch(() => { })
+      } catch { }
       setCompletedTicket(res?.ticket || res)
-      clearCart()
     } catch (err) {
       alert(getErrorMessage(err))
     } finally {
@@ -246,10 +261,9 @@ export default function Checkout() {
           clearInterval(interval)
           try {
             const audio = new Audio('https://www.myinstants.com/media/sounds/buy_1.mp3')
-            audio.play().catch(() => {})
-          } catch {}
+            audio.play().catch(() => { })
+          } catch { }
           setCompletedTicket(result.ticket)
-          clearCart()
         }
       } catch (err) {
         console.warn('Lỗi kiểm tra trạng thái vé nội bộ:', err)
@@ -783,7 +797,7 @@ export default function Checkout() {
                       disabled={confirming}
                       onClick={() => handleFinalizePayment(qrData.description)}
                     >
-                      {confirming ? 'Đang xác thực giao dịch...' : 'Tôi đã chuyển khoản thành công'}
+                      {confirming ? 'Đang xác thực giao dịch...' : 'Kiểm tra giao dịch'}
                     </button>
 
                     <button
@@ -803,7 +817,7 @@ export default function Checkout() {
                         cursor: 'pointer',
                       }}
                     >
-                      Mô phỏng chuyển khoản thành công (Test Mode)
+                      Duyệt Bill (Test)
                     </button>
                   </>
                 ) : null}
@@ -815,4 +829,3 @@ export default function Checkout() {
     </div>
   )
 }
- 

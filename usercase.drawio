@@ -1,0 +1,237 @@
+<mxfile host="app.diagrams.net" modified="2026-11-05T08:10:00.000Z" agent="Antigravity" version="24.0.0" type="device">
+  <diagram id="use_case_cineops" name="So Do Use Case He Thong CineOps">
+    <mxGraphModel dx="1680" dy="1020" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1250" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- KHUNG RANH GIOI HE THONG -->
+        <mxCell id="sys_boundary" value="Hệ Thống Đặt Vé Xem Phim (CineOps / FiveCore Cinema)" style="swimlane;whiteSpace=wrap;html=1;startSize=36;fillColor=#F8FAFC;fontColor=#0F172A;strokeColor=#334155;strokeWidth=2;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="250" y="40" width="1240" height="1130" as="geometry" />
+        </mxCell>
+
+        <!-- SUBGRAPH 1: KHACH HANG -->
+        <mxCell id="sub_customer" value="Phân Hệ Khách Hàng (Web Client)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#3B82F6;strokeWidth=1;dashed=1;verticalAlign=top;fontStyle=3;fontColor=#1D4ED8;fontSize=13;spacingTop=6;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="30" y="50" width="1180" height="420" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_auth" value="Đăng ký / Đăng nhập /&#xa;Quản lý tài khoản" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="60" y="90" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_movies" value="Xem danh sách phim&#xa;và chi tiết phim" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="60" y="170" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_showtime" value="Tra cứu lịch chiếu&#xa;theo rạp và ngày" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="60" y="250" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_ticket_history" value="Xem lịch sử đặt vé&#xa;và mã QR vé điện tử" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="60" y="330" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_select_seat" value="Chọn ghế theo sơ đồ&#xa;thời gian thực" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="320" y="170" width="190" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_hold_seat" value="Khóa giữ ghế tạm thời&#xa;(Seat Locking 5 phút)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#92400E;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="620" y="170" width="190" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_payment" value="Thanh toán quét mã&#xa;VietQR tự động" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="320" y="300" width="190" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_combos" value="Chọn combo bắp nước" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#92400E;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="620" y="270" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_voucher" value="Áp dụng mã giảm giá&#xa;(Voucher)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#92400E;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="620" y="345" width="180" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_webhook" value="Tiếp nhận Webhook biến động&#xa;số dư và kích hoạt vé" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#065F46;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="900" y="300" width="220" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- SUBGRAPH 2: NHAN VIEN -->
+        <mxCell id="sub_staff" value="Phân Hệ Nhân Viên (Staff / POS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#10B981;strokeWidth=1;dashed=1;verticalAlign=top;fontStyle=3;fontColor=#047857;fontSize=13;spacingTop=6;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="30" y="490" width="1180" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_checkin" value="Quét mã QR và&#xa;soát vé vào rạp" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#059669;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="240" y="540" width="200" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_pos" value="Tra cứu ghế trống và&#xa;bán vé tại quầy (POS)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#059669;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="540" y="540" width="210" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- SUBGRAPH 3: QUAN LY -->
+        <mxCell id="sub_manager" value="Phân Hệ Quản Lý Cụm Rạp (Manager Portal)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;strokeWidth=1;dashed=1;verticalAlign=top;fontStyle=3;fontColor=#B45309;fontSize=13;spacingTop=6;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="30" y="660" width="1180" height="210" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_showtimes" value="Quản lý lịch chiếu&#xa;(Thêm / Sửa / Xếp suất)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="100" y="710" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_rooms" value="Quản lý phòng chiếu&#xa;và sơ đồ ghế" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="340" y="710" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_combos" value="Quản lý danh mục và&#xa;giá combo bắp nước" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="580" y="710" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_vouchers" value="Quản lý mã giảm giá&#xa;(Voucher)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="820" y="710" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_branch_stats" value="Xem thống kê doanh thu&#xa;theo cụm rạp" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="460" y="785" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- SUBGRAPH 4: QUAN TRI VIEN -->
+        <mxCell id="sub_admin" value="Phân Hệ Quản Trị Hệ Thống (Admin Portal)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAF5FF;strokeColor=#8B5CF6;strokeWidth=1;dashed=1;verticalAlign=top;fontStyle=3;fontColor=#6D28D9;fontSize=13;spacingTop=6;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="30" y="890" width="1180" height="210" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_movies" value="Quản lý danh mục phim&#xa;(Thêm / Sửa / Poster)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="80" y="940" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_theaters" value="Quản lý hệ thống&#xa;cụm rạp" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="320" y="940" width="190" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_users" value="Quản lý danh sách&#xa;khách hàng" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="550" y="940" width="190" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_manage_accounts" value="Quản lý tài khoản và&#xa;phân quyền nhân sự" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="780" y="940" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_system_stats" value="Xem báo cáo tổng&#xa;doanh thu toàn hệ thống" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;strokeWidth=1.5;fontSize=12;fontStyle=1;" vertex="1" parent="sys_boundary">
+          <mxGeometry x="450" y="1015" width="230" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- TAC NHAN (ACTORS) BEN NGOAI -->
+        <mxCell id="actor_customer" value="Khách hàng" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1.5;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="240" width="55" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_staff" value="Nhân viên quầy /&#xa;Soát vé (Staff)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#D1FAE5;strokeColor=#059669;strokeWidth=1.5;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="560" width="55" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_manager" value="Quản lý cụm rạp&#xa;(Manager)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=1.5;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="750" width="55" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_admin" value="Quản trị viên&#xa;hệ thống (Admin)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#EDE9FE;strokeColor=#7C3AED;strokeWidth=1.5;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="970" width="55" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_gateway" value="Cổng thanh toán&#xa;(SePay / MBBank)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.5;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="320" width="55" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- QUAN HE KE THUA GIUA CAC VAI TRO -->
+        <mxCell id="edge_inherit_1" value="Kế thừa" style="endArrow=block;endFill=0;html=1;rounded=0;strokeWidth=1.5;strokeColor=#475569;fontSize=11;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="actor_staff" target="actor_manager">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_inherit_2" value="Kế thừa" style="endArrow=block;endFill=0;html=1;rounded=0;strokeWidth=1.5;strokeColor=#475569;fontSize=11;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="actor_manager" target="actor_admin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LIEN KET KHACH HANG -->
+        <mxCell id="edge_c1" style="endArrow=none;html=1;rounded=0;strokeColor=#2563EB;strokeWidth=1.2;" edge="1" parent="1" source="actor_customer" target="uc_auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_c2" style="endArrow=none;html=1;rounded=0;strokeColor=#2563EB;strokeWidth=1.2;" edge="1" parent="1" source="actor_customer" target="uc_movies">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_c3" style="endArrow=none;html=1;rounded=0;strokeColor=#2563EB;strokeWidth=1.2;" edge="1" parent="1" source="actor_customer" target="uc_showtime">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_c4" style="endArrow=none;html=1;rounded=0;strokeColor=#2563EB;strokeWidth=1.2;" edge="1" parent="1" source="actor_customer" target="uc_select_seat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_c5" style="endArrow=none;html=1;rounded=0;strokeColor=#2563EB;strokeWidth=1.2;" edge="1" parent="1" source="actor_customer" target="uc_payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_c6" style="endArrow=none;html=1;rounded=0;strokeColor=#2563EB;strokeWidth=1.2;" edge="1" parent="1" source="actor_customer" target="uc_ticket_history">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- QUAN HE INCLUDE / EXTEND PHAN HE KHACH HANG -->
+        <mxCell id="edge_inc_seat" value="&amp;laquo;include&amp;raquo;" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeColor=#D97706;strokeWidth=1.2;fontSize=11;fontStyle=2;fontColor=#B45309;" edge="1" parent="sys_boundary" source="uc_select_seat" target="uc_hold_seat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_ext_combo" value="&amp;laquo;extend&amp;raquo;" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeColor=#D97706;strokeWidth=1.2;fontSize=11;fontStyle=2;fontColor=#B45309;" edge="1" parent="sys_boundary" source="uc_combos" target="uc_payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_ext_voucher" value="&amp;laquo;extend&amp;raquo;" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeColor=#D97706;strokeWidth=1.2;fontSize=11;fontStyle=2;fontColor=#B45309;" edge="1" parent="sys_boundary" source="uc_voucher" target="uc_payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LIEN KET NHAN VIEN -->
+        <mxCell id="edge_s1" style="endArrow=none;html=1;rounded=0;strokeColor=#059669;strokeWidth=1.2;" edge="1" parent="1" source="actor_staff" target="uc_checkin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_s2" style="endArrow=none;html=1;rounded=0;strokeColor=#059669;strokeWidth=1.2;" edge="1" parent="1" source="actor_staff" target="uc_pos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LIEN KET QUAN LY -->
+        <mxCell id="edge_m1" style="endArrow=none;html=1;rounded=0;strokeColor=#D97706;strokeWidth=1.2;" edge="1" parent="1" source="actor_manager" target="uc_manage_showtimes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_m2" style="endArrow=none;html=1;rounded=0;strokeColor=#D97706;strokeWidth=1.2;" edge="1" parent="1" source="actor_manager" target="uc_manage_rooms">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_m3" style="endArrow=none;html=1;rounded=0;strokeColor=#D97706;strokeWidth=1.2;" edge="1" parent="1" source="actor_manager" target="uc_manage_combos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_m4" style="endArrow=none;html=1;rounded=0;strokeColor=#D97706;strokeWidth=1.2;" edge="1" parent="1" source="actor_manager" target="uc_manage_vouchers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_m5" style="endArrow=none;html=1;rounded=0;strokeColor=#D97706;strokeWidth=1.2;" edge="1" parent="1" source="actor_manager" target="uc_branch_stats">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LIEN KET QUAN TRI VIEN -->
+        <mxCell id="edge_a1" style="endArrow=none;html=1;rounded=0;strokeColor=#7C3AED;strokeWidth=1.2;" edge="1" parent="1" source="actor_admin" target="uc_manage_movies">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_a2" style="endArrow=none;html=1;rounded=0;strokeColor=#7C3AED;strokeWidth=1.2;" edge="1" parent="1" source="actor_admin" target="uc_manage_theaters">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_a3" style="endArrow=none;html=1;rounded=0;strokeColor=#7C3AED;strokeWidth=1.2;" edge="1" parent="1" source="actor_admin" target="uc_manage_users">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_a4" style="endArrow=none;html=1;rounded=0;strokeColor=#7C3AED;strokeWidth=1.2;" edge="1" parent="1" source="actor_admin" target="uc_manage_accounts">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_a5" style="endArrow=none;html=1;rounded=0;strokeColor=#7C3AED;strokeWidth=1.2;" edge="1" parent="1" source="actor_admin" target="uc_system_stats">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LIEN KET CONG THANH TOAN SEPAY -->
+        <mxCell id="edge_g1" style="endArrow=none;html=1;rounded=0;strokeColor=#059669;strokeWidth=1.2;" edge="1" parent="1" source="actor_gateway" target="uc_webhook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_g2" value="&amp;laquo;Xác nhận hoàn tất&amp;raquo;" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeColor=#059669;strokeWidth=1.2;fontSize=11;fontStyle=2;fontColor=#065F46;" edge="1" parent="sys_boundary" source="uc_webhook" target="uc_payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

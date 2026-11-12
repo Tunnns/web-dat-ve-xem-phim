@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useAuthStore } from '../store/authStore'
 
 /**
@@ -6,14 +6,14 @@ import { useAuthStore } from '../store/authStore'
  * Shows a minimal loading screen while verifying.
  */
 export default function AuthProvider({ children }: { children: ReactNode }) {
-  const loading = useAuthStore((s) => s.loading)
+  const [initializing, setInitializing] = useState(true)
   const initAuth = useAuthStore((s) => s.initAuth)
 
   useEffect(() => {
-    initAuth()
+    initAuth().finally(() => setInitializing(false))
   }, [initAuth])
 
-  if (loading) {
+  if (initializing) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-zinc-950">
         <div className="flex flex-col items-center gap-3">

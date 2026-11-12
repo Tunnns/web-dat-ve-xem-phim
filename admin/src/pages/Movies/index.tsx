@@ -740,7 +740,7 @@ const Movies: React.FC = () => {
               Hiển thị {filteredData.length} / {totalMovies} phim
             </Text>
           </div>
-
+            
           <Button
             icon={<PlusOutlined />}
             type="primary"
@@ -1043,7 +1043,9 @@ const Movies: React.FC = () => {
                   accept="image/jpeg,image/png,image/webp"
                   maxCount={1}
                   showUploadList={false}
-                  beforeUpload={(file) => handlePosterUpload(file)}
+                  customRequest={({ file, onSuccess }) => {
+                    handlePosterUpload(file as File).then(() => onSuccess?.('ok'));
+                  }}
                 >
                   <Button
                     icon={<UploadOutlined />}

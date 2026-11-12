@@ -258,6 +258,8 @@ export default function MovieDetail() {
           <Showtimes
             showtimeGroups={showtimeGroups}
             movieTitle={movie.title}
+            movieStatus={movie.status}
+            releaseDate={movie.releaseDate}
             onSelectSlot={handleSelectSlot}
           />
         </div>

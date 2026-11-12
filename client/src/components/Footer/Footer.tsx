@@ -36,7 +36,10 @@ export default function Footer() {
                 <Link to="/?tab=coming_soon" className="hover:text-white transition">Phim sắp chiếu</Link>
               </li>
               <li>
-                <Link to="/" className="hover:text-white transition">Lịch chiếu phim</Link>
+                <Link to="/showtimes" className="hover:text-white transition">Lịch chiếu phim</Link>
+              </li>
+              <li>
+                <Link to="/promotions" className="hover:text-white transition">Ưu đãi & Tin tức</Link>
               </li>
               <li>
                 <Link to="/checkout" className="hover:text-white transition">Thanh toán vé</Link>

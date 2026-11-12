@@ -26,7 +26,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm({ ...form, [key]: e.target.value })
+    setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
   const validate = () => {
     const e: Record<string, string> = {}

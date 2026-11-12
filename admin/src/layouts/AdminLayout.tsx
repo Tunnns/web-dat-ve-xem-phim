@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Layout,
@@ -7,8 +6,8 @@ import {
   Dropdown,
   Avatar,
   Badge,
-  Input,
   Breadcrumb,
+  message,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -22,46 +21,104 @@ import {
   PlaySquareOutlined,
   LogoutOutlined,
   BellOutlined,
-  SearchOutlined,
   PlusOutlined,
   SettingOutlined,
+  TeamOutlined,
+  BarcodeOutlined,
+  AuditOutlined,
+  LineChartOutlined,
+  GiftOutlined,
+  CoffeeOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+
+import { useAuth } from '../contexts/AuthContext';
+import { ROLE_LABELS, type UserRole } from '../types/auth';
+
 import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
 
-const menuItems: MenuProps['items'] = [
+interface MenuDefinition {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+  roles: UserRole[];
+}
+
+const menuDefinitions: MenuDefinition[] = [
   {
     key: '/',
     icon: <DashboardOutlined />,
     label: 'Tổng quan',
+    roles: ['admin', 'manager', 'staff'],
   },
   {
     key: '/movies',
     icon: <VideoCameraOutlined />,
     label: 'Quản lý phim',
+    roles: ['admin', 'manager'],
   },
   {
     key: '/theaters',
     icon: <ShopOutlined />,
     label: 'Quản lý rạp',
+    roles: ['admin', 'manager'],
   },
   {
     key: '/rooms',
     icon: <AppstoreOutlined />,
     label: 'Phòng chiếu',
+    roles: ['admin', 'manager'],
   },
   {
     key: '/showtimes',
     icon: <PlaySquareOutlined />,
     label: 'Suất chiếu',
+    roles: ['admin', 'manager'],
   },
   {
-  key: '/users',
-  icon: <UserOutlined />,
-  label: 'Khách hàng',
-}
+    key: '/users',
+    icon: <UserOutlined />,
+    label: 'Khách hàng',
+    roles: ['admin', 'manager', 'staff'],
+  },
+  {
+    key: '/tickets',
+    icon: <BarcodeOutlined />,
+    label: 'Quản lý vé đặt',
+    roles: ['admin', 'manager', 'staff'],
+  },
+  {
+    key: '/revenue',
+    icon: <LineChartOutlined />,
+    label: 'Báo cáo doanh thu',
+    roles: ['admin', 'manager'],
+  },
+  {
+    key: '/vouchers',
+    icon: <GiftOutlined />,
+    label: 'Mã giảm giá (Voucher)',
+    roles: ['admin', 'manager'],
+  },
+  {
+    key: '/combos',
+    icon: <CoffeeOutlined />,
+    label: 'Combo bắp nước',
+    roles: ['admin', 'manager'],
+  },
+  {
+    key: '/accounts',
+    icon: <TeamOutlined />,
+    label: 'Tài khoản & Phân quyền',
+    roles: ['admin'],
+  },
+  {
+    key: '/logs',
+    icon: <AuditOutlined />,
+    label: 'Nhật ký quản trị',
+    roles: ['admin'],
+  },
 ];
 
 const pageNames: Record<string, string> = {
@@ -71,36 +128,53 @@ const pageNames: Record<string, string> = {
   '/rooms': 'Phòng chiếu',
   '/showtimes': 'Suất chiếu',
   '/users': 'Khách hàng',
+  '/tickets': 'Quản lý vé đặt',
+  '/revenue': 'Báo cáo doanh thu',
+  '/vouchers': 'Mã giảm giá (Voucher)',
+  '/combos': 'Combo bắp nước',
+  '/accounts': 'Tài khoản & Phân quyền',
+  '/logs': 'Nhật ký quản trị',
 };
-
-const userMenuItems: MenuProps['items'] = [
-  {
-    key: 'profile',
-    icon: <UserOutlined />,
-    label: 'Hồ sơ cá nhân',
-  },
-  {
-    type: 'divider',
-  },
-  {
-    key: 'settings',
-    icon: <SettingOutlined />,
-    label: 'Cài đặt tài khoản',
-  },
-  {
-    key: 'logout',
-    icon: <LogoutOutlined />,
-    label: 'Đăng xuất',
-    danger: true,
-  },
-];
 
 const AdminLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { user, logout } = useAuth();
+
+  if (!user) return null;
+
+  const visibleMenuItems: MenuProps['items'] = menuDefinitions
+    .filter((item) => item.roles.includes(user.role))
+    .map(({ roles: _roles, ...item }) => item);
+
   const currentPage = pageNames[location.pathname] ?? 'Tổng quan';
+
+  const handleLogout = () => {
+    logout();
+    message.success('Đã đăng xuất thành công');
+    navigate('/login', { replace: true });
+  };
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Hồ sơ cá nhân',
+      disabled: true,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      danger: true,
+    },
+  ];
 
   return (
     <Layout className="admin-layout">
@@ -125,13 +199,15 @@ const AdminLayout: React.FC = () => {
           )}
         </div>
 
-        {!collapsed && <div className="sidebar-section-title">MENU CHÍNH</div>}
+        {!collapsed && (
+          <div className="sidebar-section-title">MENU CHÍNH</div>
+        )}
 
         <Menu
           theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
-          items={menuItems}
+          items={visibleMenuItems}
           onClick={({ key }) => navigate(key)}
           className="admin-menu"
         />
@@ -175,27 +251,23 @@ const AdminLayout: React.FC = () => {
                 { title: currentPage },
               ]}
             />
+
             <span className="header-subtitle">
               Hệ thống quản trị rạp chiếu phim
             </span>
           </div>
 
           <div className="header-actions">
-            <Input
-              className="header-search"
-              prefix={<SearchOutlined />}
-              placeholder="Tìm kiếm..."
-              allowClear
-            />
-
-            <Button
-              type="primary"
-              className="header-add-button"
-              icon={<PlusOutlined />}
-              onClick={() => navigate('/showtimes')}
-            >
-              Thêm suất chiếu
-            </Button>
+            {['admin', 'manager'].includes(user.role) && (
+              <Button
+                type="primary"
+                className="header-add-button"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/showtimes')}
+              >
+                Thêm suất chiếu
+              </Button>
+            )}
 
             <Badge dot offset={[-4, 4]}>
               <Button
@@ -209,15 +281,25 @@ const AdminLayout: React.FC = () => {
             <div className="header-divider" />
 
             <Dropdown
-              menu={{ items: userMenuItems }}
+              menu={{
+                items: userMenuItems,
+                onClick: ({ key }) => {
+                  if (key === 'logout') handleLogout();
+                },
+              }}
               placement="bottomRight"
               trigger={['click']}
             >
               <button className="user-profile" type="button">
-                <Avatar className="user-avatar" icon={<UserOutlined />} />
+                <Avatar
+                  className="user-avatar"
+                  src={user.avatar}
+                  icon={<UserOutlined />}
+                />
+
                 <span className="user-info">
-                  <strong>Admin</strong>
-                  <small>Quản trị viên</small>
+                  <strong>{user.fullName}</strong>
+                  <small>{ROLE_LABELS[user.role]}</small>
                 </span>
               </button>
             </Dropdown>

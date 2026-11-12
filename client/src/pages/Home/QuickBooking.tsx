@@ -4,7 +4,6 @@ import { Film, MapPin, Calendar, Clock, Ticket } from 'lucide-react'
 import type { Movie } from '../../types/movie'
 import type { Theater } from '../../types/theater'
 import { showtimeApi } from '../../api/showtimeApi'
-import { MOCK_SHOWTIMES } from '../../data/mockData'
 import { getUpcomingDays } from '../../utils/date'
 
 interface QuickBookingProps {
@@ -17,11 +16,13 @@ interface QuickShowtimeOption {
   startTime: string
   format: string
   theaterId?: string
+  date?: string
+  isEarlyAccess?: boolean
 }
 
 export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
   const navigate = useNavigate()
-  const nextDays = useMemo(() => getUpcomingDays(5), [])
+  const nextDays = useMemo(() => getUpcomingDays(7), [])
   const [selectedMovieId, setSelectedMovieId] = useState<string>('')
   const [selectedTheaterId, setSelectedTheaterId] = useState<string>('')
   const [selectedDate, setSelectedDate] = useState<string>(() => nextDays[0]?.iso || '')
@@ -62,39 +63,17 @@ export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
               startTime: timeStr,
               format,
               theaterId: st.theater?._id ? String(st.theater._id) : undefined,
+              date: !isNaN(start.getTime()) ? start.toISOString().slice(0, 10) : undefined,
+              isEarlyAccess: Boolean(st.isEarlyAccess),
             }
           })
           setBackendShowtimes(list)
         } else {
-          // Fallback nếu chưa có suất chiếu thật trong DB cho phim này
-          const fallback = MOCK_SHOWTIMES.filter((st) => {
-            const matchMovie = st.movieId === selectedMovieId
-            const matchTheater =
-              !selectedTheaterId || st.theaterId === selectedTheaterId
-            return matchMovie && matchTheater
-          }).map((st) => ({
-            id: st.id,
-            startTime: st.startTime,
-            format: st.format,
-            theaterId: st.theaterId,
-          }))
-          setBackendShowtimes(fallback)
+          setBackendShowtimes([])
         }
       })
       .catch(() => {
-        // Fallback
-        const fallback = MOCK_SHOWTIMES.filter((st) => {
-          const matchMovie = st.movieId === selectedMovieId
-          const matchTheater =
-            !selectedTheaterId || st.theaterId === selectedTheaterId
-          return matchMovie && matchTheater
-        }).map((st) => ({
-          id: st.id,
-          startTime: st.startTime,
-          format: st.format,
-          theaterId: st.theaterId,
-        }))
-        if (isMounted) setBackendShowtimes(fallback)
+        if (isMounted) setBackendShowtimes([])
       })
 
     return () => {
@@ -102,13 +81,15 @@ export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
     }
   }, [selectedMovieId, selectedTheaterId])
 
-  // Lọc danh sách suất chiếu theo rạp (nếu chưa lọc ở API)
+  // Lọc danh sách suất chiếu theo rạp và ngày
   const availableShowtimes = useMemo(() => {
     if (!selectedMovieId) return []
     return backendShowtimes.filter((st) => {
-      return !selectedTheaterId || !st.theaterId || st.theaterId === selectedTheaterId
+      const matchTheater = !selectedTheaterId || !st.theaterId || st.theaterId === selectedTheaterId
+      const matchDate = !selectedDate || !st.date || st.date === selectedDate
+      return matchTheater && matchDate
     })
-  }, [selectedMovieId, selectedTheaterId, backendShowtimes])
+  }, [selectedMovieId, selectedTheaterId, selectedDate, backendShowtimes])
 
   const handleBookNow = () => {
     if (selectedShowtimeId) {
@@ -143,7 +124,7 @@ export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
                 <option value="">-- Chọn phim --</option>
                 {movies.map((m) => (
                   <option key={m._id} value={m._id}>
-                    {m.title}
+                    {m.title} {m.status === 'coming_soon' ? '(Sắp chiếu)' : ''}
                   </option>
                 ))}
               </select>
@@ -209,13 +190,15 @@ export default function QuickBooking({ movies, theaters }: QuickBookingProps) {
                 className="w-full appearance-none rounded-xl border border-zinc-700 bg-zinc-800/90 py-2.5 pl-9 pr-8 text-xs sm:text-sm text-zinc-200 disabled:opacity-50 focus:border-brand-500 focus:outline-none"
               >
                 <option value="">
-                  {availableShowtimes.length === 0
-                    ? 'Chưa có suất'
+                  {backendShowtimes.length === 0
+                    ? 'Phim chưa có suất chiếu'
+                    : availableShowtimes.length === 0
+                    ? 'Không có suất ngày này'
                     : '-- Chọn giờ chiếu --'}
                 </option>
                 {availableShowtimes.map((st) => (
                   <option key={st.id} value={st.id}>
-                    {st.startTime} ({st.format})
+                    {st.startTime} ({st.format}) {st.isEarlyAccess ? '[Chiếu sớm]' : ''}
                   </option>
                 ))}
               </select>

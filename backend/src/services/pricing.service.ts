@@ -5,16 +5,7 @@ import Ticket from '../models/Ticket';
 import Combo from '../models/Combo';
 import { AppError } from '../utils/appError';
 import { validateVoucher } from './voucher.service';
-
-/*
- * Phụ phí theo loại ghế (VND), cộng thêm vào giá vé cơ bản của suất chiếu.
- * Được cấu hình tập trung tại đây; có thể chuyển sang DB khi cần thay đổi động.
- */
-const SEAT_TYPE_SURCHARGE: Record<IRoom['seatLayout'][number]['type'], number> = {
-  normal: 0,
-  vip: 25000,
-  couple: 20000,
-};
+import { getSeatPrice } from '../utils/seatPrice';
 
 export interface PricingComboInput {
   comboId: string;
@@ -66,7 +57,7 @@ export const calculatePrice = async (input: PricingInput) => {
     if (!seat) {
       throw new AppError(`Ghế ${code} không tồn tại trong phòng`, 400);
     }
-    const price = (showtime.price || 0) + (SEAT_TYPE_SURCHARGE[seat.type] ?? 0);
+    const price = getSeatPrice(showtime.price || 0, seat, room.seatSurcharges);
     return { code, type: seat.type, price };
   });
 

@@ -5,6 +5,7 @@ import AuthLayout from '../../components/AuthLayout'
 import InputField from '../../components/InputField'
 import { getErrorMessage } from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
+import { useUserLocationStore } from '../../store/userLocationStore'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -52,6 +53,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(form)
+      useUserLocationStore.getState().openLocationPrompt()
       navigate('/', { replace: true })
     } catch (err) {
       setServerError(getErrorMessage(err))
@@ -72,7 +74,7 @@ export default function Login() {
           autoComplete="email"
           value={form.email}
           error={errors.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
         />
         <InputField
           id="login-password"
@@ -83,7 +85,7 @@ export default function Login() {
           autoComplete="current-password"
           value={form.password}
           error={errors.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
         />
 
         <div className="mb-5 text-right">
