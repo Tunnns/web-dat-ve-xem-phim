@@ -17,6 +17,7 @@ import Tickets from './pages/Tickets';
 import Revenue from './pages/Revenue';
 import Vouchers from './pages/Vouchers';
 import Combos from './pages/Combos';
+import Inventory from './pages/Inventory';
 import Accounts from './pages/Accounts';
 import Logs from './pages/Logs';
 
@@ -67,6 +68,7 @@ const App: React.FC = () => {
                 <Route path="revenue" element={<Revenue />} />
                 <Route path="vouchers" element={<Vouchers />} />
                 <Route path="combos" element={<Combos />} />
+                <Route path="inventory" element={<Inventory />} />
               </Route>
 
               <Route

@@ -2,6 +2,7 @@ import mongoose, { HydratedDocument } from 'mongoose';
 import Ticket, { ITicket } from '../models/Ticket';
 import Showtime from '../models/Showtime';
 import { calculatePrice, PricingComboInput } from './pricing.service';
+import { deductStockForTicket } from './inventory.service';
 import { redeemVoucher } from './voucher.service';
 import { AppError } from '../utils/appError';
 import {
@@ -119,6 +120,8 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
       if (userId && existingByReference.user && String(existingByReference.user) !== userId) {
         throw new AppError('Mã giao dịch đã được sử dụng cho đơn đặt vé khác', 409);
       }
+      // Phòng trường hợp lần trước vé đã lưu nhưng chưa kịp trừ kho.
+      await deductStockForTicket(String(existingByReference._id));
       return buildResult(existingByReference);
     }
   }
@@ -144,6 +147,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
 
       // Đã thanh toán trước đó → trả lại vé cũ (idempotent)
       if (found.status === 'completed') {
+        await deductStockForTicket(String(found._id));
         return buildResult(found);
       }
 
@@ -205,6 +209,8 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         lineTotal: item.lineTotal,
+        unitCost: item.unitCost,
+        costTotal: item.costTotal,
       })),
       totalAmount: pricing.total,
       discount: pricing.discount,
@@ -212,6 +218,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
       paymentMethod,
       paymentReference,
       status: 'completed' as const,
+      stockDeducted: false,
       paidAt: new Date(),
       lockedUntil: undefined,
     };
@@ -244,9 +251,11 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
       if (duplicatedField === 'paymentReference' && paymentReference) {
         const duplicated = await Ticket.findOne({ paymentReference });
         if (duplicated) {
-          if (String(duplicated.user) !== userId) {
+          // Khách vãng lai không có userId: chỉ chặn khi vé đã thuộc user khác.
+          if (userId && duplicated.user && String(duplicated.user) !== userId) {
             throw new AppError('Mã giao dịch đã được sử dụng cho đơn đặt vé khác', 409);
           }
+          await deductStockForTicket(String(duplicated._id));
           return buildResult(duplicated);
         }
       }
@@ -278,6 +287,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
               voucherCode: 1,
               paymentMethod: 1,
               paymentReference: 1,
+              stockDeducted: 1,
               paidAt: 1,
               lockedUntil: 1,
             },
@@ -289,6 +299,9 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
       throw error;
     }
   }
+
+  /* ---------- 5. Trừ tồn kho bắp nước (chỉ 1 lần cho mỗi vé) ---------- */
+  await deductStockForTicket(String(savedTicket._id));
 
   return buildResult(savedTicket);
 };

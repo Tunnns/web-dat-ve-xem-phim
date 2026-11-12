@@ -35,6 +35,9 @@ Giống toàn hệ thống:
 |---|---|---|---|
 | `name` | string | ✅ | Tên combo (VD: "Combo 1 Bắp + 1 Nước") |
 | `price` | number | ✅ | Giá bán combo (≥ 0) |
+| `costPrice` | number | ❌ | Giá vốn hiện tại của 1 combo (mặc định 0, tự cập nhật khi nhập kho) |
+| `stock` | number | ❌ | Tồn kho hiện tại (mặc định 0) |
+| `minStock` | number | ❌ | Ngưỡng cảnh báo sắp hết (mặc định 10) |
 | `items` | array | ❌ | Danh sách thành phần: `[{ name, quantity }]` |
 | `description` | string | ❌ | Mô tả |
 | `image` | string | ❌ | Link ảnh |
@@ -55,12 +58,76 @@ Giống toàn hệ thống:
 {
   "name": "Combo 1 Bắp + 1 Nước",
   "price": 75000,
+  "costPrice": 35000,
+  "stock": 100,
+  "minStock": 20,
   "items": [
     { "name": "Bắp rang bơ", "quantity": 1 },
     { "name": "Nước ngọt", "quantity": 1 }
   ]
 }
 ```
+
+### 2.3. Kho bắp nước (Inventory)
+
+**Quyền:** chỉ `admin` và `manager`.
+
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| GET | `/api/admin/inventory/receipts` | Danh sách phiếu nhập kho |
+| GET | `/api/admin/inventory/receipts/:id` | Chi tiết phiếu nhập |
+| POST | `/api/admin/inventory/receipts` | Tạo phiếu nhập kho |
+| DELETE | `/api/admin/inventory/receipts/:id` | Xóa phiếu nhập |
+| GET | `/api/admin/inventory/stock` | Tồn kho theo combo |
+| GET | `/api/admin/inventory/summary` | Tổng quan kho |
+
+**Query hỗ trợ danh sách phiếu nhập:** `startDate`, `endDate`, `comboId`, `supplier`.
+**Query hỗ trợ tồn kho:** `search`, `lowStock=true`.
+**Query hỗ trợ tổng quan:** `startDate`, `endDate` (lọc theo ngày nhập).
+
+**Ví dụ tạo phiếu nhập:**
+```json
+{
+  "importDate": "2026-11-12",
+  "supplier": "Nhà cung cấp bắp nước CineFood",
+  "note": "Nhập hàng đầu tháng",
+  "items": [
+    { "comboId": "65f0c2a1b2c3d4e5f6a7b8c9", "quantity": 100, "unitCost": 34000 },
+    { "comboId": "65f0c2a1b2c3d4e5f6a7b8ca", "quantity": 80, "unitCost": 50000 }
+  ]
+}
+```
+
+Khi tạo phiếu nhập, hệ thống tự động:
+- Cộng `stock` cho từng combo.
+- Cập nhật `costPrice` theo bình quân gia quyền:
+  `(tồn cũ × giá vốn cũ + SL nhập × đơn giá nhập) / (tồn cũ + SL nhập)`.
+- Tính `totalAmount` = tổng `quantity × unitCost`.
+
+**Response tồn kho (`GET /inventory/stock`) gồm:**
+`_id`, `name`, `price`, `costPrice`, `stock`, `minStock`, `lowStock`,
+`importedQuantity`, `importedAmount`, `soldQuantity`, `stockValue`,
+`profitPerUnit`, `marginPercent`.
+
+**Response tổng quan (`GET /inventory/summary`) gồm:**
+`totalImportCost`, `totalImportQuantity`, `totalImportReceipts`,
+`totalCombos`, `totalStockQuantity`, `totalStockValue`, `lowStockCount`.
+
+> Xóa phiếu nhập sẽ bị chặn nếu tồn kho hiện tại nhỏ hơn số lượng của phiếu
+> (hàng đã bán, không thể trừ kho).
+>
+> Sau khi xóa phiếu hợp lệ, `stock` được trừ đúng số lượng của phiếu và `costPrice`
+> được **tính lại bình quân gia quyền từ các phiếu nhập còn lại** (không giữ giá vốn cũ).
+>
+> Tồn kho có thể **âm** nếu bán vượt số đã nhập. Đây là chủ ý: phản ánh thiếu dữ liệu
+> nhập kho nhưng không chặn khách đã thanh toán. Khi đó `stockValue` và báo cáo vẫn
+> tính theo giá vốn hiện tại; nên tạo phiếu nhập bổ sung để đối soát.
+
+**Phiếu nhập hợp lệ:** mỗi combo chỉ xuất hiện 1 lần/phiếu; `quantity` là số nguyên ≥ 1;
+`unitCost` ≥ 0. Vi phạm trả `400`.
+
+**Bảo mật:** `costPrice`, `stock`, `minStock` không xuất hiện trong
+`GET /api/payment/combos`; `unitCost`/`costTotal` trên vé cũng bị `select: false`.
 
 ---
 
@@ -136,6 +203,9 @@ Hàm `validateVoucher(code, subtotal)` trong `src/services/voucher.service.ts` k
 
 **Response 200:** mảng các combo có `isActive: true` (sắp theo giá tăng dần).
 
+> API công khai này **không trả** `costPrice`, `stock`, `minStock` — đây là dữ liệu
+> nội bộ, chỉ admin/manager xem được qua `/api/admin/inventory/*`.
+
 ### 5.2. Tính tiền (vé + combo + voucher)
 
 - **`POST /api/payment/calculate`**
@@ -189,6 +259,10 @@ Hàm `validateVoucher(code, subtotal)` trong `src/services/voucher.service.ts` k
 
 > Phụ phí được cấu hình tại hằng số `SEAT_TYPE_SURCHARGE` trong `src/services/pricing.service.ts`.
 > Endpoint này **không ghi nhận giao dịch** và **kiểm tra ghế trùng** (đã đặt/đang giữ → `409`).
+>
+> **Giá vốn là dữ liệu nội bộ:** service tính tiền có thể chứa `unitCost`/`costTotal`
+> cho từng combo, nhưng controller đã dùng `sanitizePricingForClient` để **loại bỏ hoàn toàn**
+> các trường này trước khi trả về client.
 
 ### 5.3. Kiểm tra mã giảm giá
 
@@ -299,9 +373,23 @@ Xử lý sau khi thanh toán thành công: tính lại tiền ở server, sinh *
 2. Sinh mã vé `TKT-<thời gian>-<16 hex ngẫu nhiên>` (`src/utils/qr.util.ts`), đảm bảo duy nhất bằng unique index trên `Ticket.code` (tự thử lại tối đa 5 lần nếu trùng).
 3. Sinh ảnh QR PNG dạng **data URL** chứa JSON `{ v, ticketId, code, showtimeId, seats }` bằng thư viện `qrcode`.
 4. Lưu vé `status: completed` kèm `code`, `qrCode`, `paidAt`, danh sách combo và giảm giá vào DB.
+   Mỗi combo trong vé được **snapshot giá vốn** tại thời điểm bán (`unitCost`, `costTotal`).
 5. Tăng `usageCount` của voucher (nếu có) sau khi lưu vé thành công.
+6. **Trừ tồn kho bắp nước** đúng 1 lần cho mỗi vé (`Ticket.stockDeducted = true`).
+   Tồn kho có thể âm nếu bán vượt số đã nhập, nhằm phản ánh thiếu dữ liệu nhập kho
+   mà không chặn khách đã thanh toán.
 
-**Idempotent:** gọi lại với cùng `paymentReference` (hoặc cùng `ticketId` đã completed) sẽ trả về đúng vé cũ, không tạo vé mới và không trừ voucher lần hai.
+**Idempotent:** gọi lại với cùng `paymentReference` (hoặc cùng `ticketId` đã completed) sẽ trả về đúng vé cũ, không tạo vé mới, không trừ voucher và **không trừ kho** lần hai — kể cả khi 2 webhook được gửi **song song**. Khách vãng lai (không có `userId`) cũng được xử lý idempotent.
+
+> **Hủy vé:** hiện hệ thống **chưa có API hủy vé đã completed**. Vé `pending` bị giải phóng
+> không ảnh hưởng tồn kho (vì chưa trừ). Nếu bổ sung luồng hủy vé sau này, cần hoàn kho
+> (`stock += quantity`) và đặt lại `Ticket.stockDeducted = false` để tránh lệch kho.
+> Vé đã chuyển sang `cancelled` sẽ tự động không còn trong báo cáo doanh thu (chỉ lọc
+> `status: completed`).
+
+> `unitCost`/`costTotal` được đánh dấu `select: false` trong model `Ticket`, nên các API
+> trả vé cho client **không bao giờ** chứa giá vốn. Chỉ báo cáo doanh thu admin
+> (`getRevenueAnalytics`) chủ động select các trường này.
 
 **Các lỗi có thể gặp:**
 | HTTP | Message | Nguyên nhân |
@@ -327,3 +415,77 @@ Xử lý sau khi thanh toán thành công: tính lại tiền ở server, sinh *
 | POST | `/api/payment/success` | Xác nhận thanh toán, sinh QR & lưu vé |
 | GET/POST/PUT/DELETE | `/api/admin/combos` | CRUD combo |
 | GET/POST/PUT/DELETE | `/api/admin/vouchers` | CRUD voucher |
+
+### 6.1. Bổ sung cho báo cáo doanh thu
+
+`GET /api/admin/revenue` (admin/manager) trả thêm các trường giá vốn và lợi nhuận:
+
+```ts
+summary: {
+  // ...các trường cũ
+  comboCost: number;    // Giá vốn combo của các vé completed trong kỳ (COGS)
+  grossProfit: number;  // totalRevenue - comboCost
+  grossMargin: number;  // % lợi nhuận gộp, làm tròn 1 chữ số thập phân
+  importCost: number;   // Tổng tiền nhập kho trong kỳ (lọc theo importDate)
+}
+
+timeline: Array<{
+  date: string;
+  revenue: number;
+  cost: number;         // Giá vốn combo trong ngày
+  profit: number;       // revenue - cost
+  ticketCount: number;
+}>;
+
+byCombo: Array<{
+  comboId: string;
+  comboName: string;
+  quantitySold: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+}>;
+
+details: Array<{
+  // ...các trường cũ
+  comboCost: number;
+  grossProfit: number;
+}>;
+```
+
+> Lưu ý: `importCost` lọc theo **ngày nhập kho**, còn doanh thu/COGS lọc theo **ngày thanh toán
+> (`paidAt`)**. Vì vậy trong một kỳ, `importCost` (tiền mua hàng) và `comboCost` (giá vốn hàng
+> đã bán) thường khác nhau — đó là đúng bản chất kế toán.
+> Vé cũ chưa có snapshot giá vốn sẽ được tính `comboCost = 0`, không làm hỏng báo cáo.
+
+---
+
+## 7. Kiểm thử tự động Phase 4
+
+Script: `backend/src/scripts/verify-phase4.ts`
+
+```bash
+cd backend
+npm run verify:phase4
+# hoặc
+node ./node_modules/ts-node/dist/bin.js src/scripts/verify-phase4.ts
+```
+
+- Chỉ chạy trên DB test riêng (mặc định `movie_booking_test_phase4`); script **từ chối chạy**
+  nếu tên DB không chứa `test`/`verify`, và tự xóa DB sau khi xong (`--keep` để giữ lại).
+- Đổi DB bằng biến môi trường `PHASE4_MONGO_URI`.
+
+**Các kịch bản được kiểm tra (84 assertions):**
+
+| Kịch bản | Nội dung |
+|---|---|
+| Coca 10k/15k | Nhập 10 @ 10.000, bán 2 @ 15.000 → lãi 5.000/combo, COGS 20.000 |
+| Nhập kỳ 1 – bán kỳ 2 | Tháng 1 chỉ có `importCost` 1.000.000, tháng 2 có doanh thu/COGS, tồn cuối 98 |
+| Nhiều phiếu khác giá | Bình quân gia quyền 10k/20k/30k → 22.500; xóa phiếu tính lại giá vốn |
+| Chặn xóa phiếu | Bán 8/10 rồi xóa phiếu 10 → `400`, tồn kho không đổi |
+| Vé cũ | Không có `unitCost/costTotal` → COGS 0, doanh thu vẫn đúng |
+| Webhook lặp | Gọi lại và gọi song song cùng `paymentReference` → 1 vé, trừ kho 1 lần |
+| Hủy vé / giữ ghế | Vé pending không trừ kho; vé `cancelled` bị loại khỏi doanh thu |
+| Tồn âm | Bán khi chưa nhập → `stock = -2`, không chặn thanh toán |
+| Bảo mật | API công khai ẩn `costPrice/stock/minStock`, vé ẩn `unitCost/costTotal` |
+

@@ -77,6 +77,8 @@ interface ComboFormValues {
   name: string;
   description?: string;
   price: number;
+  costPrice?: number;
+  minStock?: number;
   image?: string;
   items: ComboItem[];
   flavors?: string[];
@@ -157,6 +159,8 @@ const CombosPage: React.FC = () => {
     form.resetFields();
     form.setFieldsValue({
       price: 85000,
+      costPrice: 0,
+      minStock: 10,
       isActive: true,
       flavors: ['Ngọt', 'Phô mai', 'Caramel'],
       items: [
@@ -175,6 +179,8 @@ const CombosPage: React.FC = () => {
       name: combo.name,
       description: combo.description,
       price: combo.price,
+      costPrice: combo.costPrice ?? 0,
+      minStock: combo.minStock ?? 10,
       image: combo.image,
       flavors: Array.isArray(combo.flavors) && combo.flavors.length > 0
         ? combo.flavors
@@ -248,6 +254,8 @@ const CombosPage: React.FC = () => {
         name: values.name.trim(),
         description: values.description?.trim(),
         price: Number(values.price),
+        costPrice: Number(values.costPrice) || 0,
+        minStock: Number(values.minStock) || 0,
         image: values.image?.trim() || imagePreview || undefined,
         items: (values.items || [])
           .filter((item) => item && item.name && item.name.trim())
@@ -366,6 +374,58 @@ const CombosPage: React.FC = () => {
           {formatVND(price)}
         </Text>
       ),
+    },
+    {
+      title: 'Giá vốn',
+      dataIndex: 'costPrice',
+      key: 'costPrice',
+      render: (costPrice: number) => (
+        <Text style={{ color: '#f59e0b', fontSize: 14 }}>
+          {formatVND(costPrice)}
+        </Text>
+      ),
+    },
+    {
+      title: 'Lãi gộp / combo',
+      key: 'profit',
+      render: (_: unknown, record: Combo) => {
+        const cost = Number(record.costPrice) || 0;
+        const profit = (Number(record.price) || 0) - cost;
+        const margin =
+          record.price > 0 ? Math.round((profit / record.price) * 1000) / 10 : 0;
+
+        return (
+          <div>
+            <Text
+              strong
+              style={{ color: profit >= 0 ? '#10b981' : '#ef4444', fontSize: 14 }}
+            >
+              {formatVND(profit)}
+            </Text>
+            <div style={{ fontSize: 11, color: profit >= 0 ? '#94a3b8' : '#f87171' }}>
+              Tỷ suất {margin}%
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Tồn kho',
+      key: 'stock',
+      render: (_: unknown, record: Combo) => {
+        const stock = Number(record.stock) || 0;
+        const minStock = Number(record.minStock) || 0;
+        const isLow = stock <= minStock;
+
+        return (
+          <div>
+            <Tag color={isLow ? 'red' : 'green'}>{stock} combo</Tag>
+            <div style={{ fontSize: 11, color: isLow ? '#f87171' : '#94a3b8' }}>
+              Ngưỡng tối thiểu: {minStock}
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: 'Trạng thái',
@@ -524,7 +584,7 @@ const CombosPage: React.FC = () => {
             pageSizeOptions: ['10', '20', '50'],
             showTotal: (total) => `Tổng số ${total} combo`,
           }}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 1400 }}
         />
       </Card>
 
@@ -558,15 +618,68 @@ const CombosPage: React.FC = () => {
                   { type: 'number', min: 0, message: 'Giá không được âm' },
                 ]}
               >
-                <InputNumber
+                <InputNumber<number>
                   style={{ width: '100%' }}
-                  formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={(val: any) => val?.replace(/\D/g, '')}
+                  formatter={(val) => `${val ?? ''}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={(val) => Number(String(val ?? '').replace(/\D/g, '') || 0)}
                   placeholder="VD: 85000"
                 />
               </Form.Item>
             </Col>
           </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="costPrice"
+                label="Giá vốn / combo (đ)"
+                tooltip="Giá vốn hiện tại. Khi tạo phiếu nhập kho, hệ thống sẽ tự tính lại theo bình quân gia quyền."
+                rules={[{ type: 'number', min: 0, message: 'Giá vốn không được âm' }]}
+              >
+                <InputNumber<number>
+                  style={{ width: '100%' }}
+                  min={0}
+                  precision={0}
+                  formatter={(val) => `${val ?? ''}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={(val) => Number(String(val ?? '').replace(/\D/g, '') || 0)}
+                  placeholder="VD: 34000"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col span={12}>
+              <Form.Item
+                name="minStock"
+                label="Ngưỡng tồn kho tối thiểu"
+                tooltip="Khi tồn kho <= ngưỡng này, combo sẽ được cảnh báo sắp hết."
+                rules={[{ type: 'number', min: 0, message: 'Ngưỡng tồn kho không được âm' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0}
+                  precision={0}
+                  placeholder="VD: 10"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {editingCombo && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: '8px 12px',
+                borderRadius: 8,
+                background: '#0f172a',
+                border: '1px solid #334155',
+                fontSize: 12,
+                color: '#94a3b8',
+              }}
+            >
+              Tồn kho hiện tại: <Text strong style={{ color: '#f8fafc' }}>{editingCombo.stock ?? 0} combo</Text>
+              {' '}— tồn kho chỉ thay đổi khi tạo/xóa phiếu nhập hoặc khi khách thanh toán.
+            </div>
+          )}
 
           {/* Upload ảnh trực tiếp từ máy tính */}
           <Form.Item label="Ảnh đại diện Combo (Tải lên từ máy tính)">

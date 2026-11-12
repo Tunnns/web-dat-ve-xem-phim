@@ -6,6 +6,8 @@ export interface ITicketCombo {
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  unitCost?: number; // Giá vốn 1 combo tại thời điểm bán (snapshot)
+  costTotal?: number; // quantity * unitCost
 }
 
 export interface ITicket extends Document {
@@ -20,6 +22,7 @@ export interface ITicket extends Document {
   paymentMethod?: string;
   paymentReference?: string; // Mã giao dịch ngân hàng, dùng để chống tạo vé trùng
   status: 'pending' | 'completed' | 'cancelled'; // pending dùng cho Seat Locking
+  stockDeducted?: boolean; // Đã trừ tồn kho bắp nước cho vé này chưa (chống trừ lặp)
   lockedUntil?: Date; // Thời gian hết hạn giữ ghế (thường là 5 phút sau khi chọn)
   qrCode?: string; // Ảnh QR (data URL base64) sinh ra sau khi thanh toán
   paidAt?: Date; // Thời điểm xác nhận thanh toán thành công
@@ -34,6 +37,9 @@ const ticketComboSchema = new Schema<ITicketCombo>(
     quantity: { type: Number, required: true, min: 1 },
     unitPrice: { type: Number, required: true, min: 0 },
     lineTotal: { type: Number, required: true, min: 0 },
+    // Giá vốn là dữ liệu nội bộ, không trả ra API client mặc định.
+    unitCost: { type: Number, default: 0, min: 0, select: false },
+    costTotal: { type: Number, default: 0, min: 0, select: false },
   },
   { _id: false }
 );
@@ -55,6 +61,7 @@ const ticketSchema = new Schema<ITicket>(
       enum: ['pending', 'completed', 'cancelled'],
       default: 'pending',
     },
+    stockDeducted: { type: Boolean, default: false },
     lockedUntil: { type: Date },
     qrCode: { type: String },
     paidAt: { type: Date },

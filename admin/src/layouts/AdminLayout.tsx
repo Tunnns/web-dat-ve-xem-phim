@@ -29,6 +29,7 @@ import {
   LineChartOutlined,
   GiftOutlined,
   CoffeeOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
@@ -108,6 +109,12 @@ const menuDefinitions: MenuDefinition[] = [
     roles: ['admin', 'manager'],
   },
   {
+    key: '/inventory',
+    icon: <InboxOutlined />,
+    label: 'Kho bắp nước',
+    roles: ['admin', 'manager'],
+  },
+  {
     key: '/accounts',
     icon: <TeamOutlined />,
     label: 'Tài khoản & Phân quyền',
@@ -132,6 +139,7 @@ const pageNames: Record<string, string> = {
   '/revenue': 'Báo cáo doanh thu',
   '/vouchers': 'Mã giảm giá (Voucher)',
   '/combos': 'Combo bắp nước',
+  '/inventory': 'Kho bắp nước',
   '/accounts': 'Tài khoản & Phân quyền',
   '/logs': 'Nhật ký quản trị',
 };

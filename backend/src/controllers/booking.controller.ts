@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import * as BookingService from '../services/booking.service';
 import * as PaymentService from '../services/payment.service';
+import { sanitizePricingForClient } from '../services/pricing.service';
 import { AppError } from '../utils/appError';
 
 const handleError = (res: Response, error: unknown): void => {
@@ -33,7 +34,10 @@ export const lockSeats = async (req: AuthRequest, res: Response) => {
     res.status(200).json({
       success: true,
       message: 'Khóa ghế thành công (giữ ghế trong 5 phút)',
-      data,
+      data: {
+        ...data,
+        pricing: sanitizePricingForClient(data.pricing),
+      },
     });
   } catch (error) {
     handleError(res, error);

@@ -26,6 +26,12 @@ import {
   createCombo,
   updateCombo,
   deleteCombo,
+  getImportReceipts,
+  getImportReceiptById,
+  createImportReceipt,
+  deleteImportReceipt,
+  getInventoryStock,
+  getInventorySummary,
   getVouchers,
   getVoucherById,
   createVoucher,
@@ -231,6 +237,9 @@ router.delete('/showtimes/:id', requireAdminOrManager, deleteShowtime);
 const comboCreateRules = [
   body('name').trim().notEmpty().withMessage('Tên combo là bắt buộc'),
   body('price').isFloat({ min: 0 }).withMessage('Giá combo phải là số không âm'),
+  body('costPrice').optional().isFloat({ min: 0 }).withMessage('Giá vốn combo phải là số không âm'),
+  body('stock').optional().isInt({ min: 0 }).withMessage('Tồn kho phải là số nguyên không âm'),
+  body('minStock').optional().isInt({ min: 0 }).withMessage('Ngưỡng tồn tối thiểu phải là số nguyên không âm'),
   body('items').optional().isArray().withMessage('Danh sách thành phần phải là mảng'),
   body('items.*.name').optional().trim().notEmpty().withMessage('Tên thành phần không được rỗng'),
   body('items.*.quantity')
@@ -246,6 +255,9 @@ const comboCreateRules = [
 const comboUpdateRules = [
   body('name').optional().trim().notEmpty().withMessage('Tên combo không được rỗng'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Giá combo phải là số không âm'),
+  body('costPrice').optional().isFloat({ min: 0 }).withMessage('Giá vốn combo phải là số không âm'),
+  body('stock').optional().isInt({ min: 0 }).withMessage('Tồn kho phải là số nguyên không âm'),
+  body('minStock').optional().isInt({ min: 0 }).withMessage('Ngưỡng tồn tối thiểu phải là số nguyên không âm'),
   body('items').optional().isArray().withMessage('Danh sách thành phần phải là mảng'),
   body('items.*.name').optional().trim().notEmpty().withMessage('Tên thành phần không được rỗng'),
   body('items.*.quantity')
@@ -279,6 +291,41 @@ router.get('/combos/:id', getComboById);
 router.post('/combos', requireAdminOrManager, comboCreateRules, validate, createCombo);
 router.put('/combos/:id', requireAdminOrManager, comboUpdateRules, validate, updateCombo);
 router.delete('/combos/:id', requireAdminOrManager, deleteCombo);
+
+/* ============================ KHO BẮP NƯỚC (Inventory) ============================ */
+
+const importReceiptCreateRules = [
+  body('importDate')
+    .optional()
+    .isISO8601()
+    .toDate()
+    .withMessage('Ngày nhập kho không hợp lệ'),
+  body('supplier').optional().trim(),
+  body('note').optional().trim(),
+  body('items')
+    .isArray({ min: 1 })
+    .withMessage('Phiếu nhập phải có ít nhất 1 combo'),
+  body('items.*.comboId').isMongoId().withMessage('ID combo không hợp lệ'),
+  body('items.*.quantity')
+    .isInt({ min: 1 })
+    .withMessage('Số lượng nhập phải là số nguyên dương'),
+  body('items.*.unitCost')
+    .isFloat({ min: 0 })
+    .withMessage('Đơn giá nhập phải là số không âm'),
+];
+
+router.get('/inventory/receipts', requireAdminOrManager, getImportReceipts);
+router.get('/inventory/receipts/:id', requireAdminOrManager, getImportReceiptById);
+router.post(
+  '/inventory/receipts',
+  requireAdminOrManager,
+  importReceiptCreateRules,
+  validate,
+  createImportReceipt
+);
+router.delete('/inventory/receipts/:id', requireAdminOrManager, deleteImportReceipt);
+router.get('/inventory/stock', requireAdminOrManager, getInventoryStock);
+router.get('/inventory/summary', requireAdminOrManager, getInventorySummary);
 
 /* ============================ MÃ GIẢM GIÁ (Voucher) ============================ */
 

@@ -144,3 +144,27 @@ export const uploadComboImage = async (file: File): Promise<string> => {
   const res = await apiClient.post('/combos/upload', formData);
   return res.data?.data?.imageUrl || res.data?.imageUrl;
 };
+
+// Quản lý kho bắp nước (Inventory)
+export const getInventoryStock = (params?: { search?: string; lowStock?: boolean }) =>
+  apiClient.get('/inventory/stock', { params });
+
+export const getInventorySummary = (params?: { startDate?: string; endDate?: string }) =>
+  apiClient.get('/inventory/summary', { params });
+
+export const getImportReceipts = (params?: {
+  startDate?: string;
+  endDate?: string;
+  comboId?: string;
+  supplier?: string;
+}) => apiClient.get('/inventory/receipts', { params });
+
+export const createImportReceipt = (payload: {
+  importDate?: string;
+  supplier?: string;
+  note?: string;
+  items: Array<{ comboId: string; quantity: number; unitCost: number }>;
+}) => apiClient.post('/inventory/receipts', payload);
+
+export const deleteImportReceipt = (id: string) =>
+  apiClient.delete(`/inventory/receipts/${id}`);
