@@ -117,10 +117,63 @@ export interface Combo {
   name: string;
   description?: string;
   price: number;
+  costPrice: number;
+  stock: number;
+  minStock: number;
   items: ComboItem[];
   image?: string;
   flavors?: string[];
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StockItem {
+  _id: string;
+  name: string;
+  image?: string;
+  isActive: boolean;
+  price: number;
+  costPrice: number;
+  stock: number;
+  minStock: number;
+  lowStock: boolean;
+  importedQuantity: number;
+  importedAmount: number;
+  soldQuantity: number;
+  stockValue: number;
+  profitPerUnit: number;
+  marginPercent: number;
+}
+
+export interface InventorySummary {
+  totalImportCost: number;
+  totalImportQuantity: number;
+  totalImportReceipts: number;
+  totalCombos: number;
+  totalStockQuantity: number;
+  totalStockValue: number;
+  lowStockCount: number;
+}
+
+export interface ImportReceiptItem {
+  comboId: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  lineTotal: number;
+}
+
+export interface ImportReceipt {
+  _id: string;
+  code: string;
+  importDate: string;
+  supplier?: string;
+  items: ImportReceiptItem[];
+  totalAmount: number;
+  note?: string;
+  createdBy?: string;
+  createdByName?: string;
   createdAt?: string;
   updatedAt?: string;
 }

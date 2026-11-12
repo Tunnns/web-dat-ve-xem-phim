@@ -6,6 +6,7 @@ import * as TheaterService from '../services/theater.service';
 import * as RoomService from '../services/room.service';
 import * as ShowtimeService from '../services/showtime.service';
 import * as ComboService from '../services/combo.service';
+import * as InventoryService from '../services/inventory.service';
 import * as VoucherService from '../services/voucher.service';
 import User from '../models/User';
 import Ticket from '../models/Ticket';
@@ -389,6 +390,127 @@ export const deleteCombo = async (req: Request, res: Response) => {
       details: { id, name: (combo as any)?.name },
     });
     res.status(200).json({ success: true, message: 'Xóa combo thành công', data: combo });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+/* ============================ KHO BẮP NƯỚC (Inventory) ============================ */
+
+export const getImportReceipts = async (req: Request, res: Response) => {
+  try {
+    const receipts = await InventoryService.getImportReceipts({
+      startDate: req.query.startDate as string | undefined,
+      endDate: req.query.endDate as string | undefined,
+      comboId: req.query.comboId as string | undefined,
+      supplier: req.query.supplier as string | undefined,
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Lấy danh sách phiếu nhập kho thành công',
+      data: receipts,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const getImportReceiptById = async (req: Request, res: Response) => {
+  try {
+    const receipt = await InventoryService.getImportReceiptById(req.params.id as string);
+    res.status(200).json({
+      success: true,
+      message: 'Lấy thông tin phiếu nhập kho thành công',
+      data: receipt,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const createImportReceipt = async (req: Request, res: Response) => {
+  try {
+    const actor = getActor(req);
+    const receipt = await InventoryService.createImportReceipt(req.body, {
+      userId: actor.userId,
+      userName: actor.userName,
+    });
+
+    await recordAuditLog({
+      ...actor,
+      action: 'IMPORT',
+      target: `Phiếu nhập kho: ${receipt.code}`,
+      details: {
+        id: String(receipt._id),
+        code: receipt.code,
+        totalAmount: receipt.totalAmount,
+        items: receipt.items,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Tạo phiếu nhập kho ${receipt.code} thành công`,
+      data: receipt,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const deleteImportReceipt = async (req: Request, res: Response) => {
+  try {
+    const receipt = await InventoryService.deleteImportReceipt(req.params.id as string);
+    const actor = getActor(req);
+
+    await recordAuditLog({
+      ...actor,
+      action: 'DELETE',
+      target: `Phiếu nhập kho: ${receipt.code}`,
+      details: {
+        id: String(receipt._id),
+        code: receipt.code,
+        totalAmount: receipt.totalAmount,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Xóa phiếu nhập kho ${receipt.code} thành công`,
+      data: receipt,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const getInventoryStock = async (req: Request, res: Response) => {
+  try {
+    const stock = await InventoryService.getStock({
+      search: req.query.search as string | undefined,
+      lowStockOnly: req.query.lowStock === 'true',
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Lấy dữ liệu tồn kho thành công',
+      data: stock,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const getInventorySummary = async (req: Request, res: Response) => {
+  try {
+    const summary = await InventoryService.getInventorySummary({
+      startDate: req.query.startDate as string | undefined,
+      endDate: req.query.endDate as string | undefined,
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Lấy tổng quan kho thành công',
+      data: summary,
+    });
   } catch (error) {
     handleError(res, error);
   }

@@ -38,4 +38,9 @@
 - [x] 14. Fix loi trung suat chieu va tu dong dong bo gio ket thuc theo thoi luong phim
   - Backend: `backend/src/services/showtime.service.ts` chan suat chieu qua 24h, thong bao chi tiet ten phim, phong chieu va khung gio xung dot (409 Conflict).
   - Admin: `admin/src/pages/Showtimes/index.tsx` tu dong tinh gio ket thuc = bat dau + thoi luong phim, gioi han DatePicker ket thuc trong cung ngay.
+- [x] 15. Kho bap nuoc: quan ly ton kho, phieu nhap, gia von va loi nhuan
+  - [x] Phase 1 - Backend kho nhap: model `ImportReceipt`, them `costPrice/stock/minStock` vao `Combo`, service `inventory.service.ts`, API `/api/admin/inventory/*` (admin/manager), seed du lieu mau.
+  - [x] Phase 2 - Backend ban hang & doanh thu: snapshot gia von vao `Ticket`, tru ton kho (co `stockDeducted` chong tru lap), bao cao COGS/loi nhuan, an gia von khoi API client.
+  - [x] Phase 3 - Admin UI: trang `/inventory`, cap nhat trang Combo va Doanh thu.
+  - [x] Phase 4 - Kiem thu & tai lieu: script `backend/src/scripts/verify-phase4.ts` (84/84 kiem tra dat), sua bug webhook song song cua khach vang lai, cap nhat `PLAN-kho-bap-nuoc-doanh-thu.md` va `backend/API_COMBO_VOUCHER.md`.
 

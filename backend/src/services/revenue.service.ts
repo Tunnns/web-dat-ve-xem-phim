@@ -1,4 +1,5 @@
 import Ticket, { ITicket } from '../models/Ticket';
+import ImportReceipt from '../models/ImportReceipt';
 import mongoose from 'mongoose';
 
 export interface RevenueFilters {
@@ -12,6 +13,8 @@ export interface RevenueFilters {
 export interface RevenueTimelineItem {
   date: string;
   revenue: number;
+  cost: number;
+  profit: number;
   ticketCount: number;
 }
 
@@ -35,6 +38,15 @@ export interface RevenueByPaymentMethodItem {
   count: number;
 }
 
+export interface RevenueByComboItem {
+  comboId: string;
+  comboName: string;
+  quantitySold: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+}
+
 export interface RevenueStructureItem {
   type: string;
   amount: number;
@@ -54,6 +66,8 @@ export interface RevenueDetailItem {
   seatCount: number;
   combos: Array<{ name: string; quantity: number; unitPrice: number; lineTotal: number }>;
   comboTotal: number;
+  comboCost: number;
+  grossProfit: number;
   ticketAmount: number;
   discount: number;
   totalAmount: number;
@@ -70,11 +84,16 @@ export interface RevenueAnalyticsResult {
     averageOrderValue: number;
     ticketRevenue: number;
     comboRevenue: number;
+    comboCost: number;
+    grossProfit: number;
+    grossMargin: number;
+    importCost: number;
   };
   timeline: RevenueTimelineItem[];
   byMovie: RevenueByMovieItem[];
   byTheater: RevenueByTheaterItem[];
   byPaymentMethod: RevenueByPaymentMethodItem[];
+  byCombo: RevenueByComboItem[];
   revenueStructure: RevenueStructureItem[];
   details: RevenueDetailItem[];
 }
@@ -108,6 +127,8 @@ export const getRevenueAnalytics = async (
   }
 
   const rawTickets = await Ticket.find(matchQuery)
+    // Giá vốn được ẩn mặc định trong model, cần select rõ ràng cho báo cáo.
+    .select('+combos.unitCost +combos.costTotal')
     .populate('user', 'fullName email phone')
     .populate({
       path: 'showtime',
@@ -133,16 +154,45 @@ export const getRevenueAnalytics = async (
     return true;
   });
 
+  // Tổng tiền nhập kho trong kỳ (lọc theo ngày nhập, không phải ngày bán vé).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const importDateQuery: Record<string, any> = {};
+  if (filters.startDate) {
+    const start = new Date(filters.startDate);
+    start.setHours(0, 0, 0, 0);
+    importDateQuery.$gte = start;
+  }
+  if (filters.endDate) {
+    const end = new Date(filters.endDate);
+    end.setHours(23, 59, 59, 999);
+    importDateQuery.$lte = end;
+  }
+  const importMatch =
+    Object.keys(importDateQuery).length > 0 ? { importDate: importDateQuery } : {};
+  const importAgg = await ImportReceipt.aggregate([
+    { $match: importMatch },
+    { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+  ]);
+  const importCost = Number(importAgg[0]?.total) || 0;
+
   let totalRevenue = 0;
   let totalSeats = 0;
   let totalCombos = 0;
   let totalDiscount = 0;
   let comboRevenue = 0;
+  let comboCost = 0;
 
-  const timelineMap = new Map<string, { revenue: number; ticketCount: number }>();
+  const timelineMap = new Map<
+    string,
+    { revenue: number; cost: number; profit: number; ticketCount: number }
+  >();
   const movieMap = new Map<string, { title: string; revenue: number; ticketCount: number }>();
   const theaterMap = new Map<string, { name: string; revenue: number; ticketCount: number }>();
   const paymentMethodMap = new Map<string, { revenue: number; count: number }>();
+  const comboMap = new Map<
+    string,
+    { name: string; quantitySold: number; revenue: number; cost: number }
+  >();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const details: RevenueDetailItem[] = tickets.map((t: any) => {
@@ -159,20 +209,53 @@ export const getRevenueAnalytics = async (
       (qty: number, c: any) => qty + (Number(c.quantity) || 0),
       0
     );
+    const comboCostAmount = combosList.reduce((sum: number, c: any) => {
+      const quantity = Number(c.quantity) || 0;
+      const storedCost = Number(c.costTotal);
+      if (Number.isFinite(storedCost)) return sum + storedCost;
+      return sum + (Number(c.unitCost) || 0) * quantity;
+    }, 0);
 
     const ticketAmt = Math.max(0, revenueAmount + discountAmount - comboSum);
+    const ticketGrossProfit = revenueAmount - comboCostAmount;
 
     totalRevenue += revenueAmount;
     totalSeats += seatsList.length;
     totalCombos += comboQty;
     totalDiscount += discountAmount;
     comboRevenue += comboSum;
+    comboCost += comboCostAmount;
+
+    // Combo aggregation: số lượng bán, doanh thu, giá vốn, lợi nhuận theo combo
+    for (const comboLine of combosList) {
+      const comboId = String(comboLine.comboId || 'unknown');
+      const comboName = comboLine.name || 'Combo khác';
+      const quantity = Number(comboLine.quantity) || 0;
+      const lineRevenue =
+        Number(comboLine.lineTotal) ||
+        (Number(comboLine.unitPrice) || 0) * quantity;
+      const storedCost = Number(comboLine.costTotal);
+      const lineCost = Number.isFinite(storedCost)
+        ? storedCost
+        : (Number(comboLine.unitCost) || 0) * quantity;
+
+      const currentCombo =
+        comboMap.get(comboId) ||
+        { name: comboName, quantitySold: 0, revenue: 0, cost: 0 };
+      currentCombo.quantitySold += quantity;
+      currentCombo.revenue += lineRevenue;
+      currentCombo.cost += lineCost;
+      comboMap.set(comboId, currentCombo);
+    }
 
     // Timeline aggregation (theo ngày YYYY-MM-DD)
     const dateObj = t.paidAt ? new Date(t.paidAt) : new Date(t.createdAt);
     const dateKey = dateObj.toISOString().split('T')[0];
-    const curTimeline = timelineMap.get(dateKey) || { revenue: 0, ticketCount: 0 };
+    const curTimeline =
+      timelineMap.get(dateKey) || { revenue: 0, cost: 0, profit: 0, ticketCount: 0 };
     curTimeline.revenue += revenueAmount;
+    curTimeline.cost += comboCostAmount;
+    curTimeline.profit += ticketGrossProfit;
     curTimeline.ticketCount += 1;
     timelineMap.set(dateKey, curTimeline);
 
@@ -218,6 +301,8 @@ export const getRevenueAnalytics = async (
         lineTotal: c.lineTotal || c.unitPrice * c.quantity,
       })),
       comboTotal: comboSum,
+      comboCost: comboCostAmount,
+      grossProfit: ticketGrossProfit,
       ticketAmount: ticketAmt,
       discount: discountAmount,
       totalAmount: revenueAmount,
@@ -234,6 +319,8 @@ export const getRevenueAnalytics = async (
     .map(([date, data]) => ({
       date,
       revenue: data.revenue,
+      cost: data.cost,
+      profit: data.profit,
       ticketCount: data.ticketCount,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -267,11 +354,27 @@ export const getRevenueAnalytics = async (
     }))
     .sort((a, b) => b.revenue - a.revenue);
 
+  // Hiệu quả kinh doanh bắp nước theo từng combo
+  const byCombo: RevenueByComboItem[] = Array.from(comboMap.entries())
+    .map(([comboId, data]) => ({
+      comboId,
+      comboName: data.name,
+      quantitySold: data.quantitySold,
+      revenue: data.revenue,
+      cost: data.cost,
+      profit: data.revenue - data.cost,
+    }))
+    .sort((a, b) => b.revenue - a.revenue);
+
   // Cơ cấu doanh thu: Tiền vé vs Combo bắp nước
   const revenueStructure: RevenueStructureItem[] = [
     { type: 'Tiền vé xem phim', amount: ticketRevenue },
     { type: 'Combo bắp nước', amount: comboRevenue },
   ];
+
+  const grossProfit = totalRevenue - comboCost;
+  const grossMargin =
+    totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : 0;
 
   return {
     summary: {
@@ -283,11 +386,16 @@ export const getRevenueAnalytics = async (
       averageOrderValue,
       ticketRevenue,
       comboRevenue,
+      comboCost,
+      grossProfit,
+      grossMargin,
+      importCost,
     },
     timeline,
     byMovie,
     byTheater,
     byPaymentMethod,
+    byCombo,
     revenueStructure,
     details,
   };

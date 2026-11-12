@@ -14,6 +14,7 @@ import {
   Space,
   Typography,
   message,
+  Alert,
 } from 'antd';
 import {
   DollarOutlined,
@@ -26,6 +27,7 @@ import {
   RiseOutlined,
   PercentageOutlined,
   BarChartOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import {
   ResponsiveContainer,
@@ -33,6 +35,8 @@ import {
   Area,
   BarChart,
   Bar,
+  ComposedChart,
+  Line,
   PieChart,
   Pie,
   Cell,
@@ -80,6 +84,8 @@ interface RevenueDetail {
   seatCount: number;
   combos: Array<{ name: string; quantity: number; unitPrice: number; lineTotal: number }>;
   comboTotal: number;
+  comboCost: number;
+  grossProfit: number;
   ticketAmount: number;
   discount: number;
   totalAmount: number;
@@ -96,8 +102,12 @@ interface RevenueData {
     averageOrderValue: number;
     ticketRevenue: number;
     comboRevenue: number;
+    comboCost: number;
+    grossProfit: number;
+    grossMargin: number;
+    importCost: number;
   };
-  timeline: Array<{ date: string; revenue: number; ticketCount: number }>;
+  timeline: Array<{ date: string; revenue: number; cost: number; profit: number; ticketCount: number }>;
   byMovie: Array<{ movieId: string; movieTitle: string; revenue: number; ticketCount: number }>;
   byTheater: Array<{ theaterId: string; theaterName: string; revenue: number; ticketCount: number }>;
   byPaymentMethod: Array<{ method: string; revenue: number; count: number }>;
@@ -117,6 +127,10 @@ const RevenuePage: React.FC = () => {
       averageOrderValue: 0,
       ticketRevenue: 0,
       comboRevenue: 0,
+      comboCost: 0,
+      grossProfit: 0,
+      grossMargin: 0,
+      importCost: 0,
     },
     timeline: [],
     byMovie: [],
@@ -247,8 +261,10 @@ const RevenuePage: React.FC = () => {
       'Tiền vé',
       'Bắp nước combo',
       'Tiền bắp nước',
+      'Giá vốn bắp nước',
       'Giảm giá',
       'Tổng tiền thực thu',
+      'Lợi nhuận gộp',
       'Phương thức thanh toán',
     ];
 
@@ -266,8 +282,10 @@ const RevenuePage: React.FC = () => {
       item.ticketAmount,
       `"${item.combos.map((c) => `${c.name} x${c.quantity}`).join('; ')}"`,
       item.comboTotal,
+      item.comboCost,
       item.discount,
       item.totalAmount,
+      item.grossProfit,
       `"${item.paymentMethod}"`,
     ]);
 
@@ -360,6 +378,24 @@ const RevenuePage: React.FC = () => {
       render: (total: number) => (
         <Text strong style={{ color: '#10b981', fontSize: 15 }}>
           {formatVND(total)}
+        </Text>
+      ),
+    },
+    {
+      title: 'Giá vốn',
+      dataIndex: 'comboCost',
+      key: 'comboCost',
+      render: (value: number) => (
+        <Text style={{ color: '#f59e0b' }}>{formatVND(value || 0)}</Text>
+      ),
+    },
+    {
+      title: 'Lợi nhuận gộp',
+      dataIndex: 'grossProfit',
+      key: 'grossProfit',
+      render: (value: number) => (
+        <Text strong style={{ color: value >= 0 ? '#10b981' : '#ef4444' }}>
+          {formatVND(value || 0)}
         </Text>
       ),
     },
@@ -578,7 +614,66 @@ const RevenuePage: React.FC = () => {
             />
           </Card>
         </Col>
+
+        <Col xs={24} sm={12} lg={4}>
+          <Card bordered={false} style={{ background: '#0f172a', borderLeft: '4px solid #14b8a6' }}>
+            <Statistic
+              title={<span style={{ color: '#94a3b8' }}>Chi phí nhập kho trong kỳ</span>}
+              value={data.summary.importCost}
+              formatter={(val) => formatVND(Number(val))}
+              prefix={<InboxOutlined style={{ color: '#14b8a6' }} />}
+              valueStyle={{ color: '#f8fafc', fontWeight: 'bold', fontSize: 20 }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} sm={12} lg={4}>
+          <Card bordered={false} style={{ background: '#0f172a', borderLeft: '4px solid #f59e0b' }}>
+            <Statistic
+              title={<span style={{ color: '#94a3b8' }}>Giá vốn bắp nước đã bán</span>}
+              value={data.summary.comboCost}
+              formatter={(val) => formatVND(Number(val))}
+              prefix={<ShoppingOutlined style={{ color: '#f59e0b' }} />}
+              valueStyle={{ color: '#f8fafc', fontWeight: 'bold', fontSize: 20 }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} sm={12} lg={4}>
+          <Card bordered={false} style={{ background: '#0f172a', borderLeft: '4px solid #10b981' }}>
+            <Statistic
+              title={<span style={{ color: '#94a3b8' }}>Lợi nhuận gộp</span>}
+              value={data.summary.grossProfit}
+              formatter={(val) => formatVND(Number(val))}
+              prefix={<RiseOutlined style={{ color: '#10b981' }} />}
+              valueStyle={{
+                color: data.summary.grossProfit >= 0 ? '#f8fafc' : '#f87171',
+                fontWeight: 'bold',
+                fontSize: 20,
+              }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} sm={12} lg={4}>
+          <Card bordered={false} style={{ background: '#0f172a', borderLeft: '4px solid #22c55e' }}>
+            <Statistic
+              title={<span style={{ color: '#94a3b8' }}>Tỷ suất lợi nhuận gộp</span>}
+              value={data.summary.grossMargin}
+              suffix="%"
+              prefix={<PercentageOutlined style={{ color: '#22c55e' }} />}
+              valueStyle={{ color: '#f8fafc', fontWeight: 'bold', fontSize: 20 }}
+            />
+          </Card>
+        </Col>
       </Row>
+
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 24 }}
+        message="Lợi nhuận gộp = Tổng doanh thu - Giá vốn bắp nước đã bán. Chi phí nhập kho là tiền mua hàng trong kỳ, không trừ toàn bộ vào lợi nhuận nếu còn tồn kho."
+      />
 
       {/* DANH SÁCH BIỂU ĐỒ (List Biểu đồ) */}
       <div style={{ marginBottom: 28 }}>
@@ -632,10 +727,52 @@ const RevenuePage: React.FC = () => {
           )}
         </Card>
 
+        {/* Biểu đồ 2: Doanh thu - Giá vốn - Lợi nhuận theo thời gian */}
+        <Card
+          title="2. Doanh thu - Giá vốn - Lợi nhuận gộp theo thời gian"
+          style={{ marginBottom: 20 }}
+        >
+          {data.timeline.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+              Không có dữ liệu doanh thu trong khoảng thời gian này
+            </div>
+          ) : (
+            <div style={{ width: '100%', height: 320 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={data.timeline}
+                  margin={{ top: 10, right: 30, left: 20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="date" stroke="#94a3b8" />
+                  <YAxis
+                    stroke="#94a3b8"
+                    tickFormatter={(val) => `${(val / 1000).toLocaleString('vi-VN')}k`}
+                  />
+                  <Tooltip
+                    formatter={(val: any, name: any) => [formatVND(Number(val)), name]}
+                  />
+                  <Legend />
+                  <Bar dataKey="revenue" name="Doanh thu" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="cost" name="Giá vốn" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Line
+                    type="monotone"
+                    dataKey="profit"
+                    name="Lợi nhuận gộp"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+
         {/* Hàng 2 biểu đồ: Top Phim và Doanh thu theo Rạp */}
         <Row gutter={[20, 20]} style={{ marginBottom: 20 }}>
           <Col xs={24} lg={12}>
-            <Card title="2. Top Phim có Doanh thu cao nhất" style={{ height: '100%' }}>
+            <Card title="3. Top Phim có Doanh thu cao nhất" style={{ height: '100%' }}>
               {data.byMovie.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                   Chưa có dữ liệu phim
@@ -671,7 +808,7 @@ const RevenuePage: React.FC = () => {
           </Col>
 
           <Col xs={24} lg={12}>
-            <Card title="3. Phân bổ Doanh thu theo Cụm Rạp" style={{ height: '100%' }}>
+            <Card title="4. Phân bổ Doanh thu theo Cụm Rạp" style={{ height: '100%' }}>
               {data.byTheater.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                   Chưa có dữ liệu rạp chiếu
@@ -708,7 +845,7 @@ const RevenuePage: React.FC = () => {
         {/* Hàng 2 biểu đồ: Phương thức thanh toán & Cơ cấu Doanh thu */}
         <Row gutter={[20, 20]}>
           <Col xs={24} lg={12}>
-            <Card title="4. Phân bổ Phương thức Thanh toán" style={{ height: '100%' }}>
+            <Card title="5. Phân bổ Phương thức Thanh toán" style={{ height: '100%' }}>
               {data.byPaymentMethod.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                   Chưa có dữ liệu thanh toán
@@ -745,7 +882,7 @@ const RevenuePage: React.FC = () => {
           </Col>
 
           <Col xs={24} lg={12}>
-            <Card title="5. Cơ cấu Doanh thu (Tiền Vé vs Combo Bắp Nước)" style={{ height: '100%' }}>
+            <Card title="6. Cơ cấu Doanh thu (Tiền Vé vs Combo Bắp Nước)" style={{ height: '100%' }}>
               {data.summary.totalRevenue === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                   Chưa có dữ liệu cơ cấu
@@ -819,7 +956,7 @@ const RevenuePage: React.FC = () => {
             pageSizeOptions: ['10', '20', '50', '100'],
             showTotal: (total) => `Tổng số ${total} giao dịch`,
           }}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 1350 }}
         />
       </Card>
 
@@ -899,6 +1036,20 @@ const RevenuePage: React.FC = () => {
             </Descriptions.Item>
             <Descriptions.Item label="Phương thức thanh toán">
               <Tag color="green">{selectedDetail.paymentMethod}</Tag>
+            </Descriptions.Item>
+
+            <Descriptions.Item label="Giá vốn bắp nước">
+              <Text style={{ color: '#f59e0b' }}>
+                {formatVND(selectedDetail.comboCost || 0)}
+              </Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Lợi nhuận gộp">
+              <Text
+                strong
+                style={{ color: selectedDetail.grossProfit >= 0 ? '#10b981' : '#ef4444' }}
+              >
+                {formatVND(selectedDetail.grossProfit || 0)}
+              </Text>
             </Descriptions.Item>
 
             <Descriptions.Item label="Tổng tiền thực thu" span={2}>

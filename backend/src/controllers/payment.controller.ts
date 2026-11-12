@@ -7,7 +7,7 @@ import '../models/Theater';
 import '../models/Room';
 import '../models/Showtime';
 import '../models/User';
-import { calculatePrice } from '../services/pricing.service';
+import { calculatePrice, sanitizePricingForClient } from '../services/pricing.service';
 import { completeTicketPayment } from '../services/ticket.service';
 import { getActiveCombos } from '../services/combo.service';
 import { validateVoucher } from '../services/voucher.service';
@@ -409,7 +409,11 @@ export const calculate = async (req: Request, res: Response) => {
       voucherCode: req.body.voucherCode,
       excludeTicketId: req.body.ticketId || req.body.excludeTicketId,
     });
-    res.status(200).json({ success: true, message: 'Tính tiền thành công', data });
+    res.status(200).json({
+      success: true,
+      message: 'Tính tiền thành công',
+      data: sanitizePricingForClient(data),
+    });
   } catch (error) {
     handleError(res, error);
   }

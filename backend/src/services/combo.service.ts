@@ -6,7 +6,11 @@ import { AppError } from '../utils/appError';
 export const getCombos = () => Combo.find().sort({ createdAt: -1 });
 
 /* Lấy danh sách combo đang bán (dùng cho trang Checkout) */
-export const getActiveCombos = () => Combo.find({ isActive: true }).sort({ price: 1 });
+/* Không trả giá vốn / tồn kho nội bộ ra client công khai. */
+export const getActiveCombos = () =>
+  Combo.find({ isActive: true })
+    .select('-costPrice -stock -minStock')
+    .sort({ price: 1 });
 
 export const getComboById = async (id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {

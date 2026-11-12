@@ -80,7 +80,7 @@ npm run dev
   - [x] Dựng trang Hồ sơ cá nhân: Lấy lịch sử đặt vé, lọc theo trạng thái và render mã QR vé điện tử.
 - **Todo:**
   - [x] Kết nối API Auth thật, lưu trữ JWT Token và cập nhật trạng thái User.
-  - [ ] Bổ sung UI Chọn combo bắp nước và nhập Mã giảm giá (Voucher) vào trang Checkout.
+  - [x] Bổ sung UI Chọn combo bắp nước và nhập Mã giảm giá (Voucher) vào trang Checkout.
 
 ---
 

@@ -6,6 +6,7 @@ import Theater from '../models/Theater';
 import Room from '../models/Room';
 import Showtime from '../models/Showtime';
 import Combo from '../models/Combo';
+import ImportReceipt from '../models/ImportReceipt';
 import Voucher from '../models/Voucher';
 import User from '../models/User';
 
@@ -43,6 +44,7 @@ async function seedData() {
       Room.deleteMany({}),
       Showtime.deleteMany({}),
       Combo.deleteMany({}),
+      ImportReceipt.deleteMany({}),
       Voucher.deleteMany({}),
     ]);
 
@@ -227,11 +229,14 @@ async function seedData() {
     ]);
 
     // 5. Combos
-    await Combo.insertMany([
+    const combos = await Combo.insertMany([
       {
         name: 'Combo Solo',
         description: '1 Bắp ngọt vừa (60oz) + 1 Nước ngọt có ga (22oz)',
         price: 69000,
+        costPrice: 34000,
+        stock: 100,
+        minStock: 20,
         items: [
           { name: 'Bắp ngọt 60oz', quantity: 1 },
           { name: 'Nước ngọt 22oz', quantity: 1 },
@@ -242,6 +247,9 @@ async function seedData() {
         name: 'Combo Couple',
         description: '1 Bắp phô mai lớn (85oz) + 2 Nước ngọt có ga (22oz)',
         price: 99000,
+        costPrice: 50000,
+        stock: 80,
+        minStock: 15,
         items: [
           { name: 'Bắp phô mai 85oz', quantity: 1 },
           { name: 'Nước ngọt 22oz', quantity: 2 },
@@ -252,6 +260,9 @@ async function seedData() {
         name: 'Combo Family Delight',
         description: '2 Bắp rang bơ caramel lớn + 4 Nước ngọt + 1 Xúc xích lốc xoáy',
         price: 169000,
+        costPrice: 92000,
+        stock: 50,
+        minStock: 10,
         items: [
           { name: 'Bắp caramel 85oz', quantity: 2 },
           { name: 'Nước ngọt 22oz', quantity: 4 },
@@ -260,6 +271,45 @@ async function seedData() {
         isActive: true,
       },
     ]);
+
+    // 5.1. Phiếu nhập kho mẫu (khớp với tồn kho ban đầu của 3 combo)
+    const seedImportDate = new Date();
+    seedImportDate.setDate(seedImportDate.getDate() - 7);
+    const seedDatePart = `${seedImportDate.getFullYear()}${String(
+      seedImportDate.getMonth() + 1
+    ).padStart(2, '0')}${String(seedImportDate.getDate()).padStart(2, '0')}`;
+
+    await ImportReceipt.create({
+      code: `PNK-${seedDatePart}-001`,
+      importDate: seedImportDate,
+      supplier: 'Nhà cung cấp bắp nước CineFood',
+      items: [
+        {
+          comboId: combos[0]._id,
+          name: combos[0].name,
+          quantity: 100,
+          unitCost: 34000,
+          lineTotal: 100 * 34000,
+        },
+        {
+          comboId: combos[1]._id,
+          name: combos[1].name,
+          quantity: 80,
+          unitCost: 50000,
+          lineTotal: 80 * 50000,
+        },
+        {
+          comboId: combos[2]._id,
+          name: combos[2].name,
+          quantity: 50,
+          unitCost: 92000,
+          lineTotal: 50 * 92000,
+        },
+      ],
+      totalAmount: 100 * 34000 + 80 * 50000 + 50 * 92000,
+      note: 'Phiếu nhập kho mẫu dùng cho dữ liệu demo',
+      createdByName: 'Administrator',
+    });
 
     // 6. Vouchers
     await Voucher.insertMany([

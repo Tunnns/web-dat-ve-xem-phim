@@ -93,6 +93,8 @@ export const calculatePrice = async (input: PricingInput) => {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    unitCost: number;
+    costTotal: number;
   }> = [];
   let comboSubtotal = 0;
 
@@ -114,6 +116,7 @@ export const calculatePrice = async (input: PricingInput) => {
     }
 
     const lineTotal = combo.price * quantity;
+    const unitCost = Number(combo.costPrice) || 0;
     comboSubtotal += lineTotal;
     comboLines.push({
       comboId: String(combo._id),
@@ -121,6 +124,8 @@ export const calculatePrice = async (input: PricingInput) => {
       quantity,
       unitPrice: combo.price,
       lineTotal,
+      unitCost,
+      costTotal: unitCost * quantity,
     });
   }
 
@@ -153,3 +158,23 @@ export const calculatePrice = async (input: PricingInput) => {
     total,
   };
 };
+
+/**
+ * Loại bỏ giá vốn khỏi dữ liệu tính tiền trước khi trả về client.
+ * Giá vốn là thông tin nội bộ, không được lộ ra ngoài.
+ */
+export const sanitizePricingForClient = (
+  pricing: Awaited<ReturnType<typeof calculatePrice>>
+) => ({
+  ...pricing,
+  combos: {
+    ...pricing.combos,
+    items: pricing.combos.items.map((item) => ({
+      comboId: item.comboId,
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal,
+    })),
+  },
+});
