@@ -43,6 +43,7 @@ export interface Seat {
   code: string;
   type: SeatType;
   status: SeatStatus;
+  surcharge?: number; // Phụ phí riêng (ghi đè phụ phí theo loại)
 }
 
 export interface Room {
@@ -50,6 +51,7 @@ export interface Room {
   name: string;
   theater: string | { _id: string; name: string; address: string };
   seatLayout: Seat[];
+  seatSurcharges?: Partial<Record<SeatType, number>>;
   capacity: number;
   createdAt: string;
   updatedAt: string;
