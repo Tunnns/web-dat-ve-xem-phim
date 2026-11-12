@@ -172,6 +172,20 @@ function totalPrice(basePrice: number, type: 'standard' | 'vip' | 'couple'): num
   return basePrice
 }
 
+// Giá ghế: phụ phí riêng của ghế > phụ phí theo loại của phòng > mặc định
+function seatPriceOf(
+  basePrice: number,
+  type: 'standard' | 'vip' | 'couple',
+  seatSurcharge?: number | null,
+  roomSurcharges?: Partial<Record<'normal' | 'vip' | 'couple', number>> | null,
+): number {
+  if (typeof seatSurcharge === 'number') return basePrice + seatSurcharge
+  const key = type === 'standard' ? 'normal' : type
+  const byType = roomSurcharges?.[key]
+  if (typeof byType === 'number') return basePrice + byType
+  return totalPrice(basePrice, type)
+}
+
 export const showtimeApi = {
   // 1. Lấy danh sách rạp chiếu từ Backend API /api/admin/theaters
   async getTheaters(): Promise<Theater[]> {
@@ -295,7 +309,7 @@ export const showtimeApi = {
               number,
               type,
               status,
-              price: totalPrice(price, type),
+              price: seatPriceOf(price, type, s.surcharge, room.seatSurcharges),
               pairId,
             }
           })

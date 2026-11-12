@@ -85,6 +85,7 @@ const PAINT_MODE_OPTIONS: Array<{
 interface RoomFormValues {
   name: string;
   theater: string;
+  seatSurcharges?: Partial<Record<'normal' | 'vip' | 'couple', number>>;
 }
 
 const getTheaterId = (theater: Room['theater']): string =>
@@ -440,6 +441,10 @@ const SeatGrid: React.FC<SeatGridProps> = ({
                       ? (() => {
                           const colors = getSeatColors(seat);
                           const isMaintenance = seat.status === 'maintenance';
+                          const surchargeNote =
+                            seat.surcharge !== undefined && seat.surcharge !== null
+                              ? ` · +${seat.surcharge.toLocaleString('vi-VN')}đ`
+                              : '';
                           const tooltip = `${seat.code} · ${getSeatTypeLabel(
                             seat.type,
                           )} · ${isMaintenance ? 'Bảo trì' : 'Khả dụng'}`;
@@ -463,8 +468,8 @@ const SeatGrid: React.FC<SeatGridProps> = ({
 
                           if (!interactive) {
                             return (
-                              <span title={tooltip} style={sharedStyle}>
-                                {isMaintenance ? '✕' : number}
+                              <span title={tooltip + surchargeNote} style={sharedStyle}>
+                                {isMaintenance ? '✕' : `${number}${surchargeNote ? '*' : ''}`}
                               </span>
                             );
                           }
@@ -472,7 +477,7 @@ const SeatGrid: React.FC<SeatGridProps> = ({
                           return (
                             <button
                               type="button"
-                              title={tooltip}
+                              title={tooltip + surchargeNote}
                               aria-label={tooltip}
                               onClick={() => onSeatClick?.(seat)}
                               onMouseEnter={(event) => {
@@ -488,7 +493,7 @@ const SeatGrid: React.FC<SeatGridProps> = ({
                               }}
                               style={sharedStyle}
                             >
-                              {isMaintenance ? '✕' : number}
+                              {isMaintenance ? '✕' : `${number}${surchargeNote ? '*' : ''}`}
                             </button>
                           );
                         })()
@@ -551,6 +556,9 @@ const Rooms: React.FC = () => {
   const [rowCount, setRowCount] = useState(DEFAULT_ROWS);
   const [seatsPerRow, setSeatsPerRow] = useState(DEFAULT_SEATS_PER_ROW);
   const [paintMode, setPaintMode] = useState<PaintMode>('normal');
+  // Chế độ đặt phụ phí riêng cho từng ghế (để trống = dùng phụ phí theo loại)
+  const [pricePaint, setPricePaint] = useState(false);
+  const [seatSurchargeInput, setSeatSurchargeInput] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -644,12 +652,16 @@ const Rooms: React.FC = () => {
         code: seat.code,
         type: seat.type,
         status: seat.status,
+        ...(seat.surcharge !== undefined && seat.surcharge !== null
+          ? { surcharge: seat.surcharge }
+          : {}),
       }));
       const rows = groupSeatsByRow(layout);
 
       form.setFieldsValue({
         name: editing.name,
         theater: getTheaterId(editing.theater),
+        seatSurcharges: editing.seatSurcharges,
       });
       setSeatLayout(layout);
       setRowCount(Math.max(1, rows.length));
@@ -751,6 +763,20 @@ const Rooms: React.FC = () => {
   };
 
   const handleSeatPaint = (seat: Seat) => {
+    if (pricePaint) {
+      setSeatLayout((currentSeats) =>
+        currentSeats.map((currentSeat) => {
+          if (currentSeat.code !== seat.code) return currentSeat;
+          const { surcharge: _old, ...rest } = currentSeat;
+          void _old;
+          return seatSurchargeInput === null
+            ? rest
+            : { ...rest, surcharge: seatSurchargeInput };
+        }),
+      );
+      return;
+    }
+
     const parsed = parseSeatCode(seat.code);
 
     if (!parsed) {
@@ -837,6 +863,9 @@ const Rooms: React.FC = () => {
       code: seat.code.trim().toUpperCase(),
       type: seat.type,
       status: seat.status,
+      ...(seat.surcharge !== undefined && seat.surcharge !== null
+        ? { surcharge: seat.surcharge }
+        : {}),
     }));
 
     const seenCodes = new Set<string>();
@@ -873,6 +902,7 @@ const Rooms: React.FC = () => {
         name: values.name.trim(),
         theater: values.theater,
         capacity,
+        seatSurcharges: values.seatSurcharges ?? {},
         seatLayout: normalizedSeats,
       };
 
@@ -1484,6 +1514,28 @@ const Rooms: React.FC = () => {
             </Col>
           </Row>
 
+          <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12 }}>
+            Phụ phí theo loại ghế (cộng vào giá vé của suất chiếu). Để trống = dùng mặc định
+            (Thường 0đ · VIP 25.000đ · Đôi 20.000đ).
+          </Text>
+          <Row gutter={12}>
+            <Col span={8}>
+              <Form.Item name={['seatSurcharges', 'normal']} label="Phụ phí ghế thường">
+                <InputNumber min={0} precision={0} style={{ width: '100%' }} placeholder="0" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name={['seatSurcharges', 'vip']} label="Phụ phí ghế VIP">
+                <InputNumber min={0} precision={0} style={{ width: '100%' }} placeholder="25000" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name={['seatSurcharges', 'couple']} label="Phụ phí ghế đôi">
+                <InputNumber min={0} precision={0} style={{ width: '100%' }} placeholder="20000" />
+              </Form.Item>
+            </Col>
+          </Row>
+
           <Divider />
 
           <Row gutter={[16, 16]} align="middle" style={{ marginBottom: 16 }}>
@@ -1618,6 +1670,32 @@ const Rooms: React.FC = () => {
               })}
             </Space>
 
+            <Space wrap size={8} style={{ marginBottom: 12 }}>
+              <Button
+                size="small"
+                type={pricePaint ? 'primary' : 'default'}
+                onClick={() => setPricePaint((v) => !v)}
+              >
+                Đặt phụ phí riêng cho ghế
+              </Button>
+              {pricePaint && (
+                <>
+                  <InputNumber
+                    size="small"
+                    min={0}
+                    precision={0}
+                    value={seatSurchargeInput}
+                    onChange={(v) => setSeatSurchargeInput(v === null ? null : Number(v))}
+                    placeholder="Phụ phí (VNĐ)"
+                    style={{ width: 150 }}
+                  />
+                  <Text type="secondary">
+                    Bấm vào ghế để áp dụng. Để trống rồi bấm ghế = xoá phụ phí riêng.
+                  </Text>
+                </>
+              )}
+            </Space>
+
             <div
               style={{
                 padding: '10px 16px',
@@ -1653,6 +1731,13 @@ const Rooms: React.FC = () => {
                 style={{ display: 'block', marginTop: 4, fontSize: 12 }}
               >
                 Ghế đôi phải đi theo cặp liền kề. Lối đi nằm ở hai bên sơ đồ.
+              </Text>
+              <Text
+                type="secondary"
+                style={{ display: 'block', marginTop: 4, fontSize: 12 }}
+              >
+                <b>*</b> Dấu sao sau số ghế = ghế có phụ phí riêng (ghi đè phụ phí theo loại
+                ghế). Di chuột vào ghế để xem số tiền.
               </Text>
 
               {editingCoupleError && (

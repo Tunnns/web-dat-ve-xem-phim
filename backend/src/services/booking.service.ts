@@ -5,6 +5,7 @@ import Ticket, { ITicket } from '../models/Ticket';
 import { calculatePrice, PricingComboInput } from './pricing.service';
 import { AppError } from '../utils/appError';
 import { showtimeLock } from './ticket.service';
+import { getSeatPrice } from '../utils/seatPrice';
 
 export interface LockSeatsInput {
   userId: string;
@@ -26,13 +27,10 @@ export interface SeatStatusDetail {
   isMine?: boolean;
 }
 
-const SEAT_TYPE_SURCHARGE: Record<'normal' | 'vip' | 'couple', number> = {
-  normal: 0,
-  vip: 25000,
-  couple: 20000,
-};
-
-const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 phút
+// Thời gian giữ ghế (phút), cấu hình qua env SEAT_LOCK_MINUTES (mặc định 5)
+const parsedLockMinutes = Number(process.env.SEAT_LOCK_MINUTES);
+export const LOCK_MINUTES = parsedLockMinutes > 0 ? parsedLockMinutes : 5;
+const LOCK_DURATION_MS = LOCK_MINUTES * 60 * 1000;
 
 /**
  * Thuật toán Seat Locking:
@@ -264,8 +262,7 @@ export const getShowtimeSeatMap = async (showtimeId: string, currentUserId?: str
       isMine = lockInfo.isMine;
     }
 
-    const surcharge = SEAT_TYPE_SURCHARGE[seat.type] ?? 0;
-    const price = basePrice + surcharge;
+    const price = getSeatPrice(basePrice, seat, room.seatSurcharges);
 
     const match = seat.code.match(/^([A-Za-z]+)(\d+)$/);
     const row = match ? match[1].toUpperCase() : seat.code.charAt(0).toUpperCase();
