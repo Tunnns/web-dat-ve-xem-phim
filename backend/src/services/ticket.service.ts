@@ -25,6 +25,11 @@ export interface CompleteTicketPaymentInput {
   paymentMethod?: string;
   paymentReference?: string; // Mã giao dịch ngân hàng (dùng để chống tạo vé trùng)
   ticketId?: string; // Vé pending đang giữ ghế (nếu luồng booking đã tạo trước)
+  soldBy?: string; // ID nhân viên bán vé tại quầy (nếu là giao dịch POS)
+  customerName?: string;
+  customerPhone?: string;
+  cashReceived?: number;
+  cashChange?: number;
 }
 
 /*
@@ -92,6 +97,11 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
     paymentMethod: rawPaymentMethod,
     paymentReference: rawPaymentReference,
     ticketId: rawTicketId,
+    soldBy,
+    customerName,
+    customerPhone,
+    cashReceived,
+    cashChange,
   } = input;
 
   // Chuẩn hoá các field optional: tránh lưu chuỗi rỗng vào unique index paymentReference
@@ -221,6 +231,11 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
       stockDeducted: false,
       paidAt: new Date(),
       lockedUntil: undefined,
+      soldBy: soldBy && mongoose.Types.ObjectId.isValid(soldBy) ? new mongoose.Types.ObjectId(soldBy) : undefined,
+      customerName: customerName?.trim() || undefined,
+      customerPhone: customerPhone?.trim() || undefined,
+      cashReceived: typeof cashReceived === 'number' ? cashReceived : undefined,
+      cashChange: typeof cashChange === 'number' ? cashChange : undefined,
     };
 
     try {
@@ -593,4 +608,147 @@ export const getShowtimeSeatsService = async (showtimeId: string, currentUserId?
     holdingSeats,
   };
 };
+
+export const parseCodeOrPayload = (input: string): { code?: string; ticketId?: string } => {
+  const trimmed = input.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      return { code: parsed.code, ticketId: parsed.ticketId };
+    } catch {
+      // ignore
+    }
+  }
+  if (mongoose.Types.ObjectId.isValid(trimmed)) {
+    return { ticketId: trimmed };
+  }
+  return { code: trimmed.toUpperCase() };
+};
+
+export const verifyTicketService = async (codeOrPayload: string) => {
+  if (!codeOrPayload || !codeOrPayload.trim()) {
+    throw new AppError('Vui lòng cung cấp mã vé hoặc nội dung mã QR', 400);
+  }
+
+  const { code, ticketId } = parseCodeOrPayload(codeOrPayload);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const query: Record<string, any> = {};
+  if (ticketId && mongoose.Types.ObjectId.isValid(ticketId)) {
+    query._id = ticketId;
+  } else if (code) {
+    query.code = code;
+  } else {
+    throw new AppError('Mã vé không hợp lệ', 400);
+  }
+
+  const ticket = await Ticket.findOne(query).populate([
+    { path: 'user', select: 'fullName email phone' },
+    { path: 'soldBy', select: 'fullName email' },
+    { path: 'usedBy', select: 'fullName email' },
+    {
+      path: 'showtime',
+      select: 'movie theater room startTime endTime price',
+      populate: [
+        { path: 'movie', select: 'title poster posterUrl duration genre ageRating' },
+        { path: 'theater', select: 'name address hotline' },
+        { path: 'room', select: 'name' },
+      ],
+    },
+  ]);
+
+  if (!ticket) {
+    throw new AppError('Không tìm thấy vé trong hệ thống', 404);
+  }
+
+  return ticket;
+};
+
+export const checkInTicketService = async (codeOrPayload: string, staffId: string) => {
+  const ticket = await verifyTicketService(codeOrPayload);
+
+  if (ticket.status !== 'completed') {
+    throw new AppError(`Vé chưa được thanh toán thành công (Trạng thái: ${ticket.status})`, 400);
+  }
+
+  if (ticket.isUsed) {
+    const formattedTime = ticket.usedAt
+      ? new Date(ticket.usedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) +
+        ' ngày ' +
+        new Date(ticket.usedAt).toLocaleDateString('vi-VN')
+      : 'trước đó';
+    throw new AppError(`Vé này ĐÃ ĐƯỢC SOÁT VÀO LÚC ${formattedTime}! Không thể tái sử dụng.`, 400);
+  }
+
+  ticket.isUsed = true;
+  ticket.usedAt = new Date();
+  if (staffId && mongoose.Types.ObjectId.isValid(staffId)) {
+    ticket.usedBy = new mongoose.Types.ObjectId(staffId);
+  }
+  await ticket.save();
+
+  return ticket;
+};
+
+export const getCounterTicketsService = async (options: {
+  staffId?: string;
+  theaterId?: string;
+  date?: string;
+}) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: Record<string, any> = {
+    status: 'completed',
+  };
+
+  const targetDate = options.date ? new Date(options.date) : new Date();
+  const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0);
+  const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+
+  filter.createdAt = { $gte: startOfDay, $lte: endOfDay };
+
+  const tickets = await Ticket.find(filter)
+    .populate([
+      { path: 'user', select: 'fullName email phone' },
+      { path: 'soldBy', select: 'fullName email' },
+      { path: 'usedBy', select: 'fullName email' },
+      {
+        path: 'showtime',
+        select: 'movie theater room startTime endTime price',
+        populate: [
+          { path: 'movie', select: 'title poster posterUrl duration' },
+          { path: 'theater', select: 'name address' },
+          { path: 'room', select: 'name' },
+        ],
+      },
+    ])
+    .sort({ createdAt: -1 });
+
+  let totalRevenue = 0;
+  let cashRevenue = 0;
+  let qrRevenue = 0;
+  let checkedInCount = 0;
+
+  for (const t of tickets) {
+    totalRevenue += t.totalAmount || 0;
+    if (t.paymentMethod === 'cash') {
+      cashRevenue += t.totalAmount || 0;
+    } else {
+      qrRevenue += t.totalAmount || 0;
+    }
+    if (t.isUsed) {
+      checkedInCount += 1;
+    }
+  }
+
+  return {
+    tickets,
+    summary: {
+      totalTickets: tickets.length,
+      totalRevenue,
+      cashRevenue,
+      qrRevenue,
+      checkedInCount,
+    },
+  };
+};
+
  

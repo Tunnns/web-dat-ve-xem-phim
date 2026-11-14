@@ -48,17 +48,34 @@ async function seedData() {
       Voucher.deleteMany({}),
     ]);
 
-    // 0. Default Admin User
-    const existingAdmin = await User.findOne({ email: 'admin@cineops.com' });
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      await User.create({
-        fullName: 'Administrator',
-        email: 'admin@cineops.com',
-        password: hashedPassword,
-        phone: '0901234567',
-        role: 'admin',
-      });
+    // 0. Default Admin User & Staff User (Hỗ trợ cả domain @fivecore.com và @cineops.com)
+    for (const adminEmail of ['admin@fivecore.com', 'admin@cineops.com']) {
+      const existing = await User.findOne({ email: adminEmail });
+      if (!existing) {
+        const hashedPassword = await bcrypt.hash('admin123', 10);
+        await User.create({
+          fullName: 'Administrator',
+          email: adminEmail,
+          password: hashedPassword,
+          phone: '0901234567',
+          role: 'admin',
+        });
+      }
+    }
+
+    for (const staffEmail of ['staff@fivecore.com', 'staff@cineops.com']) {
+      const existing = await User.findOne({ email: staffEmail });
+      if (!existing) {
+        const hashedStaffPassword = await bcrypt.hash('staff123', 10);
+        await User.create({
+          fullName: 'Nhân viên Quầy 1',
+          email: staffEmail,
+          password: hashedStaffPassword,
+          phone: '0988776655',
+          role: 'staff',
+          isActive: true,
+        });
+      }
     }
 
     // 1. Theaters

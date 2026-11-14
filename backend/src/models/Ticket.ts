@@ -22,6 +22,14 @@ export interface ITicket extends Document {
   paymentMethod?: string;
   paymentReference?: string; // Mã giao dịch ngân hàng, dùng để chống tạo vé trùng
   status: 'pending' | 'completed' | 'cancelled'; // pending dùng cho Seat Locking
+  isUsed?: boolean; // Đã soát vé / check-in chưa
+  usedAt?: Date; // Thời gian soát vé
+  usedBy?: mongoose.Types.ObjectId; // Nhân viên soát vé
+  soldBy?: mongoose.Types.ObjectId; // Nhân viên bán tại quầy (POS)
+  customerName?: string; // Tên khách hàng (mua tại quầy)
+  customerPhone?: string; // SĐT khách hàng
+  cashReceived?: number; // Tiền khách đưa khi thanh toán tiền mặt
+  cashChange?: number; // Tiền thối/thừa
   stockDeducted?: boolean; // Đã trừ tồn kho bắp nước cho vé này chưa (chống trừ lặp)
   lockedUntil?: Date; // Thời gian hết hạn giữ ghế (thường là 5 phút sau khi chọn)
   qrCode?: string; // Ảnh QR (data URL base64) sinh ra sau khi thanh toán
@@ -37,7 +45,6 @@ const ticketComboSchema = new Schema<ITicketCombo>(
     quantity: { type: Number, required: true, min: 1 },
     unitPrice: { type: Number, required: true, min: 0 },
     lineTotal: { type: Number, required: true, min: 0 },
-    // Giá vốn là dữ liệu nội bộ, không trả ra API client mặc định.
     unitCost: { type: Number, default: 0, min: 0, select: false },
     costTotal: { type: Number, default: 0, min: 0, select: false },
   },
@@ -61,6 +68,14 @@ const ticketSchema = new Schema<ITicket>(
       enum: ['pending', 'completed', 'cancelled'],
       default: 'pending',
     },
+    isUsed: { type: Boolean, default: false },
+    usedAt: { type: Date },
+    usedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    soldBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    customerName: { type: String, trim: true },
+    customerPhone: { type: String, trim: true },
+    cashReceived: { type: Number, min: 0 },
+    cashChange: { type: Number, min: 0 },
     stockDeducted: { type: Boolean, default: false },
     lockedUntil: { type: Date },
     qrCode: { type: String },
@@ -78,12 +93,13 @@ ticketSchema.index({ paymentReference: 1 }, { unique: true, sparse: true });
 // Tăng tốc truy vấn kiểm tra ghế đã đặt / đang giữ theo suất chiếu
 ticketSchema.index({ showtime: 1, status: 1 });
 
+// Tăng tốc tìm kiếm vé theo trạng thái check-in và ngày
+ticketSchema.index({ isUsed: 1, createdAt: -1 });
+
 // Tự động giải phóng ghế sau khi hết hạn lockedUntil nếu status vẫn là pending
-// Có thể kết hợp với TTL index trong MongoDB để tự động xóa document
 ticketSchema.index(
   { lockedUntil: 1 },
   { expireAfterSeconds: 0, partialFilterExpression: { status: 'pending' } }
 );
 
 export default mongoose.model<ITicket>('Ticket', ticketSchema);
- 
