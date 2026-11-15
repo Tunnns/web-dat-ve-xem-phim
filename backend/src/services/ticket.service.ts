@@ -1,6 +1,7 @@
 import mongoose, { HydratedDocument } from 'mongoose';
 import Ticket, { ITicket } from '../models/Ticket';
 import Showtime from '../models/Showtime';
+import User from '../models/User';
 import { calculatePrice, PricingComboInput } from './pricing.service';
 import { deductStockForTicket } from './inventory.service';
 import { redeemVoucher } from './voucher.service';
@@ -627,37 +628,58 @@ export const parseCodeOrPayload = (input: string): { code?: string; ticketId?: s
 
 export const verifyTicketService = async (codeOrPayload: string) => {
   if (!codeOrPayload || !codeOrPayload.trim()) {
-    throw new AppError('Vui lòng cung cấp mã vé hoặc nội dung mã QR', 400);
+    throw new AppError('Vui lòng cung cấp mã vé, mã hóa đơn hoặc số điện thoại', 400);
   }
 
-  const { code, ticketId } = parseCodeOrPayload(codeOrPayload);
+  const rawInput = codeOrPayload.trim();
+  const { code, ticketId } = parseCodeOrPayload(rawInput);
+  const upperInput = rawInput.toUpperCase();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const query: Record<string, any> = {};
+  const orConditions: Array<Record<string, any>> = [];
+
   if (ticketId && mongoose.Types.ObjectId.isValid(ticketId)) {
-    query._id = ticketId;
-  } else if (code) {
-    query.code = code;
-  } else {
-    throw new AppError('Mã vé không hợp lệ', 400);
+    orConditions.push({ _id: new mongoose.Types.ObjectId(ticketId) });
   }
 
-  const ticket = await Ticket.findOne(query).populate([
-    { path: 'user', select: 'fullName email phone' },
-    { path: 'soldBy', select: 'fullName email' },
-    { path: 'usedBy', select: 'fullName email' },
-    {
-      path: 'showtime',
-      select: 'movie theater room startTime endTime price',
-      populate: [
-        { path: 'movie', select: 'title poster posterUrl duration genre ageRating' },
-        { path: 'theater', select: 'name address hotline' },
-        { path: 'room', select: 'name' },
-      ],
-    },
-  ]);
+  if (code) {
+    orConditions.push({ code: code.toUpperCase() });
+  }
+
+  // Tra cứu theo mã hóa đơn / mã thanh toán (paymentReference, VD: FC260315...)
+  orConditions.push({ paymentReference: upperInput });
+
+  // Tra cứu theo số điện thoại khách hàng (nếu là chuỗi số)
+  if (/^\d{8,15}$/.test(rawInput)) {
+    orConditions.push({ customerPhone: rawInput });
+    const matchedUsers = await User.find({ phone: rawInput }).select('_id');
+    if (matchedUsers.length > 0) {
+      orConditions.push({ user: { $in: matchedUsers.map((u) => u._id) } });
+    }
+  }
+
+  const ticket = await Ticket.findOne({
+    $or: orConditions,
+    status: { $in: ['completed', 'pending'] },
+  })
+    .sort({ createdAt: -1 })
+    .populate([
+      { path: 'user', select: 'fullName email phone' },
+      { path: 'soldBy', select: 'fullName email' },
+      { path: 'usedBy', select: 'fullName email' },
+      {
+        path: 'showtime',
+        select: 'movie theater room startTime endTime price',
+        populate: [
+          { path: 'movie', select: 'title poster posterUrl duration genre ageRating' },
+          { path: 'theater', select: 'name address hotline' },
+          { path: 'room', select: 'name' },
+        ],
+      },
+    ]);
 
   if (!ticket) {
-    throw new AppError('Không tìm thấy vé trong hệ thống', 404);
+    throw new AppError('Không tìm thấy vé ứng với mã vé, mã hóa đơn hoặc số điện thoại này', 404);
   }
 
   return ticket;

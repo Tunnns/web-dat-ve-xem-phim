@@ -12,9 +12,11 @@ import {
   ShoppingBag,
   UserCheck,
   RefreshCw,
+  Printer,
 } from 'lucide-react';
 import { apiClient, getErrorMessage } from '../api/client';
 import { Ticket } from '../types';
+import { PrintTicketModal } from '../components/PrintTicketModal';
 
 export const CheckIn: React.FC = () => {
   const [scanInput, setScanInput] = useState('');
@@ -22,6 +24,7 @@ export const CheckIn: React.FC = () => {
   const [verifying, setVerifying] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [ticketData, setTicketData] = useState<Ticket | null>(null);
+  const [printModalTicket, setPrintModalTicket] = useState<Ticket | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [recentCheckIns, setRecentCheckIns] = useState<Ticket[]>([]);
@@ -100,9 +103,9 @@ export const CheckIn: React.FC = () => {
             <QrCode className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Soát Vé & Kiểm Soát Vào Rạp</h2>
+            <h2 className="text-lg font-bold text-white">Soát Vé & Nhận Vé Tại Quầy</h2>
             <p className="text-xs text-zinc-400">
-              Hỗ trợ súng bắn mã vạch, quét mã QR điện thoại hoặc nhập mã vé
+              Hỗ trợ súng bắn mã vạch, quét mã QR điện thoại, nhập mã vé, mã hóa đơn (FC...) hoặc số điện thoại
             </p>
           </div>
         </div>
@@ -111,7 +114,7 @@ export const CheckIn: React.FC = () => {
       {/* Input Ô quét mã vé */}
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
         <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">
-          Quét Mã Vạch / QR Code Hoặc Nhập Mã Vé:
+          Quét Mã Vạch / QR Code Hoặc Nhập Mã Vé, Mã Hóa Đơn (FC...), SĐT:
         </label>
         <div className="flex gap-3">
           <div className="relative flex-1">
@@ -122,7 +125,7 @@ export const CheckIn: React.FC = () => {
               value={scanInput}
               onChange={(e) => setScanInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="VD: TKT-M1A2B3C4... hoặc dán chuỗi QR"
+              placeholder="VD: TKT-M1A2B3C4... hoặc mã hóa đơn FC... hoặc SĐT"
               className="w-full rounded-xl border border-zinc-700 bg-zinc-950 py-3.5 pl-12 pr-4 text-base font-mono font-medium text-white placeholder-zinc-500 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
             />
           </div>
@@ -188,9 +191,24 @@ export const CheckIn: React.FC = () => {
                 >
                   {ticketData.isUsed ? 'VÉ ĐÃ ĐƯỢC CHECK-IN TRƯỚC ĐÓ' : 'VÉ HỢP LỆ - CHƯA SOÁT'}
                 </h3>
-                <p className="text-xs text-zinc-400 font-mono">
-                  MÃ VÉ: <strong className="text-zinc-200">{ticketData.code || ticketData._id}</strong>
-                </p>
+                <div className="flex flex-wrap items-center gap-3 text-xs font-mono mt-1">
+                  <span className="text-zinc-400">
+                    MÃ VÉ: <strong className="text-zinc-200">{ticketData.code || ticketData._id}</strong>
+                  </span>
+                  {ticketData.paymentReference && (
+                    <span className="text-zinc-400">
+                      MÃ HÓA ĐƠN: <strong className="text-amber-300 font-bold">{ticketData.paymentReference}</strong>
+                    </span>
+                  )}
+                  {(ticketData.customerName || ticketData.user?.fullName) && (
+                    <span className="text-zinc-400">
+                      Khách: <strong className="text-zinc-300">{ticketData.customerName || ticketData.user?.fullName}</strong>
+                      {(ticketData.customerPhone || ticketData.user?.phone) && (
+                        <span> ({ticketData.customerPhone || ticketData.user?.phone})</span>
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -280,27 +298,37 @@ export const CheckIn: React.FC = () => {
             </div>
           </div>
 
-          {/* Action button: Xác nhận soát vé */}
-          {!ticketData.isUsed ? (
+          {/* Action buttons: In vé vật lý & Xác nhận soát vé */}
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={handleConfirmCheckIn}
-              disabled={checkingIn}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3.5 text-base font-extrabold text-white shadow-xl shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition-all"
+              onClick={() => setPrintModalTicket(ticketData)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-3.5 text-sm font-bold text-zinc-200 hover:bg-zinc-700 hover:text-white transition-all shadow-lg"
             >
-              {checkingIn ? (
-                <RefreshCw className="h-5 w-5 animate-spin" />
-              ) : (
-                <>
-                  <UserCheck className="h-6 w-6" />
-                  <span>XÁC NHẬN VÀO RẠP (CHECK-IN)</span>
-                </>
-              )}
+              <Printer className="h-5 w-5 text-rose-400" />
+              <span>IN VÉ VẬT LÝ</span>
             </button>
-          ) : (
-            <div className="rounded-xl bg-amber-500/10 p-3 text-center text-xs font-bold text-amber-400">
-              Vé này đã được xác nhận vào rạp trước đó. Vui lòng từ chối nếu có dấu hiệu gian lận.
-            </div>
-          )}
+
+            {!ticketData.isUsed ? (
+              <button
+                onClick={handleConfirmCheckIn}
+                disabled={checkingIn}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3.5 text-base font-extrabold text-white shadow-xl shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition-all"
+              >
+                {checkingIn ? (
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <UserCheck className="h-6 w-6" />
+                    <span>XÁC NHẬN VÀO RẠP (CHECK-IN)</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="flex-1 rounded-xl bg-amber-500/10 p-3 text-center text-xs font-bold text-amber-400 flex items-center justify-center">
+                Vé này đã được xác nhận vào rạp trước đó.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -327,6 +355,12 @@ export const CheckIn: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal In Vé Vật Lý */}
+      <PrintTicketModal
+        ticket={printModalTicket}
+        onClose={() => setPrintModalTicket(null)}
+      />
     </div>
   );
 };

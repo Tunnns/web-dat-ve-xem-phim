@@ -56,6 +56,11 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
             <div className="mt-2 text-xs font-mono font-bold tracking-widest text-emerald-400">
               MÃ VÉ: {ticket.code || ticket._id}
             </div>
+            {ticket.paymentReference && (
+              <div className="mt-1 text-[11px] font-mono text-zinc-400">
+                MÃ HÓA ĐƠN: <strong className="text-zinc-200">{ticket.paymentReference}</strong>
+              </div>
+            )}
           </div>
 
           {/* Movie Details */}
@@ -97,6 +102,20 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                 {ticket.paymentMethod === 'cash' ? 'Tiền mặt tại quầy' : ticket.paymentMethod}
               </span>
             </div>
+            {ticket.customerName && (
+              <div className="flex justify-between text-zinc-400">
+                <span>Khách hàng:</span>
+                <span className="font-semibold text-zinc-200">
+                  {ticket.customerName} {ticket.customerPhone ? `(${ticket.customerPhone})` : ''}
+                </span>
+              </div>
+            )}
+            {ticket.soldBy && (
+              <div className="flex justify-between text-zinc-400">
+                <span>Thu ngân:</span>
+                <span className="font-semibold text-zinc-200">{ticket.soldBy.fullName || ticket.soldBy.email}</span>
+              </div>
+            )}
             {ticket.cashReceived && (
               <div className="flex justify-between text-zinc-400">
                 <span>Khách đưa:</span>

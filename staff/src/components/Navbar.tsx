@@ -66,7 +66,7 @@ export const Navbar: React.FC = () => {
               }
             >
               <QrCode className="h-4 w-4" />
-              <span>Soát Vé Check-in</span>
+              <span>Soát Vé & Nhận Vé</span>
             </NavLink>
 
             <NavLink

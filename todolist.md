@@ -46,4 +46,10 @@
 - [x] 16. Dong bo thoi gian giu ghe voi thoi gian hieu luc ma QR thanh toan
   - Backend: `backend/src/controllers/payment.controller.ts` dong bo thoi gian khoa ghe `lockedUntil` voi thoi gian sinh ma QR theo `LOCK_MINUTES`. Tra ve `lockedUntil` (ISO string) va `expiresInSeconds` trong API `/payment/qr` va `/payment/status/:orderCode`. Tra ve `status: 'expired'` khi qua han.
   - Client: `client/src/api/paymentApi.ts` bo sung type `lockedUntil` va `expiresInSeconds`. `client/src/pages/Checkout/Checkout.tsx` tich hop `SeatTimer` tren header trang checkout, dong bo dem nguoc modal QR truc tiep theo `lockExpiresAt` tu `cartStore`, bo dem khong bi drift khi an tab. Khi het han, QR tu dong lam mo va hien thong bao "Ma QR da het han - Ghe da duoc giai phong" kem nut chon lai ghe.
+- [x] 17. Staff app: Tra cuu ma hoa don/don hang (paymentReference), SĐT, in ve vat ly va check-in tai quay
+  - Backend: `backend/src/services/ticket.service.ts` ham `verifyTicketService` mo rong tra cuu da nang theo: ma ve (`code`), ma hoa don SePay (`paymentReference`, VD: `FC...`), ma dinh danh ve (`_id`), va so dien thoai khach hang (`customerPhone` hoac `user.phone`).
+  - Staff:
+    - `staff/src/components/PrintTicketModal.tsx`: Mau in ve bo sung `MA HOA DON` (`paymentReference`), thong tin khach hang (ho ten, SDT), nhan vien ban ve (`soldBy`), va huong dan quet QR.
+    - `staff/src/pages/CheckIn.tsx`: Giao dien "Soat Ve & Nhan Ve" ho tro nhap/quet ma hoa don hoac SDT khach hang dat online, hien thi day du thong tin don hang, bo sung nut "IN VE VAT LY" de xuat ve giay cho khach den lay ve truc tiep, va nut "XAC NHAN VAO RAP (CHECK-IN)".
+    - `staff/src/components/Navbar.tsx`: Doi ten muc dieu huong thanh "Soat Ve & Nhan Ve".
 
