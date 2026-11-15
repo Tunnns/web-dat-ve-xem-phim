@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useCartStore } from '../../store/cartStore'
 import { useAuthStore } from '../../store/authStore'
+import SeatTimer from '../../components/SeatMap/SeatTimer'
 import ComboSelector, {
   type SelectedCombo,
 } from '../../components/ComboSelector/ComboSelector'
@@ -30,6 +31,11 @@ import './PaymentModal.css'
 
 const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ'
 
+function calculateSecondsLeft(lockExpiresAt: number | null): number {
+  if (!lockExpiresAt) return 0
+  return Math.max(0, Math.floor((lockExpiresAt - Date.now()) / 1000))
+}
+
 export default function Checkout() {
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
@@ -37,6 +43,8 @@ export default function Checkout() {
     showtime,
     seats: selectedSeats,
     ticketId,
+    lockExpiresAt,
+    setLockExpiresAt,
     clearCart,
     totalPrice,
     checkAndCleanExpired,
@@ -61,20 +69,39 @@ export default function Checkout() {
     accountName: string
     amount: number
     description: string
+    lockedUntil?: string
+    expiresInSeconds?: number
   } | null>(null)
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [completedTicket, setCompletedTicket] = useState<any>(null)
-  const [timeLeft, setTimeLeft] = useState(300)
+  const [timeLeft, setTimeLeft] = useState<number>(() => calculateSecondsLeft(lockExpiresAt))
+  const [isQrExpired, setIsQrExpired] = useState(false)
 
-  // Countdown timer cho modal thanh toan
+  // Countdown timer dong bo tuyet doi voi thoi gian giu ghe lockExpiresAt
   useEffect(() => {
-    if (!isPaymentModalOpen || completedTicket) return
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
-    }, 1000)
+    if (completedTicket) return
+
+    const updateTimer = () => {
+      const remaining = calculateSecondsLeft(lockExpiresAt)
+      setTimeLeft(remaining)
+
+      if (remaining <= 0 && lockExpiresAt) {
+        setIsQrExpired(true)
+        if (!isPaymentModalOpen) {
+          if (checkAndCleanExpired()) {
+            navigate('/', { replace: true })
+          }
+        }
+      } else if (remaining > 0) {
+        setIsQrExpired(false)
+      }
+    }
+
+    updateTimer()
+    const timer = setInterval(updateTimer, 1000)
     return () => clearInterval(timer)
-  }, [isPaymentModalOpen, completedTicket])
+  }, [completedTicket, lockExpiresAt, isPaymentModalOpen, checkAndCleanExpired, navigate])
 
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -166,7 +193,6 @@ export default function Checkout() {
     }
     if (!showtime || selectedSeats.length === 0) return
 
-    setTimeLeft(300)
     setGeneratingQR(true)
     setIsPaymentModalOpen(true)
     try {
@@ -188,6 +214,12 @@ export default function Checkout() {
       setQrData(res)
       if (res.ticketId) {
         useCartStore.getState().setTicketId(res.ticketId)
+      }
+      if (res.lockedUntil) {
+        const expiryMs = new Date(res.lockedUntil).getTime()
+        setLockExpiresAt(expiryMs)
+        setTimeLeft(calculateSecondsLeft(expiryMs))
+        setIsQrExpired(false)
       }
     } catch (err) {
       alert(getErrorMessage(err))
@@ -252,11 +284,26 @@ export default function Checkout() {
 
   // Tự động kiểm tra trạng thái thanh toán từ DB nội bộ mỗi 2.5s
   useEffect(() => {
-    if (!isPaymentModalOpen || !qrData || completedTicket || confirming) return
+    if (!isPaymentModalOpen || !qrData || completedTicket || confirming || isQrExpired) return
 
     const interval = setInterval(async () => {
       try {
         const result = await paymentApi.checkPaymentStatus(qrData.description)
+        if (result.status === 'expired') {
+          setIsQrExpired(true)
+          setTimeLeft(0)
+          clearInterval(interval)
+          return
+        }
+
+        if (result.lockedUntil) {
+          const serverExpiry = new Date(result.lockedUntil).getTime()
+          if (!lockExpiresAt || Math.abs(serverExpiry - lockExpiresAt) > 2000) {
+            setLockExpiresAt(serverExpiry)
+            setTimeLeft(calculateSecondsLeft(serverExpiry))
+          }
+        }
+
         if (result.paid && result.ticket) {
           clearInterval(interval)
           try {
@@ -271,14 +318,14 @@ export default function Checkout() {
     }, 2500)
 
     return () => clearInterval(interval)
-  }, [isPaymentModalOpen, qrData, completedTicket, confirming])
+  }, [isPaymentModalOpen, qrData, completedTicket, confirming, isQrExpired, lockExpiresAt, setLockExpiresAt])
 
   if (!showtime || selectedSeats.length === 0) return null
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <Link
           to={`/booking/${showtime.id}`}
           className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
@@ -286,9 +333,12 @@ export default function Checkout() {
           <ArrowLeft className="h-4 w-4" />
           <span>Quay lại chọn ghế</span>
         </Link>
-        <span className="text-xs uppercase tracking-wider text-zinc-500 font-semibold">
-          Bước 2 / 2: Thanh toán
-        </span>
+        <div className="flex items-center gap-4">
+          <SeatTimer onExpire={() => { navigate('/', { replace: true }) }} />
+          <span className="text-xs uppercase tracking-wider text-zinc-500 font-semibold">
+            Bước 2 / 2: Thanh toán
+          </span>
+        </div>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
@@ -683,9 +733,30 @@ export default function Checkout() {
 
               <div className="teddy-modal-body">
                 {/* Timer ribbon */}
-                <div className="teddy-timer-bar">
-                  <span>Hiệu lực mã giao dịch:</span>
-                  <span style={{ fontWeight: 800 }}>{formatTimer(timeLeft)}</span>
+                <div
+                  className="teddy-timer-bar"
+                  style={
+                    isQrExpired || timeLeft <= 0
+                      ? { background: '#fef2f2', borderColor: '#fca5a5', color: '#dc2626' }
+                      : timeLeft < 60
+                      ? { background: '#fffbeb', borderColor: '#fcd34d', color: '#d97706' }
+                      : undefined
+                  }
+                >
+                  <span>
+                    {isQrExpired || timeLeft <= 0
+                      ? 'Trạng thái phiên giao dịch:'
+                      : 'Hiệu lực mã QR & thời gian giữ ghế:'}
+                  </span>
+                  <span
+                    style={{
+                      fontWeight: 800,
+                      fontFamily: 'monospace',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    {isQrExpired || timeLeft <= 0 ? 'Đã hết hạn (00:00)' : formatTimer(timeLeft)}
+                  </span>
                 </div>
 
                 {generatingQR ? (
@@ -709,11 +780,66 @@ export default function Checkout() {
                     <div className="teddy-qr-split-container">
                       {/* Cot trai: QR Image */}
                       <div className="teddy-qr-left-col">
-                        <div className="teddy-qr-img-box-large">
-                          <img src={qrData.qrUrl} alt="Mã QR VietQR MBBank" />
+                        <div className="teddy-qr-img-box-large" style={{ position: 'relative', overflow: 'hidden' }}>
+                          <img
+                            src={qrData.qrUrl}
+                            alt="Mã QR VietQR MBBank"
+                            style={
+                              isQrExpired || timeLeft <= 0
+                                ? { filter: 'grayscale(100%) blur(2px)', opacity: 0.25 }
+                                : undefined
+                            }
+                          />
+                          {(isQrExpired || timeLeft <= 0) && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'rgba(15, 23, 42, 0.88)',
+                                borderRadius: 12,
+                                padding: 16,
+                                textAlign: 'center',
+                                color: '#ffffff',
+                              }}
+                            >
+                              <AlertCircle style={{ width: 36, height: 36, color: '#ef4444', marginBottom: 8 }} />
+                              <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 4 }}>
+                                Mã QR Đã Hết Hạn
+                              </div>
+                              <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginBottom: 12, lineHeight: 1.4 }}>
+                                Thời gian giữ ghế đã kết thúc. Vui lòng chọn lại ghế để tiếp tục.
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  clearCart()
+                                  setIsPaymentModalOpen(false)
+                                  navigate(`/booking/${showtime.id}`)
+                                }}
+                                style={{
+                                  background: '#2563eb',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  borderRadius: 8,
+                                  padding: '7px 16px',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Chọn lại ghế
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <div className="teddy-qr-scan-hint">
-                          Quét mã bằng App ngân hàng bất kỳ để tự động điền số tiền và nội dung
+                          {isQrExpired || timeLeft <= 0
+                            ? 'Phiên thanh toán đã hết hạn, vui lòng không chuyển tiền vào mã này'
+                            : 'Quét mã bằng App ngân hàng bất kỳ để tự động điền số tiền và nội dung'}
                         </div>
                       </div>
 
@@ -794,10 +920,19 @@ export default function Checkout() {
                     <button
                       type="button"
                       className="teddy-btn-modal-action"
-                      disabled={confirming}
+                      disabled={confirming || isQrExpired || timeLeft <= 0}
                       onClick={() => handleFinalizePayment(qrData.description)}
+                      style={
+                        isQrExpired || timeLeft <= 0
+                          ? { background: '#94a3b8', cursor: 'not-allowed' }
+                          : undefined
+                      }
                     >
-                      {confirming ? 'Đang xác thực giao dịch...' : 'Kiểm tra giao dịch'}
+                      {confirming
+                        ? 'Đang xác thực giao dịch...'
+                        : isQrExpired || timeLeft <= 0
+                        ? 'Mã QR đã hết hiệu lực'
+                        : 'Kiểm tra giao dịch'}
                     </button>
 
                     <button

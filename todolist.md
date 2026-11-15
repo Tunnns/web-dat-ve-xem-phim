@@ -43,4 +43,7 @@
   - [x] Phase 2 - Backend ban hang & doanh thu: snapshot gia von vao `Ticket`, tru ton kho (co `stockDeducted` chong tru lap), bao cao COGS/loi nhuan, an gia von khoi API client.
   - [x] Phase 3 - Admin UI: trang `/inventory`, cap nhat trang Combo va Doanh thu.
   - [x] Phase 4 - Kiem thu & tai lieu: script `backend/src/scripts/verify-phase4.ts` (84/84 kiem tra dat), sua bug webhook song song cua khach vang lai, cap nhat `PLAN-kho-bap-nuoc-doanh-thu.md` va `backend/API_COMBO_VOUCHER.md`.
+- [x] 16. Dong bo thoi gian giu ghe voi thoi gian hieu luc ma QR thanh toan
+  - Backend: `backend/src/controllers/payment.controller.ts` dong bo thoi gian khoa ghe `lockedUntil` voi thoi gian sinh ma QR theo `LOCK_MINUTES`. Tra ve `lockedUntil` (ISO string) va `expiresInSeconds` trong API `/payment/qr` va `/payment/status/:orderCode`. Tra ve `status: 'expired'` khi qua han.
+  - Client: `client/src/api/paymentApi.ts` bo sung type `lockedUntil` va `expiresInSeconds`. `client/src/pages/Checkout/Checkout.tsx` tich hop `SeatTimer` tren header trang checkout, dong bo dem nguoc modal QR truc tiep theo `lockExpiresAt` tu `cartStore`, bo dem khong bi drift khi an tab. Khi het han, QR tu dong lam mo va hien thong bao "Ma QR da het han - Ghe da duoc giai phong" kem nut chon lai ghe.
 

@@ -11,6 +11,7 @@ import { calculatePrice, sanitizePricingForClient } from '../services/pricing.se
 import { completeTicketPayment } from '../services/ticket.service';
 import { getActiveCombos } from '../services/combo.service';
 import { validateVoucher } from '../services/voucher.service';
+import { LOCK_MINUTES } from '../services/booking.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { AppError } from '../utils/appError';
 
@@ -64,6 +65,10 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
       description?.trim().toUpperCase() ||
       `FC${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
 
+    const now = new Date();
+    const LOCK_DURATION_MS = LOCK_MINUTES * 60 * 1000;
+    const targetLockedUntil = new Date(now.getTime() + LOCK_DURATION_MS);
+
     let pendingTicket = null;
 
     if (ticketId && mongoose.Types.ObjectId.isValid(ticketId)) {
@@ -71,7 +76,7 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
       if (pendingTicket) {
         pendingTicket.paymentReference = orderCode;
         if (amount) pendingTicket.totalAmount = amount;
-        pendingTicket.lockedUntil = new Date(Date.now() + 10 * 60 * 1000);
+        pendingTicket.lockedUntil = targetLockedUntil;
         await pendingTicket.save();
       }
     }
@@ -82,7 +87,6 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
     const isMongoShowtime = !!targetShowtimeId && mongoose.Types.ObjectId.isValid(targetShowtimeId);
 
     if (isMongoShowtime && targetSeats.length > 0) {
-      const now = new Date();
       const conflictTickets = await Ticket.find({
         showtime: targetShowtimeId,
         status: { $in: ['completed', 'pending'] },
@@ -124,7 +128,7 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
         paymentMethod: 'SePay VietQR',
         paymentReference: orderCode,
         status: 'pending',
-        lockedUntil: new Date(Date.now() + 10 * 60 * 1000),
+        lockedUntil: targetLockedUntil,
       });
     }
 
@@ -144,6 +148,8 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
         amount,
         description: orderCode,
         ticketId: pendingTicket?._id,
+        lockedUntil: targetLockedUntil.toISOString(),
+        expiresInSeconds: Math.max(0, Math.round((targetLockedUntil.getTime() - Date.now()) / 1000)),
       },
     });
   } catch (error) {
@@ -192,6 +198,7 @@ export const checkPaymentStatus = async (req: Request, res: Response): Promise<v
         success: true,
         paid: false,
         status: 'expired',
+        message: 'Mã QR thanh toán và thời gian giữ ghế đã hết hạn',
       });
       return;
     }
@@ -200,6 +207,10 @@ export const checkPaymentStatus = async (req: Request, res: Response): Promise<v
       success: true,
       paid: false,
       status: 'pending',
+      lockedUntil: ticket.lockedUntil ? new Date(ticket.lockedUntil).toISOString() : undefined,
+      expiresInSeconds: ticket.lockedUntil
+        ? Math.max(0, Math.round((new Date(ticket.lockedUntil).getTime() - Date.now()) / 1000))
+        : undefined,
     });
   } catch (error) {
     handleError(res, error);

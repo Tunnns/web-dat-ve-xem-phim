@@ -108,6 +108,8 @@ export const paymentApi = {
     amount: number
     description: string
     ticketId?: string
+    lockedUntil?: string
+    expiresInSeconds?: number
   }> {
     const res = await api.post('/payment/qr', params)
     return res.data.data
@@ -118,7 +120,10 @@ export const paymentApi = {
     success: boolean
     paid: boolean
     status: 'pending' | 'completed' | 'expired' | 'not_found'
+    message?: string
     ticket?: any
+    lockedUntil?: string
+    expiresInSeconds?: number
   }> {
     const res = await api.get(`/payment/status/${encodeURIComponent(orderCode)}`)
     return res.data
