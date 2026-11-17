@@ -587,13 +587,19 @@ const Showtimes: React.FC = () => {
     {
       title: 'KẾT THÚC',
       key: 'endTime',
-      width: 115,
-      render: (_, record) => (
-        <Space size={6}>
-          <ClockCircleOutlined />
-          {dayjs(record.endTime).format('HH:mm')}
-        </Space>
-      ),
+      width: 140,
+      render: (_, record) => {
+        const start = dayjs(record.startTime);
+        const end = dayjs(record.endTime);
+        const isNextDay = !end.isSame(start, 'day');
+        return (
+          <Space size={6}>
+            <ClockCircleOutlined />
+            <Text strong>{end.format('HH:mm')}</Text>
+            {isNextDay && <Tag color="warning" style={{ fontSize: 10, padding: '0 4px' }}>+1 ngày</Tag>}
+          </Space>
+        );
+      },
     },
     {
       title: 'NGÀY TẠO',
@@ -930,6 +936,11 @@ const Showtimes: React.FC = () => {
                             <Text>
                               <ClockCircleOutlined />
                               {start.format('HH:mm')} – {end.format('HH:mm')}
+                              {!end.isSame(start, 'day') && (
+                                <Text type="warning" style={{ fontSize: 11, marginLeft: 4 }}>
+                                  (+1 ngày)
+                                </Text>
+                              )}
                             </Text>
 
                             <Text>
