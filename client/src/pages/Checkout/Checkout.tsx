@@ -743,8 +743,8 @@ export default function Checkout() {
                     isQrExpired || timeLeft <= 0
                       ? { background: '#fef2f2', borderColor: '#fca5a5', color: '#dc2626' }
                       : timeLeft < 60
-                      ? { background: '#fffbeb', borderColor: '#fcd34d', color: '#d97706' }
-                      : undefined
+                        ? { background: '#fffbeb', borderColor: '#fcd34d', color: '#d97706' }
+                        : undefined
                   }
                 >
                   <span>
@@ -935,8 +935,8 @@ export default function Checkout() {
                       {confirming
                         ? 'Đang xác thực giao dịch...'
                         : isQrExpired || timeLeft <= 0
-                        ? 'Mã QR đã hết hiệu lực'
-                        : 'Kiểm tra giao dịch'}
+                          ? 'Mã QR đã hết hiệu lực'
+                          : 'Kiểm tra giao dịch'}
                     </button>
 
                     <button
