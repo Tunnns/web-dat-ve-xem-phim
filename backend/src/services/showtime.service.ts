@@ -5,14 +5,18 @@ import Room from '../models/Room';
 import Showtime from '../models/Showtime';
 import Ticket from '../models/Ticket';
 import { AppError } from '../utils/appError';
+import { getPricingRule, resolveShowtimePrice } from './showtimePrice.service';
 
 // Kiểm tra trùng lịch chiếu trong cùng một phòng
-const assertNoOverlap = async (room: string, start: Date, end: Date, excludeId?: string) => {
+const assertNoOverlap = async (room: string, start: Date, end: Date, excludeId?: string, breakMinutes = 0) => {
+  const blockedEnd = new Date(end.getTime() + breakMinutes * 60000);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: Record<string, any> = {
     room: new mongoose.Types.ObjectId(room),
-    startTime: { $lt: end },
-    endTime: { $gt: start },
+    startTime: { $lt: blockedEnd },
+    $expr: {
+      $gt: [{ $add: ['$endTime', { $multiply: [{ $ifNull: ['$breakMinutes', 0] }, 60000] }] }, start],
+    },
   };
 
   if (excludeId && mongoose.Types.ObjectId.isValid(excludeId)) {
@@ -31,7 +35,7 @@ const assertNoOverlap = async (room: string, start: Date, end: Date, excludeId?:
     const cStart = new Date(conflicting.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(conflicting.startTime).toLocaleDateString('vi-VN');
     const cEnd = new Date(conflicting.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(conflicting.endTime).toLocaleDateString('vi-VN');
     throw new AppError(
-      `Phòng "${roomName}" đã có suất chiếu phim "${movieTitle}" (${cStart} - ${cEnd}) trùng với khung giờ bạn chọn`,
+      `Phòng "${roomName}" đã có suất chiếu phim "${movieTitle}" (${cStart} - ${cEnd}) trùng với khung giờ bạn chọn (đã tính ${breakMinutes} phút nghỉ giữa các suất)`,
       409
     );
   }
@@ -47,9 +51,10 @@ export const getShowtimes = async (filters: { movie?: string; theater?: string; 
   const showtimes = await Showtime.find(filter)
     .populate('movie', 'title posterUrl bannerUrl duration genre rating ageRating')
     .populate('theater', 'name address location hotline')
-    .populate('room', 'name capacity')
+    .populate('room', 'name capacity seatLayout')
     .sort({ startTime: 1 });
 
+  const pricingRule = await getPricingRule();
   const now = new Date();
   const showtimeIds = showtimes.map((s) => s._id);
 
@@ -73,7 +78,8 @@ export const getShowtimes = async (filters: { movie?: string; theater?: string; 
   }
 
   return showtimes.map((st) => {
-    const sObj = st.toObject();
+    const sObj = st.toObject() as any;
+    if (sObj.room) delete sObj.room.seatLayout;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const capacity = (st.room as any)?.capacity || 96;
     const takenCount = bookedCountMap.get(String(st._id))?.size || 0;
@@ -82,6 +88,9 @@ export const getShowtimes = async (filters: { movie?: string; theater?: string; 
       ...sObj,
       availableSeats,
       totalSeats: capacity,
+      hasSeatLayout: Array.isArray((st.room as any)?.seatLayout) && (st.room as any).seatLayout.length > 0,
+      priceBreakdown: resolveShowtimePrice(st.price, st.startTime, pricingRule),
+      finalPrice: resolveShowtimePrice(st.price, st.startTime, pricingRule).finalPrice,
     };
   });
 };
@@ -124,8 +133,12 @@ export const getShowtimeById = async (id: string, currentUserId?: string) => {
     }
   }
 
+  const priceBreakdown = resolveShowtimePrice(showtime.price, showtime.startTime, await getPricingRule());
+
   return {
     ...showtime.toObject(),
+    priceBreakdown,
+    finalPrice: priceBreakdown.finalPrice,
     bookedSeats,
     holdingSeats,
   };
@@ -160,6 +173,10 @@ export const createShowtime = async (data: any) => {
     throw new AppError('Phòng không tồn tại', 404);
   }
 
+  if (!Array.isArray(roomExists.seatLayout) || roomExists.seatLayout.length === 0) {
+    throw new AppError('Phòng chưa có sơ đồ ghế. Vui lòng cấu hình sơ đồ ghế trước khi tạo suất chiếu', 400);
+  }
+
   // Phòng phải thuộc đúng rạp đã chọn
   if (String(roomExists.theater) !== String(theater)) {
     throw new AppError('Phòng không thuộc rạp đã chọn', 400);
@@ -192,7 +209,7 @@ export const createShowtime = async (data: any) => {
     }
   }
 
-  await assertNoOverlap(room, new Date(startTime), new Date(endTime));
+  await assertNoOverlap(room, new Date(startTime), new Date(endTime), undefined, Number(data.breakMinutes ?? 15));
 
   return Showtime.create(data);
 };
@@ -238,6 +255,9 @@ export const updateShowtime = async (id: string, data: any) => {
 
   if (data.theater || data.room) {
     const roomDoc = await Room.findById(finalRoom);
+    if (roomDoc && (!Array.isArray(roomDoc.seatLayout) || roomDoc.seatLayout.length === 0)) {
+      throw new AppError('Phòng chưa có sơ đồ ghế. Vui lòng cấu hình sơ đồ ghế trước khi tạo suất chiếu', 400);
+    }
     if (!roomDoc || String(roomDoc.theater) !== finalTheater) {
       throw new AppError('Phòng không thuộc rạp đã chọn', 400);
     }
@@ -267,7 +287,7 @@ export const updateShowtime = async (id: string, data: any) => {
     }
   }
 
-  await assertNoOverlap(finalRoom, startTime, endTime, id);
+  await assertNoOverlap(finalRoom, startTime, endTime, id, Number(data.breakMinutes ?? existing.breakMinutes ?? 0));
 
   const showtime = await Showtime.findByIdAndUpdate(id, data, { new: true, runValidators: true })
     .populate('movie', 'title')

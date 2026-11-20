@@ -1,4 +1,5 @@
 import mongoose, { HydratedDocument } from 'mongoose';
+import { getPricingRule, resolveShowtimePrice } from './showtimePrice.service';
 import Showtime from '../models/Showtime';
 import Room, { IRoom } from '../models/Room';
 import Ticket, { ITicket } from '../models/Ticket';
@@ -246,7 +247,7 @@ export const getShowtimeSeatMap = async (showtimeId: string, currentUserId?: str
     }
   });
 
-  const basePrice = showtime.price || 0;
+  const basePrice = resolveShowtimePrice(showtime.price || 0, showtime.startTime, await getPricingRule()).finalPrice;
 
   const seatItems: SeatStatusDetail[] = room.seatLayout.map((seat) => {
     let status: 'available' | 'locked' | 'booked' = 'available';

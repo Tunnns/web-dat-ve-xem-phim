@@ -5,6 +5,7 @@ import * as MovieService from '../services/movie.service';
 import * as TheaterService from '../services/theater.service';
 import * as RoomService from '../services/room.service';
 import * as ShowtimeService from '../services/showtime.service';
+import * as PricingService from '../services/showtimePrice.service';
 import * as ComboService from '../services/combo.service';
 import * as InventoryService from '../services/inventory.service';
 import * as VoucherService from '../services/voucher.service';
@@ -870,3 +871,22 @@ export const getRevenue = async (req: Request, res: Response) => {
   }
 };
  
+/* ============================ BẢNG GIÁ (PricingRule) ============================ */
+
+export const getPricingRule = async (_req: Request, res: Response) => {
+  try {
+    const rule = await PricingService.getPricingRule();
+    res.status(200).json({ success: true, message: 'Lấy bảng giá thành công', data: rule });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const updatePricingRule = async (req: Request, res: Response) => {
+  try {
+    const rule = await PricingService.savePricingRule(req.body);
+    res.status(200).json({ success: true, message: 'Cập nhật bảng giá thành công', data: rule });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
