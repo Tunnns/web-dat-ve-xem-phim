@@ -6,6 +6,7 @@ import Combo from '../models/Combo';
 import { AppError } from '../utils/appError';
 import { validateVoucher } from './voucher.service';
 import { getSeatPrice } from '../utils/seatPrice';
+import { getPricingRule, resolveShowtimePrice } from './showtimePrice.service';
 
 export interface PricingComboInput {
   comboId: string;
@@ -49,6 +50,8 @@ export const calculatePrice = async (input: PricingInput) => {
     throw new AppError('Vui lòng chọn ít nhất một ghế', 400);
   }
 
+  const pricingRule = await getPricingRule();
+  const effectiveBase = resolveShowtimePrice(showtime.price || 0, showtime.startTime, pricingRule).finalPrice;
   const seatByCode = new Map(room.seatLayout.map((seat) => [seat.code, seat]));
 
   /* ---------- 1. Tính tiền vé ---------- */
@@ -57,7 +60,7 @@ export const calculatePrice = async (input: PricingInput) => {
     if (!seat) {
       throw new AppError(`Ghế ${code} không tồn tại trong phòng`, 400);
     }
-    const price = getSeatPrice(showtime.price || 0, seat, room.seatSurcharges);
+    const price = getSeatPrice(effectiveBase, seat, room.seatSurcharges);
     return { code, type: seat.type, price };
   });
 

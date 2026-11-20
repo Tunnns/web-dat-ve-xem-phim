@@ -100,7 +100,7 @@ export function groupShowtimesByTheater(showtimes: any[]): ShowtimeGroup[] {
       startTime: startTimeStr,
       endTime: endTimeStr,
       roomName,
-      price: st.price,
+      price: Number(st.finalPrice ?? st.price),
       availableSeats,
       totalSeats,
       date: !isNaN(start.getTime()) ? start.toISOString().slice(0, 10) : undefined,
@@ -263,7 +263,7 @@ export const showtimeApi = {
         const movie = showtime.movie || {}
         const theater = showtime.theater || {}
         const room = showtime.room || {}
-        const price = Number(showtime.price) || 95000
+        const price = Number(showtime.finalPrice ?? showtime.price) || 95000
 
         const bookedSet = new Set<string>(
           Array.isArray(data.bookedSeats) ? data.bookedSeats : [],
