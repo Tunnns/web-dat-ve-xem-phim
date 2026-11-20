@@ -2,10 +2,10 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import Ticket from '../models/Ticket';
+import Showtime from '../models/Showtime';
 import '../models/Movie';
 import '../models/Theater';
 import '../models/Room';
-import '../models/Showtime';
 import '../models/User';
 import { calculatePrice, sanitizePricingForClient } from '../services/pricing.service';
 import { completeTicketPayment } from '../services/ticket.service';
@@ -13,6 +13,7 @@ import { getActiveCombos } from '../services/combo.service';
 import { validateVoucher } from '../services/voucher.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { AppError } from '../utils/appError';
+import { validateOrphanSeats } from '../utils/seatValidation';
 
 const handleError = (res: Response, error: unknown): void => {
   if (error instanceof AppError) {
@@ -110,6 +111,35 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
           message: `Ghế [${Array.from(new Set(conflictSeats)).join(', ')}] đã có người đặt hoặc đang được giữ`,
         });
         return;
+      }
+
+      // Kiem tra quy tac khong de trong ghe don le (Orphan Seat Rule)
+      const targetShowtime = await Showtime.findById(targetShowtimeId).populate('room');
+      const targetRoom = targetShowtime?.room as any;
+      if (targetRoom && Array.isArray(targetRoom.seatLayout) && targetRoom.seatLayout.length > 0) {
+        const allOccupiedTickets = await Ticket.find({
+          showtime: targetShowtimeId,
+          status: { $in: ['completed', 'pending'] },
+          ...(pendingTicket ? { _id: { $ne: pendingTicket._id } } : {}),
+        }).select('seats status lockedUntil');
+
+        const otherOccupiedSeats: string[] = [];
+        allOccupiedTickets.forEach((t) => {
+          const isBooked = t.status === 'completed';
+          const isHeld = t.status === 'pending' && !!t.lockedUntil && t.lockedUntil > now;
+          if (isBooked || isHeld) {
+            otherOccupiedSeats.push(...t.seats);
+          }
+        });
+
+        const orphanCheck = validateOrphanSeats(targetRoom.seatLayout, otherOccupiedSeats, targetSeats);
+        if (!orphanCheck.isValid) {
+          res.status(400).json({
+            success: false,
+            message: orphanCheck.message || 'Không được để trống 1 ghế đơn lẻ ở giữa hoặc đầu/cuối hàng.',
+          });
+          return;
+        }
       }
     }
 

@@ -43,4 +43,9 @@
   - [x] Phase 2 - Backend ban hang & doanh thu: snapshot gia von vao `Ticket`, tru ton kho (co `stockDeducted` chong tru lap), bao cao COGS/loi nhuan, an gia von khoi API client.
   - [x] Phase 3 - Admin UI: trang `/inventory`, cap nhat trang Combo va Doanh thu.
   - [x] Phase 4 - Kiem thu & tai lieu: script `backend/src/scripts/verify-phase4.ts` (84/84 kiem tra dat), sua bug webhook song song cua khach vang lai, cap nhat `PLAN-kho-bap-nuoc-doanh-thu.md` va `backend/API_COMBO_VOUCHER.md`.
+- [x] 16. Quy tac khong de trong ghe don doc (Orphan Seat Rule)
+  - Thuat toan: Kiem tra khong de trong 1 ghe o giua 2 ghe da co nguoi, o dau hang hoac o cuoi hang. Chi chan khi thao tac cua user tao ra ghe le moi.
+  - Client: `client/src/utils/seatValidation.ts` kem thong bao truc quan realtime va chan chuyen tiep tai `client/src/components/SeatMap/SeatMap.tsx`.
+  - Backend: `backend/src/utils/seatValidation.ts`, chan tai `backend/src/services/booking.service.ts` (lockSeats) va `backend/src/controllers/payment.controller.ts` (generateVietQR).
+  - Kiem thu: `backend/src/scripts/test-orphan-seats.ts` (10/10 test case dat yeu cau).
 
