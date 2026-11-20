@@ -609,12 +609,19 @@ export const getShowtimeSeatsService = async (showtimeId: string, currentUserId?
   };
 };
 
-export const parseCodeOrPayload = (input: string): { code?: string; ticketId?: string } => {
+export const parseCodeOrPayload = (
+  input: string
+): { code?: string; ticketId?: string; seat?: string; subCode?: string } => {
   const trimmed = input.trim();
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
     try {
       const parsed = JSON.parse(trimmed);
-      return { code: parsed.code, ticketId: parsed.ticketId };
+      return {
+        code: parsed.code ? String(parsed.code).toUpperCase() : undefined,
+        ticketId: parsed.ticketId,
+        seat: parsed.seat ? String(parsed.seat).toUpperCase() : undefined,
+        subCode: parsed.subCode,
+      };
     } catch {
       // ignore
     }
@@ -622,6 +629,26 @@ export const parseCodeOrPayload = (input: string): { code?: string; ticketId?: s
   if (mongoose.Types.ObjectId.isValid(trimmed)) {
     return { ticketId: trimmed };
   }
+
+  // Hỗ trợ quét mã vé phụ từng ghế (VD: FC982341-A1 hoặc TKT-xxx-A1)
+  const seatSuffixMatch = trimmed.match(/^(.+?)[-_]([A-Za-z]+\d+)$/);
+  if (seatSuffixMatch) {
+    return {
+      code: seatSuffixMatch[1].toUpperCase(),
+      seat: seatSuffixMatch[2].toUpperCase(),
+      subCode: trimmed.toUpperCase(),
+    };
+  }
+
+  // Hỗ trợ mã nhận bắp nước FNB-xxxx
+  const fnbMatch = trimmed.match(/^FNB[-_](.+)$/i);
+  if (fnbMatch) {
+    return {
+      code: fnbMatch[1].toUpperCase(),
+      subCode: trimmed.toUpperCase(),
+    };
+  }
+
   return { code: trimmed.toUpperCase() };
 };
 
