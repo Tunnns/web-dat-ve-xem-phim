@@ -19,6 +19,7 @@ import {
   getRooms,
   getShowtimes,
   getTickets,
+  getRevenue,
 } from '../../api/client';
 
 import './Dashboard.css';
@@ -64,6 +65,28 @@ type StatItem = {
   value: number | null;
   icon: React.ReactNode;
   color: string;
+};
+
+type TheaterRevenueItem = {
+  theaterId: string;
+  theaterName: string;
+  revenue: number;
+  ticketCount: number;
+  seatCount: number;
+  showtimeCount: number;
+  capacity: number;
+  occupancyRate: number;
+};
+
+type MovieRevenueItem = {
+  movieId: string;
+  movieTitle: string;
+  revenue: number;
+  ticketCount: number;
+  seatCount: number;
+  showtimeCount: number;
+  capacity: number;
+  occupancyRate: number;
 };
 
 const money = (value: number) =>
@@ -199,6 +222,8 @@ const Dashboard: React.FC = () => {
   const [showtimesCount, setShowtimesCount] = useState<number | null>(null);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [revenueByTheater, setRevenueByTheater] = useState<TheaterRevenueItem[]>([]);
+  const [revenueByMovie, setRevenueByMovie] = useState<MovieRevenueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ticketError, setTicketError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -267,6 +292,41 @@ const Dashboard: React.FC = () => {
     return getRangeFromPreset(period);
   }, [period, customRange]);
 
+  // Bổ sung dữ liệu doanh thu theo rạp & độ hot phim từ API doanh thu
+  useEffect(() => {
+    let active = true;
+
+    const loadRevenueBreakdown = async () => {
+      try {
+        const response = await getRevenue({
+          startDate: formatDateInput(selectedRange.start),
+          endDate: formatDateInput(selectedRange.end),
+        });
+        const payload = response?.data?.data;
+
+        if (!active) return;
+
+        setRevenueByTheater(
+          Array.isArray(payload?.byTheater) ? payload.byTheater : [],
+        );
+        setRevenueByMovie(
+          Array.isArray(payload?.byMovie) ? payload.byMovie : [],
+        );
+      } catch {
+        if (!active) return;
+
+        setRevenueByTheater([]);
+        setRevenueByMovie([]);
+      }
+    };
+
+    void loadRevenueBreakdown();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedRange, refreshKey]);
+
   const periodLabel =
     period === 'Tùy chỉnh'
       ? customRange
@@ -314,6 +374,33 @@ const Dashboard: React.FC = () => {
       0,
     );
   }, [revenueTickets]);
+
+  // Top rạp theo doanh thu (bổ sung)
+  const theaterRevenueRows = useMemo(() => {
+    return [...revenueByTheater]
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [revenueByTheater]);
+
+  // Top phim hot theo số ghế bán (bổ sung)
+  const hotMovies = useMemo(() => {
+    return [...revenueByMovie]
+      .sort(
+        (a, b) =>
+          b.seatCount - a.seatCount || b.occupancyRate - a.occupancyRate,
+      )
+      .slice(0, 5);
+  }, [revenueByMovie]);
+
+  const maxTheaterRevenue = Math.max(
+    ...theaterRevenueRows.map((item) => item.revenue),
+    1,
+  );
+
+  const maxMovieSeats = Math.max(
+    ...hotMovies.map((item) => item.seatCount),
+    1,
+  );
 
   // Thống kê trạng thái vé
   const paidCount = filteredTickets.filter(
@@ -1017,6 +1104,108 @@ const Dashboard: React.FC = () => {
                 </div>
               )}
             </>
+          )}
+        </article>
+      </section>
+
+      {/* BỔ SUNG: DOANH THU THEO RẠP & ĐỘ HOT PHIM */}
+      <section className="dashboard-breakdown-grid">
+        <article className="dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Doanh thu theo rạp</h2>
+              <p>Doanh thu đã thanh toán · {periodLabel}</p>
+            </div>
+            <ShopOutlined />
+          </div>
+
+          {theaterRevenueRows.length === 0 ? (
+            <div className="dashboard-empty">
+              Chưa có dữ liệu rạp trong khoảng thời gian này.
+            </div>
+          ) : (
+            <div className="breakdown-list">
+              {theaterRevenueRows.map((item) => (
+                <div className="breakdown-item" key={item.theaterId}>
+                  <div className="breakdown-item-head">
+                    <span className="breakdown-name">{item.theaterName}</span>
+                    <strong>{money(item.revenue)}</strong>
+                  </div>
+
+                  <div className="breakdown-track">
+                    <div
+                      className="breakdown-fill theater"
+                      style={{
+                        width: `${Math.max(
+                          2,
+                          (item.revenue / maxTheaterRevenue) * 100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="breakdown-meta">
+                    <span>
+                      {item.seatCount} ghế · {item.showtimeCount} suất
+                    </span>
+                    <span>
+                      Lấp đầy{' '}
+                      {Number(item.occupancyRate || 0).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+
+        <article className="dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Phim hot</h2>
+              <p>Xếp theo số ghế bán · {periodLabel}</p>
+            </div>
+            <VideoCameraOutlined />
+          </div>
+
+          {hotMovies.length === 0 ? (
+            <div className="dashboard-empty">
+              Chưa có dữ liệu phim trong khoảng thời gian này.
+            </div>
+          ) : (
+            <div className="breakdown-list">
+              {hotMovies.map((item, index) => (
+                <div className="breakdown-item" key={item.movieId}>
+                  <div className="breakdown-item-head">
+                    <span className="breakdown-name">
+                      <span className="breakdown-rank">{index + 1}</span>
+                      {item.movieTitle}
+                    </span>
+                    <strong>{item.seatCount} ghế</strong>
+                  </div>
+
+                  <div className="breakdown-track">
+                    <div
+                      className="breakdown-fill movie"
+                      style={{
+                        width: `${Math.max(
+                          2,
+                          (item.seatCount / maxMovieSeats) * 100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="breakdown-meta">
+                    <span>
+                      {item.showtimeCount} suất · Lấp đầy{' '}
+                      {Number(item.occupancyRate || 0).toFixed(1)}%
+                    </span>
+                    <span>{money(item.revenue)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </article>
       </section>
