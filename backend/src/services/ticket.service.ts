@@ -6,6 +6,7 @@ import { calculatePrice, PricingComboInput } from './pricing.service';
 import { deductStockForTicket } from './inventory.service';
 import { redeemVoucher } from './voucher.service';
 import { AppError } from '../utils/appError';
+import { sendTicketNotification } from './notification.service';
 import {
   buildTicketQrPayload,
   encodeTicketQrPayload,
@@ -29,6 +30,7 @@ export interface CompleteTicketPaymentInput {
   soldBy?: string; // ID nhân viên bán vé tại quầy (nếu là giao dịch POS)
   customerName?: string;
   customerPhone?: string;
+  customerEmail?: string;
   cashReceived?: number;
   cashChange?: number;
 }
@@ -101,6 +103,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
     soldBy,
     customerName,
     customerPhone,
+    customerEmail,
     cashReceived,
     cashChange,
   } = input;
@@ -318,6 +321,15 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
 
   /* ---------- 5. Trừ tồn kho bắp nước (chỉ 1 lần cho mỗi vé) ---------- */
   await deductStockForTicket(String(savedTicket._id));
+
+  /* ---------- 6. Gửi mã vé qua Email và Tin nhắn SMS ---------- */
+  void sendTicketNotification({
+    ticketId: savedTicket._id,
+    recipientEmail: customerEmail,
+    recipientPhone: customerPhone,
+  }).catch((err) => {
+    console.error('[Notification] Lỗi gửi thông báo vé:', err);
+  });
 
   return buildResult(savedTicket);
 };

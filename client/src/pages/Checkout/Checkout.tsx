@@ -118,22 +118,22 @@ export default function Checkout() {
     return unsub
   }, [])
 
-  // Redirect nếu chưa chọn ghế hoặc vé đã hết hạn giữ chỗ
+  // Redirect nếu chưa chọn ghế hoặc vé đã hết hạn giữ chỗ (chỉ khi không mở modal thanh toán)
   useEffect(() => {
-    if (hydrated && !completedTicket && (!showtime || selectedSeats.length === 0)) {
+    if (hydrated && !completedTicket && !isPaymentModalOpen && (!showtime || selectedSeats.length === 0)) {
       navigate('/', { replace: true })
     }
-  }, [hydrated, completedTicket, showtime, selectedSeats, navigate])
+  }, [hydrated, completedTicket, isPaymentModalOpen, showtime, selectedSeats, navigate])
 
   useEffect(() => {
-    if (completedTicket) return
+    if (completedTicket || isPaymentModalOpen) return
     const interval = setInterval(() => {
       if (checkAndCleanExpired()) {
         navigate('/', { replace: true })
       }
     }, 1000)
     return () => clearInterval(interval)
-  }, [completedTicket, checkAndCleanExpired, navigate])
+  }, [completedTicket, isPaymentModalOpen, checkAndCleanExpired, navigate])
 
   // ── Tính tiền subtotal cơ bản (vé + combo) ──
   const ticketSubtotal = totalPrice()
@@ -284,7 +284,7 @@ export default function Checkout() {
 
   // Tự động kiểm tra trạng thái thanh toán từ DB nội bộ mỗi 2.5s
   useEffect(() => {
-    if (!isPaymentModalOpen || !qrData || completedTicket || confirming || isQrExpired) return
+    if (!isPaymentModalOpen || !qrData?.description || completedTicket || confirming || isQrExpired) return
 
     const interval = setInterval(async () => {
       try {
@@ -298,7 +298,8 @@ export default function Checkout() {
 
         if (result.lockedUntil) {
           const serverExpiry = new Date(result.lockedUntil).getTime()
-          if (!lockExpiresAt || Math.abs(serverExpiry - lockExpiresAt) > 2000) {
+          const currentExpiry = useCartStore.getState().lockExpiresAt
+          if (!currentExpiry || Math.abs(serverExpiry - currentExpiry) > 5000) {
             setLockExpiresAt(serverExpiry)
             setTimeLeft(calculateSecondsLeft(serverExpiry))
           }
@@ -318,7 +319,7 @@ export default function Checkout() {
     }, 2500)
 
     return () => clearInterval(interval)
-  }, [isPaymentModalOpen, qrData, completedTicket, confirming, isQrExpired, lockExpiresAt, setLockExpiresAt])
+  }, [isPaymentModalOpen, qrData?.description, completedTicket, confirming, isQrExpired, setLockExpiresAt])
 
   if (!showtime || selectedSeats.length === 0) return null
 
@@ -334,7 +335,10 @@ export default function Checkout() {
           <span>Quay lại chọn ghế</span>
         </Link>
         <div className="flex items-center gap-4">
-          <SeatTimer onExpire={() => { navigate('/', { replace: true }) }} />
+          <SeatTimer
+            preventClear={isPaymentModalOpen}
+            onExpire={isPaymentModalOpen ? undefined : () => { navigate('/', { replace: true }) }}
+          />
           <span className="text-xs uppercase tracking-wider text-zinc-500 font-semibold">
             Bước 2 / 2: Thanh toán
           </span>

@@ -4,6 +4,7 @@ import { useCartStore } from '../../store/cartStore'
 
 interface SeatTimerProps {
   onExpire?: () => void
+  preventClear?: boolean
 }
 
 function calculateSecondsLeft(lockExpiresAt: number | null): number {
@@ -11,7 +12,7 @@ function calculateSecondsLeft(lockExpiresAt: number | null): number {
   return Math.max(0, Math.floor((lockExpiresAt - Date.now()) / 1000))
 }
 
-export default function SeatTimer({ onExpire }: SeatTimerProps) {
+export default function SeatTimer({ onExpire, preventClear = false }: SeatTimerProps) {
   const { lockExpiresAt, clearCart } = useCartStore()
   const [timeLeft, setTimeLeft] = useState<number>(() =>
     calculateSecondsLeft(lockExpiresAt),
@@ -26,13 +27,15 @@ export default function SeatTimer({ onExpire }: SeatTimerProps) {
 
       if (remainingSec <= 0) {
         clearInterval(interval)
-        clearCart()
+        if (!preventClear) {
+          clearCart()
+        }
         if (onExpire) onExpire()
       }
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [lockExpiresAt, clearCart, onExpire])
+  }, [lockExpiresAt, clearCart, onExpire, preventClear])
 
   if (!lockExpiresAt || timeLeft <= 0) return null
 

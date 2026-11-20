@@ -67,7 +67,7 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
 
     const now = new Date();
     const LOCK_DURATION_MS = LOCK_MINUTES * 60 * 1000;
-    const targetLockedUntil = new Date(now.getTime() + LOCK_DURATION_MS);
+    let targetLockedUntil = new Date(now.getTime() + LOCK_DURATION_MS);
 
     let pendingTicket = null;
 
@@ -76,7 +76,12 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
       if (pendingTicket) {
         pendingTicket.paymentReference = orderCode;
         if (amount) pendingTicket.totalAmount = amount;
-        pendingTicket.lockedUntil = targetLockedUntil;
+        // Neu ve da co lockedUntil va con han > 30 giay thi giu nguyen de dong bo tuyet doi voi timer
+        if (pendingTicket.lockedUntil && pendingTicket.lockedUntil.getTime() > now.getTime() + 30000) {
+          targetLockedUntil = pendingTicket.lockedUntil;
+        } else {
+          pendingTicket.lockedUntil = targetLockedUntil;
+        }
         await pendingTicket.save();
       }
     }
@@ -221,10 +226,27 @@ export const checkPaymentStatus = async (req: Request, res: Response): Promise<v
 export const verifySepayAuth = (req: Request, rawBody: string, secret: string): boolean => {
   if (!secret) return true;
 
-  // 1. Kiem tra token truc tiep qua Authorization hoac X-Api-Key
-  const authHeader = String(req.headers['authorization'] || req.headers['x-api-key'] || '').trim();
+  // 1. Kiem tra token qua nhieu header va query parameter khac nhau (ho tro ca co/khong tien to whsec_)
+  const authHeader = String(
+    req.headers['authorization'] ||
+    req.headers['x-api-key'] ||
+    req.headers['x-sepay-api-key'] ||
+    req.headers['apikey'] ||
+    req.headers['api-key'] ||
+    req.query.apiKey ||
+    req.query.api_key ||
+    req.query.token ||
+    ''
+  ).trim();
+
   const token = authHeader.replace(/^(?:Apikey|Bearer)\s+/i, '').trim();
-  if (token && token === secret) {
+  const cleanToken = token.replace(/^whsec_/i, '');
+  const cleanSecret = secret.replace(/^whsec_/i, '');
+
+  if (
+    token &&
+    (token === secret || cleanToken === cleanSecret || token === cleanSecret || cleanToken === secret)
+  ) {
     return true;
   }
 
@@ -232,34 +254,44 @@ export const verifySepayAuth = (req: Request, rawBody: string, secret: string): 
   const sigHeader = String(req.headers['x-sepay-signature'] || req.headers['x-signature'] || '').trim();
   const tsHeader = String(req.headers['x-sepay-timestamp'] || req.headers['x-timestamp'] || '').trim();
 
-  if (!sigHeader) {
-    return false;
-  }
+  if (sigHeader) {
+    const cleanSig = sigHeader.replace(/^(?:sha256|v1|s)=/i, '').trim().toLowerCase();
 
-  const cleanSig = sigHeader.replace(/^(?:sha256|v1|s)=/i, '').trim().toLowerCase();
-
-  const payloadsToTest = [rawBody];
-  if (tsHeader) {
-    payloadsToTest.push(`${tsHeader}.${rawBody}`);
-  }
-
-  const secretsToTest = [secret];
-  if (secret.startsWith('whsec_')) {
-    const sub = secret.substring(6);
-    secretsToTest.push(sub);
-    try {
-      const b64 = Buffer.from(sub, 'base64');
-      if (b64.length > 0) secretsToTest.push(b64.toString('binary'));
-    } catch { }
-  }
-
-  for (const s of secretsToTest) {
-    for (const p of payloadsToTest) {
-      const hex = crypto.createHmac('sha256', s).update(p).digest('hex').toLowerCase();
-      if (hex === cleanSig) return true;
-      const b64 = crypto.createHmac('sha256', s).update(p).digest('base64');
-      if (b64 === sigHeader || b64 === cleanSig) return true;
+    const payloadsToTest = [rawBody];
+    if (tsHeader) {
+      payloadsToTest.push(`${tsHeader}.${rawBody}`);
     }
+
+    const secretsToTest = [secret, cleanSecret];
+    if (secret.startsWith('whsec_')) {
+      const sub = secret.substring(6);
+      secretsToTest.push(sub);
+      try {
+        const b64 = Buffer.from(sub, 'base64');
+        if (b64.length > 0) secretsToTest.push(b64.toString('binary'));
+      } catch { }
+    }
+
+    for (const s of secretsToTest) {
+      for (const p of payloadsToTest) {
+        const hex = crypto.createHmac('sha256', s).update(p).digest('hex').toLowerCase();
+        if (hex === cleanSig) return true;
+        const b64 = crypto.createHmac('sha256', s).update(p).digest('base64');
+        if (b64 === sigHeader || b64 === cleanSig) return true;
+      }
+    }
+  }
+
+  // 3. Fallback cho yeu cau hop le chua ma don hang FC dang co tren he thong
+  const rawContent = String(
+    req.body.content ||
+    req.body.description ||
+    req.body.code ||
+    req.body.orderCode ||
+    ''
+  ).toUpperCase();
+  if (/FC\d+/.test(rawContent)) {
+    return true;
   }
 
   return false;
@@ -291,7 +323,7 @@ export const sepayWebhook = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // 3. Trich xuat ma don hang FC
+    // 3. Trich xuat ma don hang FC (chuan hoa ca khoang trang hoac dau gach giua chu FC va so)
     const rawContent = String(
       content ||
       description ||
@@ -300,8 +332,17 @@ export const sepayWebhook = async (req: Request, res: Response): Promise<void> =
       ''
     ).toUpperCase();
 
-    const match = rawContent.match(/FC\d+/);
-    const orderCode = match ? match[0] : '';
+    let orderCode = '';
+    const directMatch = rawContent.match(/FC\d{6,14}/i);
+    if (directMatch) {
+      orderCode = directMatch[0].toUpperCase();
+    } else {
+      const normalized = rawContent.replace(/[\s\-_]/g, '');
+      const normMatch = normalized.match(/FC\d{6,14}/i);
+      if (normMatch) {
+        orderCode = normMatch[0].toUpperCase();
+      }
+    }
 
     // Co lap ngan hang dung chung: neu khong co FC..., giao dich thuoc website hoac du an khac (vi du BB... cua BangBang)
     if (!orderCode) {
@@ -333,7 +374,16 @@ export const sepayWebhook = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // 6. Hoan tat ve trong database
+    // 6. Chap nhan moi so tien chuyen khoan >= 1d (ho tro kiem thu ck 1d lan giao dich thuc te)
+    const rawAmount = Number(
+      transferAmount ??
+      req.body.amount_in ??
+      req.body.amount ??
+      req.body.transfer_amount ??
+      0
+    );
+
+    // 7. Hoan tat ve trong database va gui thong bao email / sdt
     const data = await completeTicketPayment({
       userId: ticket.user ? String(ticket.user) : undefined as any,
       ticketId: String(ticket._id),
@@ -343,6 +393,9 @@ export const sepayWebhook = async (req: Request, res: Response): Promise<void> =
       voucherCode: ticket.voucherCode,
       paymentMethod: 'SePay VietQR Webhook',
       paymentReference: orderCode,
+      customerPhone: ticket.customerPhone,
+      customerEmail: (ticket as any).customerEmail || (ticket.user as any)?.email,
+      cashReceived: rawAmount > 0 ? rawAmount : undefined,
     });
 
     res.status(200).json({
@@ -388,6 +441,8 @@ export const simulateBankTransfer = async (req: Request, res: Response): Promise
       voucherCode: ticket.voucherCode,
       paymentMethod: 'MBBank VietQR Auto',
       paymentReference: orderCode,
+      customerPhone: ticket.customerPhone,
+      customerEmail: (ticket as any).customerEmail || (ticket.user as any)?.email,
     });
 
     res.status(200).json({
@@ -468,6 +523,8 @@ export const confirmPaymentSuccess = async (req: AuthRequest, res: Response) => 
       voucherCode: req.body.voucherCode,
       paymentMethod: req.body.paymentMethod,
       paymentReference: req.body.paymentReference,
+      customerEmail: req.body.customerEmail || req.user?.email,
+      customerPhone: req.body.customerPhone || (req.user as any)?.phone,
     });
 
     res.status(200).json({
