@@ -7,6 +7,7 @@ import { calculatePrice, PricingComboInput } from './pricing.service';
 import { AppError } from '../utils/appError';
 import { showtimeLock } from './ticket.service';
 import { getSeatPrice } from '../utils/seatPrice';
+import { validateOrphanSeats } from '../utils/seatValidation';
 
 export interface LockSeatsInput {
   userId: string;
@@ -108,6 +109,32 @@ export const lockSeats = async (input: LockSeatsInput) => {
     throw new AppError(
       `Ghế [${uniqueUnavailable.join(', ')}] đã có người chọn hoặc đang được giữ. Vui lòng chọn ghế khác.`,
       409
+    );
+  }
+
+  // 3.1. Kiểm tra quy tắc không để trống ghế đơn lẻ (Orphan Seat Rule)
+  const allOccupiedTickets = await Ticket.find({
+    showtime: showtimeId,
+    status: { $in: ['completed', 'pending'] },
+    ...(existingTicketId && mongoose.Types.ObjectId.isValid(existingTicketId)
+      ? { _id: { $ne: existingTicketId } }
+      : {}),
+  }).select('seats status lockedUntil');
+
+  const otherOccupiedSeats: string[] = [];
+  allOccupiedTickets.forEach((t) => {
+    const isBooked = t.status === 'completed';
+    const isHeld = t.status === 'pending' && !!t.lockedUntil && t.lockedUntil > now;
+    if (isBooked || isHeld) {
+      otherOccupiedSeats.push(...t.seats);
+    }
+  });
+
+  const orphanCheck = validateOrphanSeats(room.seatLayout, otherOccupiedSeats, seats);
+  if (!orphanCheck.isValid) {
+    throw new AppError(
+      orphanCheck.message || 'Không được để trống 1 ghế đơn lẻ ở giữa hoặc đầu/cuối hàng.',
+      400
     );
   }
 
