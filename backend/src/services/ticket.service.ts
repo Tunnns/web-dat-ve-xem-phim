@@ -322,13 +322,12 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
   /* ---------- 5. Trừ tồn kho bắp nước (chỉ 1 lần cho mỗi vé) ---------- */
   await deductStockForTicket(String(savedTicket._id));
 
-  /* ---------- 6. Gửi mã vé qua Email và Tin nhắn SMS ---------- */
+  /* ---------- 6. Gửi mã vé qua Email Gmail ---------- */
   void sendTicketNotification({
     ticketId: savedTicket._id,
     recipientEmail: customerEmail,
-    recipientPhone: customerPhone,
   }).catch((err) => {
-    console.error('[Notification] Lỗi gửi thông báo vé:', err);
+    console.error('[Notification] Lỗi gửi email vé:', err);
   });
 
   return buildResult(savedTicket);
