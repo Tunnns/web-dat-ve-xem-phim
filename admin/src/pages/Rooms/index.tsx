@@ -55,30 +55,30 @@ const PAINT_MODE_OPTIONS: Array<{
   {
     value: 'normal',
     label: 'Thường',
-    background: '#e6f4ff',
-    border: '#91caff',
-    color: '#0958a5',
+    background: '#52525b',
+    border: '#a1a1aa',
+    color: '#ffffff',
   },
   {
     value: 'vip',
     label: 'VIP',
-    background: '#f9f0ff',
-    border: '#d3adf7',
-    color: '#722ed1',
+    background: '#d97706',
+    border: '#fbbf24',
+    color: '#ffffff',
   },
   {
     value: 'couple',
     label: 'Đôi',
-    background: '#fff0f6',
-    border: '#ffadd2',
-    color: '#c41d7f',
+    background: '#db2777',
+    border: '#f472b6',
+    color: '#ffffff',
   },
   {
     value: 'maintenance',
     label: 'Bảo trì',
-    background: '#fff1f0',
-    border: '#ffa39e',
-    color: '#cf1322',
+    background: '#27272a',
+    border: '#71717a',
+    color: '#d4d4d8',
   },
 ];
 
@@ -340,32 +340,32 @@ const validateCoupleSeats = (seats: Seat[]): string | null => {
 const getSeatColors = (seat: Seat) => {
   if (seat.status === 'maintenance') {
     return {
-      background: '#fff1f0',
-      border: '#ffa39e',
-      color: '#cf1322',
+      background: '#27272a',
+      border: '#71717a',
+      color: '#d4d4d8',
     };
   }
 
   if (seat.type === 'vip') {
     return {
-      background: '#f9f0ff',
-      border: '#d3adf7',
-      color: '#722ed1',
+      background: '#d97706',
+      border: '#fbbf24',
+      color: '#ffffff',
     };
   }
 
   if (seat.type === 'couple') {
     return {
-      background: '#fff0f6',
-      border: '#ffadd2',
-      color: '#c41d7f',
+      background: '#db2777',
+      border: '#f472b6',
+      color: '#ffffff',
     };
   }
 
   return {
-    background: '#e6f4ff',
-    border: '#91caff',
-    color: '#0958a5',
+    background: '#52525b',
+    border: '#a1a1aa',
+    color: '#ffffff',
   };
 };
 

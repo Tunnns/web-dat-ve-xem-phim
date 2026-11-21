@@ -41,14 +41,14 @@ export default function SeatItem({
     }
     // 5. Ghế đôi khả dụng
     if (isCouple) {
-      return 'border border-pink-500/60 bg-pink-500/10 text-pink-300 hover:bg-pink-500/25 hover:border-pink-400 hover:scale-105'
+      return 'border border-pink-400 bg-pink-600 text-white hover:bg-pink-500 hover:border-pink-300 hover:scale-105'
     }
     // 6. Ghế VIP khả dụng
     if (isVip) {
-      return 'border border-amber-500/70 bg-amber-500/15 text-amber-300 hover:bg-amber-500/30 hover:border-amber-400 hover:scale-105'
+      return 'border border-amber-400 bg-amber-600 text-white hover:bg-amber-500 hover:border-amber-300 hover:scale-105'
     }
     // 7. Ghế Thường khả dụng
-    return 'border border-zinc-600 bg-zinc-800/90 text-zinc-300 hover:border-zinc-400 hover:bg-zinc-700 hover:scale-105'
+    return 'border border-zinc-400 bg-zinc-600 text-white hover:border-zinc-300 hover:bg-zinc-500 hover:scale-105'
   }
 
   const tooltipText = isBooked

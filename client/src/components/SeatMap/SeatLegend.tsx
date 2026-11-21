@@ -4,17 +4,17 @@ export default function SeatLegend() {
   const legendItems = [
     {
       label: 'Ghế thường',
-      style: 'border border-zinc-600 bg-zinc-800/80 text-zinc-300',
+      style: 'border border-zinc-400 bg-zinc-600 text-white',
       description: '80k - 95k',
     },
     {
       label: 'Ghế VIP',
-      style: 'border border-amber-500/70 bg-amber-500/15 text-amber-300',
+      style: 'border border-amber-400 bg-amber-600 text-white',
       description: 'Vị trí đẹp trung tâm',
     },
     {
       label: 'Ghế đôi Sweetbox',
-      style: 'border border-pink-500/70 bg-pink-500/15 text-pink-300',
+      style: 'border border-pink-400 bg-pink-600 text-white',
       description: 'Dành cho 2 người',
     },
     {
