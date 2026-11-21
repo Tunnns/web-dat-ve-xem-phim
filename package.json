@@ -9,6 +9,7 @@
     "start": "npm run dev",
     "build": "concurrently -n \"BACKEND,CLIENT,ADMIN\" -c \"blue,green,magenta\" \"npm --prefix backend run build\" \"npm --prefix client run build\" \"npm --prefix admin run build\"",
     "dev:backend": "npm --prefix backend run dev",
+    "seed": "npm --prefix backend run seed",
     "dev:client": "npm --prefix client run dev",
     "dev:admin": "npm --prefix admin run dev",
     "dev:ngrok": "ngrok http --url=dramaturgically-unharsh-kailee.ngrok-free.dev --log=stdout 5000",
