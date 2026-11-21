@@ -8,6 +8,7 @@ import {
   checkInTicket,
   posSellTicket,
   getCounterTickets,
+  resendTicketEmail,
 } from '../controllers/ticket.controller';
 import { protect, optionalProtect, restrictTo } from '../middlewares/auth.middleware';
 
@@ -27,6 +28,9 @@ router.post('/hold', optionalProtect, holdSeats);
 
 // Giải phóng ghế đã giữ khi huỷ/đổi ghế
 router.post('/release', optionalProtect, releaseSeats);
+
+// Gửi hoặc gửi lại mã vé qua email
+router.post('/:id/send-email', optionalProtect, resendTicketEmail);
 
 /* ==================== POS & QUẦY VÉ (Staff Counter) ==================== */
 

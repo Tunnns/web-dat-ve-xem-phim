@@ -10,6 +10,7 @@ import {
   getCounterTicketsService,
   completeTicketPayment,
 } from '../services/ticket.service';
+import { sendTicketNotification } from '../services/notification.service';
 import { AppError } from '../utils/appError';
 
 const handleError = (res: Response, error: unknown): void => {
@@ -163,6 +164,7 @@ export const posSellTicket = async (req: AuthRequest, res: Response) => {
       ticketId,
       customerName,
       customerPhone,
+      customerEmail,
       cashReceived,
       cashChange,
     } = req.body;
@@ -179,6 +181,7 @@ export const posSellTicket = async (req: AuthRequest, res: Response) => {
       ticketId,
       customerName,
       customerPhone,
+      customerEmail,
       cashReceived,
       cashChange,
     });
@@ -217,6 +220,38 @@ export const getCounterTickets = async (req: AuthRequest, res: Response) => {
     handleError(res, error);
   }
 };
+
+/**
+ * POST /api/tickets/:id/send-email
+ * Gửi hoặc gửi lại mã vé qua email
+ */
+export const resendTicketEmail = async (req: AuthRequest, res: Response) => {
+  try {
+    const id = String(req.params.id);
+    const recipientEmail = req.body?.email || req.user?.email;
+
+    const result = await sendTicketNotification({
+      ticketId: id,
+      recipientEmail,
+    });
+
+    if (!result.emailSent) {
+      res.status(400).json({
+        success: false,
+        message: result.message || 'Không thể gửi email xác nhận vé',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Gửi email xác nhận vé thành công',
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 
 
  
