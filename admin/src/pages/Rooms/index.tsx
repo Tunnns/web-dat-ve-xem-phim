@@ -440,16 +440,33 @@ const SeatGrid: React.FC<SeatGridProps> = ({
                     {seat
                       ? (() => {
                           const colors = getSeatColors(seat);
-                          const isMaintenance = seat.status === 'maintenance';
+                          const rightNeighbor = seatsByNumber.get(number + 1);
+                          const leftNeighbor = seatsByNumber.get(number - 1);
+                          const isCoupleLeft =
+                            seat.type === 'couple' &&
+                            number % 2 === 1 &&
+                            rightNeighbor?.type === 'couple';
+                          const isCoupleRight =
+                            seat.type === 'couple' &&
+                            number % 2 === 0 &&
+                            leftNeighbor?.type === 'couple';
+                          if (isCoupleRight) return null;
+                          const isMaintenance =
+                            seat.status === 'maintenance' ||
+                            (isCoupleLeft &&
+                              rightNeighbor?.status === 'maintenance');
+                          const seatLabel = isCoupleLeft
+                            ? `${number}-${number + 1}`
+                            : `${number}`;
                           const surchargeNote =
                             seat.surcharge !== undefined && seat.surcharge !== null
                               ? ` · +${seat.surcharge.toLocaleString('vi-VN')}đ`
                               : '';
-                          const tooltip = `${seat.code} · ${getSeatTypeLabel(
+                          const tooltip = `${isCoupleLeft ? `${seat.code}-${rightNeighbor?.code}` : seat.code} · ${getSeatTypeLabel(
                             seat.type,
                           )} · ${isMaintenance ? 'Bảo trì' : 'Khả dụng'}`;
                           const sharedStyle: React.CSSProperties = {
-                            width: seatSize,
+                            width: isCoupleLeft ? seatSize * 2 + 4 : seatSize,
                             height: seatSize,
                             flexShrink: 0,
                             display: 'flex',
@@ -469,7 +486,7 @@ const SeatGrid: React.FC<SeatGridProps> = ({
                           if (!interactive) {
                             return (
                               <span title={tooltip + surchargeNote} style={sharedStyle}>
-                                {isMaintenance ? '✕' : `${number}${surchargeNote ? '*' : ''}`}
+                                {isMaintenance ? '✕' : `${seatLabel}${surchargeNote ? '*' : ''}`}
                               </span>
                             );
                           }
@@ -493,7 +510,7 @@ const SeatGrid: React.FC<SeatGridProps> = ({
                               }}
                               style={sharedStyle}
                             >
-                              {isMaintenance ? '✕' : `${number}${surchargeNote ? '*' : ''}`}
+                              {isMaintenance ? '✕' : `${seatLabel}${surchargeNote ? '*' : ''}`}
                             </button>
                           );
                         })()
@@ -802,7 +819,10 @@ const Rooms: React.FC = () => {
         const isPair = pairSeat?.code === currentSeat.code;
 
         if (paintMode === 'maintenance') {
-          return isTarget
+          return isTarget ||
+            (seat.type === 'couple' &&
+              isPair &&
+              currentSeat.type === 'couple')
             ? { ...currentSeat, status: 'maintenance' }
             : currentSeat;
         }
