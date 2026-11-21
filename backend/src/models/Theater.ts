@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ITheater extends Document {
   name: string;
   address: string;
+  city?: string;
   location: {
     lat: number;
     lng: number;
@@ -16,6 +17,7 @@ const theaterSchema = new Schema<ITheater>(
   {
     name: { type: String, required: true },
     address: { type: String, required: true },
+    city: { type: String },
     location: {
       lat: { type: Number },
       lng: { type: Number },

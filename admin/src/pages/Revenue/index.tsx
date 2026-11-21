@@ -92,6 +92,9 @@ interface RevenueDetail {
   paymentMethod: string;
 }
 
+type TheaterRevenueRow = RevenueData['byTheater'][number];
+type MovieRevenueRow = RevenueData['byMovie'][number];
+
 interface RevenueData {
   summary: {
     totalRevenue: number;
@@ -108,8 +111,26 @@ interface RevenueData {
     importCost: number;
   };
   timeline: Array<{ date: string; revenue: number; cost: number; profit: number; ticketCount: number }>;
-  byMovie: Array<{ movieId: string; movieTitle: string; revenue: number; ticketCount: number }>;
-  byTheater: Array<{ theaterId: string; theaterName: string; revenue: number; ticketCount: number }>;
+  byMovie: Array<{
+    movieId: string;
+    movieTitle: string;
+    revenue: number;
+    ticketCount: number;
+    seatCount: number;
+    showtimeCount: number;
+    capacity: number;
+    occupancyRate: number;
+  }>;
+  byTheater: Array<{
+    theaterId: string;
+    theaterName: string;
+    revenue: number;
+    ticketCount: number;
+    seatCount: number;
+    showtimeCount: number;
+    capacity: number;
+    occupancyRate: number;
+  }>;
   byPaymentMethod: Array<{ method: string; revenue: number; count: number }>;
   revenueStructure: Array<{ type: string; amount: number }>;
   details: RevenueDetail[];
@@ -240,6 +261,125 @@ const RevenuePage: React.FC = () => {
         (item.theaterName && item.theaterName.toLowerCase().includes(q))
     );
   }, [data.details, searchKeyword]);
+
+  const theaterRows = useMemo(
+    () => [...data.byTheater].sort((a, b) => b.revenue - a.revenue),
+    [data.byTheater]
+  );
+
+  const hotMovies = useMemo(
+    () =>
+      [...data.byMovie].sort(
+        (a, b) => b.seatCount - a.seatCount || b.occupancyRate - a.occupancyRate
+      ),
+    [data.byMovie]
+  );
+
+  const theaterColumns = [
+    {
+      title: 'Rạp chiếu',
+      dataIndex: 'theaterName',
+      key: 'theaterName',
+      render: (name: string) => <Text strong>{name}</Text>,
+    },
+    {
+      title: 'Doanh thu',
+      dataIndex: 'revenue',
+      key: 'revenue',
+      render: (value: number) => (
+        <Text strong style={{ color: '#10b981' }}>
+          {formatVND(value)}
+        </Text>
+      ),
+    },
+    {
+      title: 'Tỷ trọng',
+      key: 'share',
+      render: (_: unknown, record: TheaterRevenueRow) =>
+        data.summary.totalRevenue > 0
+          ? `${((record.revenue / data.summary.totalRevenue) * 100).toFixed(1)}%`
+          : '—',
+    },
+    {
+      title: 'Số ghế',
+      dataIndex: 'seatCount',
+      key: 'seatCount',
+      render: (value: number) => `${value || 0} ghế`,
+    },
+    {
+      title: 'Số suất',
+      dataIndex: 'showtimeCount',
+      key: 'showtimeCount',
+      render: (value: number) => `${value || 0} suất`,
+    },
+    {
+      title: 'Lấp đầy',
+      dataIndex: 'occupancyRate',
+      key: 'occupancyRate',
+      render: (value: number) => (
+        <Tag color={value >= 70 ? 'green' : value >= 40 ? 'gold' : 'blue'}>
+          {(value || 0).toFixed(1)}%
+        </Tag>
+      ),
+    },
+  ];
+
+  const movieColumns = [
+    {
+      title: 'Hạng',
+      key: 'rank',
+      width: 64,
+      render: (_: unknown, __: MovieRevenueRow, index: number) => (
+        <Text strong>{index + 1}</Text>
+      ),
+    },
+    {
+      title: 'Bộ phim',
+      dataIndex: 'movieTitle',
+      key: 'movieTitle',
+      render: (title: string) => <Text strong>{title}</Text>,
+    },
+    {
+      title: 'Số ghế',
+      dataIndex: 'seatCount',
+      key: 'seatCount',
+      render: (value: number) => `${value || 0} ghế`,
+    },
+    {
+      title: 'Số suất',
+      dataIndex: 'showtimeCount',
+      key: 'showtimeCount',
+      render: (value: number) => `${value || 0} suất`,
+    },
+    {
+      title: 'TB ghế/suất',
+      key: 'avgSeats',
+      render: (_: unknown, record: MovieRevenueRow) =>
+        record.showtimeCount > 0
+          ? (record.seatCount / record.showtimeCount).toFixed(1)
+          : '—',
+    },
+    {
+      title: 'Lấp đầy',
+      dataIndex: 'occupancyRate',
+      key: 'occupancyRate',
+      render: (value: number) => (
+        <Tag color={value >= 70 ? 'green' : value >= 40 ? 'gold' : 'blue'}>
+          {(value || 0).toFixed(1)}%
+        </Tag>
+      ),
+    },
+    {
+      title: 'Doanh thu',
+      dataIndex: 'revenue',
+      key: 'revenue',
+      render: (value: number) => (
+        <Text strong style={{ color: '#3b82f6' }}>
+          {formatVND(value)}
+        </Text>
+      ),
+    },
+  ];
 
   const handleExportCSV = () => {
     if (data.details.length === 0) {
@@ -916,6 +1056,54 @@ const RevenuePage: React.FC = () => {
             </Card>
           </Col>
         </Row>
+
+        {/* Bổ sung: doanh thu theo rạp & độ hot phim */}
+        <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
+          <Col xs={24} xl={12}>
+            <Card title="7. Bảng doanh thu theo rạp" style={{ height: '100%' }}>
+              {theaterRows.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                  Chưa có dữ liệu rạp chiếu
+                </div>
+              ) : (
+                <Table
+                  columns={theaterColumns}
+                  dataSource={theaterRows}
+                  rowKey="theaterId"
+                  size="small"
+                  pagination={false}
+                  scroll={{ x: 720 }}
+                />
+              )}
+            </Card>
+          </Col>
+
+          <Col xs={24} xl={12}>
+            <Card title="8. Độ hot phim (xếp theo số ghế bán)" style={{ height: '100%' }}>
+              {hotMovies.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                  Chưa có dữ liệu phim
+                </div>
+              ) : (
+                <Table
+                  columns={movieColumns}
+                  dataSource={hotMovies}
+                  rowKey="movieId"
+                  size="small"
+                  pagination={false}
+                  scroll={{ x: 720 }}
+                />
+              )}
+            </Card>
+          </Col>
+        </Row>
+
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginTop: 16 }}
+          message="Tỷ lệ lấp đầy = số ghế bán / tổng sức chứa các suất chiếu trong kỳ (theo giờ chiếu)."
+        />
       </div>
 
       {/* DANH SÁCH CHI TIẾT (List Detail) */}

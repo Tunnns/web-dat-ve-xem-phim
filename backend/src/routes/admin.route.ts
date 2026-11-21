@@ -17,6 +17,8 @@ import {
   updateRoom,
   deleteRoom,
   getShowtimes,
+  getPricingRule,
+  updatePricingRule,
   getShowtimeById,
   createShowtime,
   updateShowtime,
@@ -226,6 +228,8 @@ const showtimeUpdateRules = [
   body('isEarlyAccess').optional().isBoolean().withMessage('Suất chiếu sớm phải là boolean'),
 ];
 
+router.get('/pricing-rules', getPricingRule);
+router.put('/pricing-rules', requireAdminOrManager, updatePricingRule);
 router.get('/showtimes', getShowtimes);
 router.get('/showtimes/:id', getShowtimeById);
 router.post('/showtimes', requireAdminOrManager, showtimeCreateRules, validate, createShowtime);

@@ -1,0 +1,66 @@
+﻿import { Clock } from 'lucide-react'
+import type { Seat } from '../../types/booking'
+
+interface CoupleSeatItemProps {
+  seats: Seat[]
+  isSelected: boolean
+  onClick: () => void
+  disabled?: boolean
+}
+
+const fmt = (n: number) => n.toLocaleString('vi-VN') + 'Ä‘'
+
+/** Gháº¿ Ä‘Ã´i hiá»ƒn thá»‹ nhÆ° má»™t khá»‘i liá»n (gá»™p 2 gháº¿ liá»n ká»). */
+export default function CoupleSeatItem({
+  seats,
+  isSelected,
+  onClick,
+  disabled = false,
+}: CoupleSeatItemProps) {
+  const [a, b] = seats
+  const has = (s: Seat['status']) => a.status === s || b.status === s
+  const isBooked = has('booked')
+  const isHolding = !isBooked && has('holding')
+  const isMaintenance = !isBooked && !isHolding && has('maintenance')
+
+  const style = isBooked
+    ? 'cursor-not-allowed bg-zinc-800/80 border-zinc-800 text-zinc-600'
+    : isHolding
+      ? 'cursor-not-allowed bg-amber-500/20 border-amber-500/80 text-amber-300 shadow-sm shadow-amber-500/20'
+      : isMaintenance
+        ? 'cursor-not-allowed bg-zinc-800/50 border-dashed border-zinc-700 text-zinc-600'
+        : isSelected
+          ? 'bg-brand-500 text-white font-bold border-brand-300 shadow-md shadow-brand-500/40 scale-105 z-10'
+          : 'border-pink-500/60 bg-pink-500/10 text-pink-300 hover:bg-pink-500/25 hover:border-pink-400 hover:scale-105'
+
+  const label = `${a.id}-${b.id}`
+  const title = isBooked
+    ? `Gháº¿ Ä‘Ã´i ${label} - ÄÃ£ cÃ³ ngÆ°á»i Ä‘áº·t`
+    : isHolding
+      ? `Gháº¿ Ä‘Ã´i ${label} - Äang cÃ³ ngÆ°á»i giá»¯ (chá» thanh toÃ¡n)`
+      : isMaintenance
+        ? `Gháº¿ Ä‘Ã´i ${label} - Äang báº£o trÃ¬`
+        : `Gháº¿ Ä‘Ã´i ${label} - ${fmt(a.price + b.price)}`
+
+  return (
+    <button
+      type="button"
+      id={`seat-${a.id}`}
+      disabled={disabled || isBooked || isHolding || isMaintenance}
+      onClick={onClick}
+      title={title}
+      aria-label={`Gháº¿ Ä‘Ã´i ${label}`}
+      className={`relative flex h-8 w-[70px] sm:h-9 sm:w-[80px] items-center justify-center rounded-xl border text-xs font-semibold transition-all duration-150 select-none ${style}`}
+    >
+      {isBooked ? (
+        <span className="text-[11px] font-normal">âœ•</span>
+      ) : isHolding ? (
+        <Clock className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+      ) : (
+        <span>
+          {a.number}-{b.number}
+        </span>
+      )}
+    </button>
+  )
+}

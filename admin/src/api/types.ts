@@ -84,6 +84,9 @@ export interface Showtime {
   startTime: string;
   endTime: string;
   price: number;
+  breakMinutes?: number;
+  finalPrice?: number;
+  hasSeatLayout?: boolean;
   isEarlyAccess?: boolean;
   status?: 'scheduled' | 'cancelled';
   createdAt?: string;
@@ -176,4 +179,23 @@ export interface ImportReceipt {
   createdByName?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface PricingTimeSlot {
+  name: string;
+  from: string;
+  to: string;
+  surcharge: number;
+}
+
+export interface PricingHoliday {
+  date: string; // YYYY-MM-DD hoặc MM-DD (lặp hằng năm)
+  name: string;
+  surcharge: number;
+}
+
+export interface PricingRule {
+  timeSlots: PricingTimeSlot[];
+  weekendSurcharge: number;
+  holidays: PricingHoliday[];
 }

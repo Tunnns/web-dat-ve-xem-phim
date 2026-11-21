@@ -398,6 +398,96 @@
   box-shadow: 0 4px 16px rgba(26, 39, 68, 0.035);
 }
 
+/* ==============================
+   BỔ SUNG: DOANH THU THEO RẠP & ĐỘ HOT PHIM
+============================== */
+
+.dashboard-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.breakdown-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.breakdown-item {
+  display: grid;
+  gap: 7px;
+}
+
+.breakdown-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.breakdown-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  color: #3d4a61;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breakdown-rank {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: #edf3ff;
+  color: #4776e6;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.breakdown-item-head strong {
+  color: #172033;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.breakdown-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f1f4f9;
+}
+
+.breakdown-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.breakdown-fill.theater {
+  background: linear-gradient(90deg, #4776e6, #6f95ff);
+}
+
+.breakdown-fill.movie {
+  background: linear-gradient(90deg, #e35d6a, #f08a93);
+}
+
+.breakdown-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #929bad;
+  font-size: 11px;
+}
+
 .panel-heading {
   display: flex;
   justify-content: space-between;
@@ -678,6 +768,10 @@
   }
 
   .dashboard-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-breakdown-grid {
     grid-template-columns: 1fr;
   }
 }

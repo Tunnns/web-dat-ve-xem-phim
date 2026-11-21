@@ -221,7 +221,7 @@ export default function ShowtimesPage() {
         endTime: endTimeStr,
         format,
         roomName,
-        price: st.price,
+        price: Number(st.finalPrice ?? st.price),
         isEarlyAccess: Boolean(st.isEarlyAccess),
       })
     })
