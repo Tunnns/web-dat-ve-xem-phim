@@ -16,6 +16,7 @@ import {
   type ShowtimeSeatMapResponse,
 } from '../../api/showtimeApi'
 import { getErrorMessage } from '../../api/axios'
+import { checkOrphanSeats } from '../../utils/seatValidation'
 import SeatItem from './SeatItem'
 import CoupleSeatItem from './CoupleSeatItem'
 import SeatLegend from './SeatLegend'
@@ -370,12 +371,32 @@ export default function SeatMap({
     }
   }
 
+  // 6.5. Kiểm tra quy tắc không để trống ghế đơn độc (Orphan Seat Rule)
+  const orphanValidation = useMemo(() => {
+    if (selectedSeats.length === 0 || activeSeats.length === 0) {
+      return { isValid: true, orphanSeats: [] }
+    }
+    return checkOrphanSeats(
+      activeSeats,
+      selectedSeats.map((s) => s.id),
+    )
+  }, [activeSeats, selectedSeats])
+
   // 7. Chuyển tiếp sang bước thanh toán Checkout
   const handleProceed = () => {
     if (selectedSeats.length === 0) {
       setWarningMessage('Vui lòng chọn ít nhất 1 ghế trước khi tiếp tục.')
       return
     }
+
+    if (!orphanValidation.isValid) {
+      setWarningMessage(
+        orphanValidation.message ||
+          'Không được để trống 1 ghế đơn độc ở giữa hoặc đầu/cuối hàng. Vui lòng chọn ghế liền kề!',
+      )
+      return
+    }
+
     if (onProceed) {
       onProceed()
     } else {
@@ -438,11 +459,11 @@ export default function SeatMap({
         </div>
       )}
 
-      {/* Cảnh báo nếu có lỗi hoặc xung đột giữ ghế */}
-      {warningMessage && (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          <span>{warningMessage}</span>
+      {/* Cảnh báo nếu có lỗi, xung đột giữ ghế hoặc vi phạm quy tắc để trống ghế */}
+      {(warningMessage || (!orphanValidation.isValid && selectedSeats.length > 0)) && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300 animate-in fade-in slide-in-from-top-1 duration-200">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 text-amber-400" />
+          <span>{warningMessage || orphanValidation.message}</span>
         </div>
       )}
 
@@ -588,7 +609,12 @@ export default function SeatMap({
               type="button"
               disabled={selectedSeats.length === 0 || holdingLoading}
               onClick={handleProceed}
-              className="flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              title={!orphanValidation.isValid && selectedSeats.length > 0 ? orphanValidation.message : undefined}
+              className={`flex items-center gap-2 rounded-xl px-6 py-3 font-semibold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
+                !orphanValidation.isValid && selectedSeats.length > 0
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
+                  : 'bg-brand-500 hover:bg-brand-600 shadow-brand-500/30'
+              }`}
             >
               {holdingLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

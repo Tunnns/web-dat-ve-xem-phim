@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   X,
   CalendarDays,
@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   QrCode,
   Armchair,
+  Printer,
 } from 'lucide-react'
 import type { BookingTicket } from '../../api/ticketApi'
 import TicketQr from '../../components/TicketQr/TicketQr'
@@ -32,8 +33,37 @@ export default function TicketDetailModal({ ticket, onClose }: TicketDetailModal
   const room = showtime?.room
   const status = getStatusMeta(ticket)
 
+  const seats = Array.isArray(ticket.seats) && ticket.seats.length > 0 ? ticket.seats : ['Ghế']
+  const [selectedSeat, setSelectedSeat] = useState<string | 'all'>('all')
+
   const combosTotal = (ticket.combos ?? []).reduce((sum, combo) => sum + combo.lineTotal, 0)
   const subtotal = ticket.totalAmount + (ticket.discount ?? 0)
+
+  // Tính toán nội dung mã QR tương ứng:
+  // Nếu chọn ghế cụ thể: sinh QR payload riêng cho ghế đó
+  // Nếu chọn 'all': dùng qrContent/code tổng
+  const activeQrValue = useMemo(() => {
+    if (selectedSeat !== 'all') {
+      return JSON.stringify({
+        v: 1,
+        ticketId: ticket._id,
+        code: ticket.code || ticket._id,
+        subCode: `${ticket.code || ticket._id}-${selectedSeat}`,
+        seat: selectedSeat,
+      })
+    }
+    return (
+      ticket.qrContent ||
+      (ticket.code
+        ? JSON.stringify({
+            v: 1,
+            ticketId: ticket._id,
+            code: ticket.code,
+            seats: ticket.seats,
+          })
+        : '')
+    )
+  }, [ticket, selectedSeat])
 
   // Đóng bằng phím Escape + khoá scroll nền khi modal mở
   useEffect(() => {
@@ -90,11 +120,43 @@ export default function TicketDetailModal({ ticket, onClose }: TicketDetailModal
           )}
         </div>
 
+        {/* Bộ chọn xem từng cuống vé riêng lẻ khi mua từ 2 ghế trở lên */}
+        {seats.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 bg-zinc-950/60 px-6 py-3 text-xs">
+            <span className="font-semibold text-zinc-400">Xem từng vé:</span>
+            <button
+              type="button"
+              onClick={() => setSelectedSeat('all')}
+              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                selectedSeat === 'all'
+                  ? 'bg-brand-500 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+              }`}
+            >
+              Tất cả ({seats.length} vé)
+            </button>
+            {seats.map((s, idx) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSelectedSeat(s)}
+                className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                  selectedSeat === s
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                Vé {idx + 1}: Ghế {s}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="grid gap-6 p-6 sm:grid-cols-[auto_1fr]">
           {/* QR */}
           <div className="flex flex-col items-center gap-3 sm:w-[248px]">
-            {ticket.qrContent ? (
-              <TicketQr value={ticket.qrContent} size={220} />
+            {activeQrValue ? (
+              <TicketQr value={activeQrValue} size={220} />
             ) : ticket.qrCode ? (
               <div className="rounded-xl bg-white p-3 shadow-lg shadow-black/30">
                 <img src={ticket.qrCode} alt="Mã QR vé" className="h-[220px] w-[220px]" />
@@ -110,9 +172,22 @@ export default function TicketDetailModal({ ticket, onClose }: TicketDetailModal
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 text-center text-[11px] leading-snug text-zinc-500">
-              <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500/80" />
-              <span>Xuất trình mã QR này tại quầy soát vé</span>
+            <div className="flex flex-col items-center gap-1 text-center">
+              {selectedSeat !== 'all' ? (
+                <>
+                  <span className="font-mono text-xs font-bold text-brand-300">
+                    MÃ VÉ CON: {ticket.code || ticket._id}-{selectedSeat}
+                  </span>
+                  <span className="text-[11px] text-zinc-400">
+                    Gửi ảnh mã QR này cho người ngồi ghế <strong>{selectedSeat}</strong> để tự quét vào rạp
+                  </span>
+                </>
+              ) : (
+                <div className="flex items-center gap-1.5 text-center text-[11px] leading-snug text-zinc-500">
+                  <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500/80" />
+                  <span>Xuất trình mã QR này tại quầy soát vé</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -234,13 +309,23 @@ export default function TicketDetailModal({ ticket, onClose }: TicketDetailModal
             <TicketIcon className="h-3.5 w-3.5" />
             Vui lòng có mặt trước giờ chiếu 15 phút
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 active:scale-[0.98] sm:w-auto"
-          >
-            Đóng
-          </button>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-700 sm:flex-initial"
+            >
+              <Printer className="h-4 w-4" />
+              <span>In vé giấy</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl bg-brand-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 active:scale-[0.98] sm:flex-initial"
+            >
+              Đóng
+            </button>
+          </div>
         </div>
       </div>
     </div>
