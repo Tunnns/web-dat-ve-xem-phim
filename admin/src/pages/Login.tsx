@@ -1,10 +1,28 @@
 
 import { useState, type FormEvent } from 'react';
 import { Alert, Button, Card, Form, Input, Typography } from 'antd';
-import { LockOutlined, MailOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import {
+  LockOutlined,
+  MailOutlined,
+  VideoCameraOutlined,
+} from '@ant-design/icons';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getErrorMessage } from '../api/client';
+import type { UserRole } from '../types/auth';
+
+const getRolePath = (role: UserRole): string => {
+  switch (role) {
+    case 'admin':
+      return '/admin';
+    case 'manager':
+      return '/manager';
+    case 'staff':
+      return '/staff';
+    default:
+      return '/login';
+  }
+};
 
 const Login = () => {
   const { user, login } = useAuth();
@@ -16,7 +34,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getRolePath(user.role)} replace />;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -31,8 +49,14 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login({ email: email.trim(), password });
-      navigate('/', { replace: true });
+      const loggedInUser = await login({
+        email: email.trim(),
+        password,
+      });
+
+      navigate(getRolePath(loggedInUser.role), {
+        replace: true,
+      });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -55,12 +79,19 @@ const Login = () => {
         styles={{ body: { padding: 32 } }}
       >
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <VideoCameraOutlined style={{ fontSize: 42, color: '#1677ff' }} />
-          <Typography.Title level={2} style={{ marginTop: 12, marginBottom: 4 }}>
+          <VideoCameraOutlined
+            style={{ fontSize: 42, color: '#1677ff' }}
+          />
+
+          <Typography.Title
+            level={2}
+            style={{ marginTop: 12, marginBottom: 4 }}
+          >
             CineOps Pro
           </Typography.Title>
+
           <Typography.Text type="secondary">
-            Đăng nhập hệ thống quản trị
+            Đăng nhập hệ thống
           </Typography.Text>
         </div>
 
