@@ -1,30 +1,81 @@
+
 import mongoose, { Schema, Document } from 'mongoose';
+
+export type TheaterRegion = 'Miền Bắc' | 'Miền Trung' | 'Miền Nam';
 
 export interface ITheater extends Document {
   name: string;
   address: string;
-  city?: string;
+  region: TheaterRegion;
+  city: string;
+  district: string;
+  ward?: string;
   location: {
     lat: number;
     lng: number;
   };
   hotline?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-const theaterSchema = new Schema<ITheater>(
+const TheaterSchema = new Schema<ITheater>(
   {
-    name: { type: String, required: true },
-    address: { type: String, required: true },
-    city: { type: String },
-    location: {
-      lat: { type: Number },
-      lng: { type: Number },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
     },
-    hotline: { type: String },
+
+    address: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    region: {
+      type: String,
+      enum: ['Miền Bắc', 'Miền Trung', 'Miền Nam'],
+      required: true,
+    },
+
+    city: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    district: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    ward: {
+      type: String,
+      trim: true,
+    },
+
+    location: {
+      lat: {
+        type: Number,
+        default: 0,
+      },
+      lng: {
+        type: Number,
+        default: 0,
+      },
+    },
+
+    hotline: {
+      type: String,
+      trim: true,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-export default mongoose.model<ITheater>('Theater', theaterSchema);
+// Index phục vụ lọc rạp theo khu vực
+TheaterSchema.index({ region: 1, city: 1, district: 1 });
+
+export default mongoose.model<ITheater>('Theater', TheaterSchema);

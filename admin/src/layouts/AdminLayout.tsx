@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Layout,
@@ -31,10 +32,15 @@ import {
   CoffeeOutlined,
   InboxOutlined,
 } from '@ant-design/icons';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import {
+  Outlet,
+  useNavigate,
+  useLocation,
+  Navigate,
+} from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
-import { ROLE_LABELS, type UserRole } from '../types/auth';
+import { ROLE_LABELS } from '../types/auth';
 
 import './AdminLayout.css';
 
@@ -44,104 +50,90 @@ interface MenuDefinition {
   key: string;
   icon: React.ReactNode;
   label: string;
-  roles: UserRole[];
 }
 
 const menuDefinitions: MenuDefinition[] = [
   {
-    key: '/',
+    key: '/admin',
     icon: <DashboardOutlined />,
     label: 'Tổng quan',
-    roles: ['admin', 'manager', 'staff'],
   },
   {
-    key: '/movies',
+    key: '/admin/movies',
     icon: <VideoCameraOutlined />,
     label: 'Quản lý phim',
-    roles: ['admin', 'manager'],
   },
   {
-    key: '/theaters',
+    key: '/admin/theaters',
     icon: <ShopOutlined />,
     label: 'Quản lý rạp',
-    roles: ['admin', 'manager'],
   },
   {
-    key: '/rooms',
+    key: '/admin/rooms',
     icon: <AppstoreOutlined />,
     label: 'Phòng chiếu',
-    roles: ['admin', 'manager'],
   },
   {
-    key: '/showtimes',
+    key: '/admin/showtimes',
     icon: <PlaySquareOutlined />,
     label: 'Suất chiếu',
-    roles: ['admin', 'manager'],
   },
   {
-    key: '/users',
+    key: '/admin/users',
     icon: <UserOutlined />,
     label: 'Khách hàng',
-    roles: ['admin', 'manager', 'staff'],
   },
   {
-    key: '/tickets',
+    key: '/admin/tickets',
     icon: <BarcodeOutlined />,
     label: 'Quản lý vé đặt',
-    roles: ['admin', 'manager', 'staff'],
   },
   {
-    key: '/revenue',
+    key: '/admin/revenue',
     icon: <LineChartOutlined />,
     label: 'Báo cáo doanh thu',
-    roles: ['admin', 'manager'],
   },
   {
-    key: '/vouchers',
+    key: '/admin/vouchers',
     icon: <GiftOutlined />,
     label: 'Mã giảm giá (Voucher)',
-    roles: ['admin', 'manager'],
   },
   {
-    key: '/combos',
+    key: '/admin/combos',
     icon: <CoffeeOutlined />,
     label: 'Combo bắp nước',
-    roles: ['admin', 'manager'],
   },
   {
-    key: '/inventory',
+    key: '/admin/inventory',
     icon: <InboxOutlined />,
     label: 'Kho bắp nước',
-    roles: ['admin', 'manager'],
   },
   {
-    key: '/accounts',
+    key: '/admin/accounts',
     icon: <TeamOutlined />,
     label: 'Tài khoản & Phân quyền',
-    roles: ['admin'],
   },
   {
-    key: '/logs',
+    key: '/admin/logs',
     icon: <AuditOutlined />,
     label: 'Nhật ký quản trị',
-    roles: ['admin'],
   },
 ];
 
 const pageNames: Record<string, string> = {
-  '/': 'Tổng quan',
-  '/movies': 'Quản lý phim',
-  '/theaters': 'Quản lý rạp',
-  '/rooms': 'Phòng chiếu',
-  '/showtimes': 'Suất chiếu',
-  '/users': 'Khách hàng',
-  '/tickets': 'Quản lý vé đặt',
-  '/revenue': 'Báo cáo doanh thu',
-  '/vouchers': 'Mã giảm giá (Voucher)',
-  '/combos': 'Combo bắp nước',
-  '/inventory': 'Kho bắp nước',
-  '/accounts': 'Tài khoản & Phân quyền',
-  '/logs': 'Nhật ký quản trị',
+  '/admin': 'Tổng quan',
+  '/admin/movies': 'Quản lý phim',
+  '/admin/theaters': 'Quản lý rạp',
+  '/admin/rooms': 'Phòng chiếu',
+  '/admin/showtimes': 'Suất chiếu',
+  '/admin/users': 'Khách hàng',
+  '/admin/tickets': 'Quản lý vé đặt',
+  '/admin/revenue': 'Báo cáo doanh thu',
+  '/admin/vouchers': 'Mã giảm giá (Voucher)',
+  '/admin/combos': 'Combo bắp nước',
+  '/admin/inventory': 'Kho bắp nước',
+  '/admin/accounts': 'Tài khoản & Phân quyền',
+  '/admin/logs': 'Nhật ký quản trị',
 };
 
 const AdminLayout: React.FC = () => {
@@ -152,11 +144,23 @@ const AdminLayout: React.FC = () => {
 
   const { user, logout } = useAuth();
 
-  if (!user) return null;
+  // Kiểm tra đăng nhập
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-  const visibleMenuItems: MenuProps['items'] = menuDefinitions
-    .filter((item) => item.roles.includes(user.role))
-    .map(({ roles: _roles, ...item }) => item);
+  // Chỉ Admin mới được sử dụng AdminLayout
+  if (user.role !== 'admin') {
+    return <Navigate to="/forbidden" replace />;
+  }
+
+  const visibleMenuItems: MenuProps['items'] = menuDefinitions.map(
+    (item) => ({
+      key: item.key,
+      icon: item.icon,
+      label: item.label,
+    }),
+  );
 
   const currentPage = pageNames[location.pathname] ?? 'Tổng quan';
 
@@ -266,16 +270,14 @@ const AdminLayout: React.FC = () => {
           </div>
 
           <div className="header-actions">
-            {['admin', 'manager'].includes(user.role) && (
-              <Button
-                type="primary"
-                className="header-add-button"
-                icon={<PlusOutlined />}
-                onClick={() => navigate('/showtimes')}
-              >
-                Thêm suất chiếu
-              </Button>
-            )}
+            <Button
+              type="primary"
+              className="header-add-button"
+              icon={<PlusOutlined />}
+              onClick={() => navigate('/admin/showtimes')}
+            >
+              Thêm suất chiếu
+            </Button>
 
             <Badge dot offset={[-4, 4]}>
               <Button

@@ -5,8 +5,7 @@ export const getShowtimes = async (params?: {
   movie?: string;
   theater?: string;
   room?: string;
-  status?: 'scheduled' | 'cancelled';
-createdAt?: string;
+  
 }): Promise<Showtime[]> => {
   const res = await apiClient.get<ApiResponse<Showtime[]>>('/showtimes', { params });
   return res.data.data ?? [];
