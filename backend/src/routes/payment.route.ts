@@ -50,12 +50,14 @@ router.get('/combos', listCombos);
 router.post(
   '/calculate',
   [
-    body('showtimeId').isMongoId().withMessage('ID suất chiếu không hợp lệ'),
-    body('seats').isArray({ min: 1 }).withMessage('Phải chọn ít nhất một ghế'),
+    body('orderType').optional().isIn(['ticket', 'combo_only']).withMessage('Loại đơn không hợp lệ'),
+    body('showtimeId').optional({ values: 'falsy' }).isMongoId().withMessage('ID suất chiếu không hợp lệ'),
+    body('seats').optional().isArray().withMessage('Danh sách ghế phải là mảng'),
     body('seats.*').isString().trim().notEmpty().withMessage('Mã ghế không hợp lệ'),
     body('combos').optional().isArray().withMessage('Danh sách combo phải là mảng'),
     body('combos.*.comboId').isMongoId().withMessage('ID combo không hợp lệ'),
     body('combos.*.quantity').isInt({ min: 1 }).withMessage('Số lượng combo phải là số nguyên dương'),
+    body('combos.*.selectedFlavor').optional({ values: 'falsy' }).isString().trim(),
     body('voucherCode').optional({ values: 'falsy' }).trim().notEmpty().withMessage('Mã giảm giá không hợp lệ'),
     body('ticketId').optional({ values: 'falsy' }).isMongoId().withMessage('ID vé không hợp lệ'),
   ],

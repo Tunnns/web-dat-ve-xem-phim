@@ -29,6 +29,7 @@ const handleError = (res: Response, error: unknown): void => {
 const populateTicketDetail = (ticketId: mongoose.Types.ObjectId | string) =>
   Ticket.findById(ticketId).populate([
     { path: 'user', select: 'fullName email phone' },
+    { path: 'theater', select: 'name address' },
     {
       path: 'showtime',
       select: 'movie theater room startTime endTime price',
@@ -46,6 +47,8 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
     const {
       amount,
       description,
+      orderType,
+      theaterId,
       showtimeId,
       seats,
       combos,
@@ -115,9 +118,24 @@ export const generateVietQR = async (req: AuthRequest, res: Response): Promise<v
 
     if (!pendingTicket && isMongoShowtime && Array.isArray(seats) && seats.length > 0) {
       pendingTicket = await Ticket.create({
+        orderType: 'ticket',
         user: req.user?.id,
         showtime: targetShowtimeId,
         seats,
+        combos: combos || [],
+        totalAmount: amount || 0,
+        voucherCode,
+        paymentMethod: 'SePay VietQR',
+        paymentReference: orderCode,
+        status: 'pending',
+        lockedUntil: new Date(Date.now() + 10 * 60 * 1000),
+      });
+    } else if (!pendingTicket && orderType === 'combo_only' && Array.isArray(combos) && combos.length > 0) {
+      pendingTicket = await Ticket.create({
+        orderType: 'combo_only',
+        user: req.user?.id,
+        theater: theaterId && mongoose.Types.ObjectId.isValid(theaterId) ? theaterId : undefined,
+        seats: [],
         combos: combos || [],
         totalAmount: amount || 0,
         voucherCode,
@@ -324,11 +342,17 @@ export const sepayWebhook = async (req: Request, res: Response): Promise<void> =
 
     // 6. Hoan tat ve trong database
     const data = await completeTicketPayment({
+      orderType: ticket.orderType,
+      theaterId: ticket.theater ? String(ticket.theater) : undefined,
       userId: ticket.user ? String(ticket.user) : undefined as any,
       ticketId: String(ticket._id),
-      showtimeId: String(ticket.showtime),
+      showtimeId: ticket.showtime ? String(ticket.showtime) : undefined,
       seats: ticket.seats,
-      combos: (ticket.combos || []).map((c) => ({ comboId: String(c.comboId), quantity: c.quantity })),
+      combos: (ticket.combos || []).map((c) => ({
+        comboId: String(c.comboId),
+        quantity: c.quantity,
+        selectedFlavor: c.selectedFlavor,
+      })),
       voucherCode: ticket.voucherCode,
       paymentMethod: 'SePay VietQR Webhook',
       paymentReference: orderCode,
@@ -369,11 +393,17 @@ export const simulateBankTransfer = async (req: Request, res: Response): Promise
     }
 
     const data = await completeTicketPayment({
+      orderType: ticket.orderType,
+      theaterId: ticket.theater ? String(ticket.theater) : undefined,
       userId: ticket.user ? String(ticket.user) : undefined as any,
       ticketId: String(ticket._id),
-      showtimeId: String(ticket.showtime),
+      showtimeId: ticket.showtime ? String(ticket.showtime) : undefined,
       seats: ticket.seats,
-      combos: (ticket.combos || []).map((c) => ({ comboId: String(c.comboId), quantity: c.quantity })),
+      combos: (ticket.combos || []).map((c) => ({
+        comboId: String(c.comboId),
+        quantity: c.quantity,
+        selectedFlavor: c.selectedFlavor,
+      })),
       voucherCode: ticket.voucherCode,
       paymentMethod: 'MBBank VietQR Auto',
       paymentReference: orderCode,
@@ -403,6 +433,7 @@ export const listCombos = async (req: Request, res: Response) => {
 export const calculate = async (req: Request, res: Response) => {
   try {
     const data = await calculatePrice({
+      orderType: req.body.orderType,
       showtimeId: req.body.showtimeId,
       seats: req.body.seats,
       combos: req.body.combos,

@@ -141,6 +141,7 @@ export const getRevenueAnalytics = async (
     // Giá vốn được ẩn mặc định trong model, cần select rõ ràng cho báo cáo.
     .select('+combos.unitCost +combos.costTotal')
     .populate('user', 'fullName email phone')
+    .populate('theater', 'name')
     .populate({
       path: 'showtime',
       populate: [
@@ -155,7 +156,11 @@ export const getRevenueAnalytics = async (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tickets = rawTickets.filter((t: any) => {
     if (filters.theaterId && filters.theaterId !== 'all') {
-      const tId = t.showtime?.theater?._id?.toString() || t.showtime?.theater?.toString();
+      const tId =
+        t.showtime?.theater?._id?.toString() ||
+        t.showtime?.theater?.toString() ||
+        t.theater?._id?.toString() ||
+        t.theater?.toString();
       if (tId !== filters.theaterId) return false;
     }
     if (filters.movieId && filters.movieId !== 'all') {
@@ -340,20 +345,30 @@ export const getRevenueAnalytics = async (
     curTimeline.ticketCount += 1;
     timelineMap.set(dateKey, curTimeline);
 
-    // Movie aggregation
-    const movieId = t.showtime?.movie?._id?.toString() || 'unknown';
-    const movieTitle = t.showtime?.movie?.title || 'Phim khác';
-    const curMovie =
-      movieMap.get(movieId) ||
-      { title: movieTitle, revenue: 0, ticketCount: 0, seatCount: 0 };
-    curMovie.revenue += revenueAmount;
-    curMovie.ticketCount += 1;
-    curMovie.seatCount += seatsList.length;
-    movieMap.set(movieId, curMovie);
+    // Movie aggregation (chỉ tính vào doanh thu phim nếu là đơn vé xem phim)
+    const isComboOnly = t.orderType === 'combo_only' || (!t.showtime && combosList.length > 0);
+    const movieId = t.showtime?.movie?._id?.toString() || (isComboOnly ? 'combo_only' : 'unknown');
+    const movieTitle =
+      t.showtime?.movie?.title || (isComboOnly ? 'Bán lẻ bắp nước tại quầy' : 'Phim khác');
+    if (!isComboOnly) {
+      const curMovie =
+        movieMap.get(movieId) ||
+        { title: movieTitle, revenue: 0, ticketCount: 0, seatCount: 0 };
+      curMovie.revenue += revenueAmount;
+      curMovie.ticketCount += 1;
+      curMovie.seatCount += seatsList.length;
+      movieMap.set(movieId, curMovie);
+    }
 
     // Theater aggregation
-    const theaterId = t.showtime?.theater?._id?.toString() || 'unknown';
-    const theaterName = t.showtime?.theater?.name || 'Rạp Fivecore';
+    const theaterId =
+      t.showtime?.theater?._id?.toString() ||
+      t.theater?._id?.toString() ||
+      'unknown';
+    const theaterName =
+      t.showtime?.theater?.name ||
+      t.theater?.name ||
+      'Rạp Fivecore';
     const curTheater =
       theaterMap.get(theaterId) ||
       { name: theaterName, revenue: 0, ticketCount: 0, seatCount: 0 };
@@ -375,10 +390,10 @@ export const getRevenueAnalytics = async (
       paidAt: t.paidAt || t.createdAt,
       movieTitle,
       theaterName,
-      roomName: t.showtime?.room?.name || 'Phòng chiếu',
-      customerName: t.user?.fullName || 'Khách vãng lai',
-      customerEmail: t.user?.email || 'N/A',
-      customerPhone: t.user?.phone || 'N/A',
+      roomName: t.showtime?.room?.name || (isComboOnly ? 'Quầy Bắp Nước' : 'Phòng chiếu'),
+      customerName: t.customerName || t.user?.fullName || 'Khách vãng lai',
+      customerEmail: t.customerEmail || t.user?.email || 'N/A',
+      customerPhone: t.customerPhone || t.user?.phone || 'N/A',
       seats: seatsList,
       seatCount: seatsList.length,
       combos: combosList.map((c: any) => ({

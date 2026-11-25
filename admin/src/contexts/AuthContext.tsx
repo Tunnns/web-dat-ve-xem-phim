@@ -67,9 +67,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Dữ liệu đăng nhập từ máy chủ không hợp lệ');
       }
 
-      if (
-        !['admin', 'manager', 'staff'].includes(result.user.role)
-      ) {
+      if (result.user.role === 'staff') {
+        throw new Error(
+          'Tài khoản Nhân viên quầy (staff) vui lòng đăng nhập tại ứng dụng Quầy Vé POS (http://localhost:5175)'
+        );
+      }
+
+      if (!['admin', 'manager'].includes(result.user.role)) {
         throw new Error('Tài khoản này không có quyền truy cập hệ thống quản trị');
       }
 
@@ -113,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (
           !currentUser ||
-          !['admin', 'manager', 'staff'].includes(currentUser.role)
+          !['admin', 'manager'].includes(currentUser.role)
         ) {
           logout();
           setLoading(false);

@@ -14,6 +14,7 @@ import Rooms from './pages/Rooms';
 import Showtimes from './pages/Showtimes';
 import Users from './pages/Users';
 import Tickets from './pages/Tickets';
+import CounterSales from './pages/CounterSales';
 import Revenue from './pages/Revenue';
 import Vouchers from './pages/Vouchers';
 import Combos from './pages/Combos';
@@ -49,38 +50,24 @@ const App: React.FC = () => {
           <Route
             element={
               <ProtectedRoute
-                allowedRoles={['admin', 'manager', 'staff']}
+                allowedRoles={['admin', 'manager']}
               />
             }
           >
             <Route path="/" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
 
-              <Route
-                element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']} />
-                }
-              >
-                <Route path="movies" element={<Movies />} />
-                <Route path="theaters" element={<Theaters />} />
-                <Route path="rooms" element={<Rooms />} />
-                <Route path="showtimes" element={<Showtimes />} />
-                <Route path="revenue" element={<Revenue />} />
-                <Route path="vouchers" element={<Vouchers />} />
-                <Route path="combos" element={<Combos />} />
-                <Route path="inventory" element={<Inventory />} />
-              </Route>
-
-              <Route
-                element={
-                  <ProtectedRoute
-                    allowedRoles={['admin', 'manager', 'staff']}
-                  />
-                }
-              >
-                <Route path="users" element={<Users />} />
-                <Route path="tickets" element={<Tickets />} />
-              </Route>
+              <Route path="movies" element={<Movies />} />
+              <Route path="theaters" element={<Theaters />} />
+              <Route path="rooms" element={<Rooms />} />
+              <Route path="showtimes" element={<Showtimes />} />
+              <Route path="counter-sales" element={<CounterSales />} />
+              <Route path="revenue" element={<Revenue />} />
+              <Route path="vouchers" element={<Vouchers />} />
+              <Route path="combos" element={<Combos />} />
+              <Route path="inventory" element={<Inventory />} />
+              <Route path="users" element={<Users />} />
+              <Route path="tickets" element={<Tickets />} />
 
               {/* Chỉ Admin được quản lý tài khoản quản trị và xem nhật ký */}
               <Route

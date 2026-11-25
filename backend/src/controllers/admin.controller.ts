@@ -796,6 +796,8 @@ export const getTickets = async (req: Request, res: Response) => {
 
     const tickets = await Ticket.find(filter)
       .populate('user', 'fullName email phone')
+      .populate('soldBy', 'fullName email')
+      .populate('theater', 'name')
       .populate({
         path: 'showtime',
         populate: [
@@ -806,25 +808,31 @@ export const getTickets = async (req: Request, res: Response) => {
       })
       .sort({ createdAt: -1 });
 
-    let formatted = tickets.map((t: any) => ({
-      _id: t._id,
-      code: t.code,
-      userEmail: t.user?.email || 'Khách vãng lai',
-      customerName: t.user?.fullName || 'Khách hàng',
-      movieTitle: t.showtime?.movie?.title || 'Phim',
-      theaterName: t.showtime?.theater?.name || 'Rạp',
-      roomName: t.showtime?.room?.name || 'Phòng',
-      seats: t.seats || [],
-      totalPrice: t.totalAmount || 0,
-      discount: t.discount || 0,
-      voucherCode: t.voucherCode,
-      paymentMethod: t.paymentMethod,
-      combos: t.combos || [],
-      status: t.status,
-      createdAt: t.createdAt,
-      paidAt: t.paidAt,
-      showTime: t.showtime?.startTime,
-    }));
+    let formatted = tickets.map((t: any) => {
+      const isComboOnly = t.orderType === 'combo_only' || (!t.showtime && (t.combos?.length || 0) > 0);
+      return {
+        _id: t._id,
+        code: t.code,
+        orderType: t.orderType || (isComboOnly ? 'combo_only' : 'ticket'),
+        userEmail: t.customerEmail || t.user?.email || 'Khách vãng lai',
+        customerName: t.customerName || t.user?.fullName || 'Khách hàng',
+        customerPhone: t.customerPhone || t.user?.phone,
+        soldByName: t.soldBy?.fullName,
+        movieTitle: t.showtime?.movie?.title || (isComboOnly ? 'Bán lẻ bắp nước' : 'Phim'),
+        theaterName: t.showtime?.theater?.name || t.theater?.name || 'Rạp',
+        roomName: t.showtime?.room?.name || (isComboOnly ? 'Quầy Bắp Nước' : 'Phòng'),
+        seats: t.seats || [],
+        totalPrice: t.totalAmount || 0,
+        discount: t.discount || 0,
+        voucherCode: t.voucherCode,
+        paymentMethod: t.paymentMethod,
+        combos: t.combos || [],
+        status: t.status,
+        createdAt: t.createdAt,
+        paidAt: t.paidAt,
+        showTime: t.showtime?.startTime,
+      };
+    });
 
     if (search && typeof search === 'string' && search.trim()) {
       const q = search.trim().toLowerCase();

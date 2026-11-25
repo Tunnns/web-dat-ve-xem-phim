@@ -131,6 +131,30 @@ async function seedData() {
         isActive: true,
       },
     ]);
+
+    // Hỗ trợ thêm tài khoản @fivecore.com cho POS nếu chưa tồn tại
+    const existingFivecoreAdmin = await User.findOne({ email: 'admin@fivecore.com' });
+    if (!existingFivecoreAdmin) {
+      await User.create({
+        fullName: 'Administrator',
+        email: 'admin@fivecore.com',
+        password: adminHashedPassword,
+        phone: '0901234567',
+        role: 'admin',
+        isActive: true,
+      });
+    }
+    const existingFivecoreStaff = await User.findOne({ email: 'staff@fivecore.com' });
+    if (!existingFivecoreStaff) {
+      await User.create({
+        fullName: 'Nhân viên Quầy 1',
+        email: 'staff@fivecore.com',
+        password: staffHashedPassword,
+        phone: '0988776655',
+        role: 'staff',
+        isActive: true,
+      });
+    }
     console.log(`✓ Đã tạo ${users.length} tài khoản người dùng (Admin, Manager, Staff, Khách hàng).`);
 
     // 2. Cấu hình Quy định tính giá động (PricingRule)
