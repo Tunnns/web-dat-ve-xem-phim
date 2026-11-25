@@ -40,7 +40,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="flex items-center gap-1 overflow-x-auto">
             <NavLink
               to="/"
               className={({ isActive }) =>

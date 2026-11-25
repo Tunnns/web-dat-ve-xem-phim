@@ -1,5 +1,6 @@
 import Ticket, { ITicket } from '../models/Ticket';
 import ImportReceipt from '../models/ImportReceipt';
+import Showtime from '../models/Showtime';
 import mongoose from 'mongoose';
 
 export interface RevenueFilters {
@@ -23,6 +24,11 @@ export interface RevenueByMovieItem {
   movieTitle: string;
   revenue: number;
   ticketCount: number;
+  // Thống kê độ hot: số ghế bán, số suất chiếu và tỷ lệ lấp đầy
+  seatCount: number;
+  showtimeCount: number;
+  capacity: number;
+  occupancyRate: number;
 }
 
 export interface RevenueByTheaterItem {
@@ -30,6 +36,11 @@ export interface RevenueByTheaterItem {
   theaterName: string;
   revenue: number;
   ticketCount: number;
+  // Thống kê doanh thu rạp: số ghế bán, số suất chiếu và tỷ lệ lấp đầy
+  seatCount: number;
+  showtimeCount: number;
+  capacity: number;
+  occupancyRate: number;
 }
 
 export interface RevenueByPaymentMethodItem {
@@ -130,6 +141,7 @@ export const getRevenueAnalytics = async (
     // Giá vốn được ẩn mặc định trong model, cần select rõ ràng cho báo cáo.
     .select('+combos.unitCost +combos.costTotal')
     .populate('user', 'fullName email phone')
+    .populate('theater', 'name')
     .populate({
       path: 'showtime',
       populate: [
@@ -144,7 +156,11 @@ export const getRevenueAnalytics = async (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tickets = rawTickets.filter((t: any) => {
     if (filters.theaterId && filters.theaterId !== 'all') {
-      const tId = t.showtime?.theater?._id?.toString() || t.showtime?.theater?.toString();
+      const tId =
+        t.showtime?.theater?._id?.toString() ||
+        t.showtime?.theater?.toString() ||
+        t.theater?._id?.toString() ||
+        t.theater?.toString();
       if (tId !== filters.theaterId) return false;
     }
     if (filters.movieId && filters.movieId !== 'all') {
@@ -153,6 +169,70 @@ export const getRevenueAnalytics = async (
     }
     return true;
   });
+
+  // Thống kê số suất chiếu & sức chứa theo rạp/phim trong kỳ (dùng cho tỷ lệ lấp đầy).
+  // Lưu ý: doanh thu lọc theo paidAt, còn số suất chiếu lọc theo startTime của suất.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const showtimeQuery: Record<string, any> = { status: { $ne: 'cancelled' } };
+  if (filters.startDate || filters.endDate) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const startTimeQuery: Record<string, any> = {};
+    if (filters.startDate) {
+      const start = new Date(filters.startDate);
+      start.setHours(0, 0, 0, 0);
+      startTimeQuery.$gte = start;
+    }
+    if (filters.endDate) {
+      const end = new Date(filters.endDate);
+      end.setHours(23, 59, 59, 999);
+      startTimeQuery.$lte = end;
+    }
+    showtimeQuery.startTime = startTimeQuery;
+  }
+  if (
+    filters.theaterId &&
+    filters.theaterId !== 'all' &&
+    mongoose.isValidObjectId(filters.theaterId)
+  ) {
+    showtimeQuery.theater = filters.theaterId;
+  }
+  if (
+    filters.movieId &&
+    filters.movieId !== 'all' &&
+    mongoose.isValidObjectId(filters.movieId)
+  ) {
+    showtimeQuery.movie = filters.movieId;
+  }
+
+  const periodShowtimes = await Showtime.find(showtimeQuery)
+    .select('theater movie room')
+    .populate('room', 'capacity seatLayout');
+
+  const showtimeTheaterMap = new Map<string, { showtimeCount: number; capacity: number }>();
+  const showtimeMovieMap = new Map<string, { showtimeCount: number; capacity: number }>();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const showtime of periodShowtimes as any[]) {
+    const roomCapacity =
+      Number(showtime.room?.capacity) ||
+      (Array.isArray(showtime.room?.seatLayout) ? showtime.room.seatLayout.length : 0);
+    const theaterId = showtime.theater?.toString();
+    const movieId = showtime.movie?.toString();
+
+    if (theaterId) {
+      const current = showtimeTheaterMap.get(theaterId) || { showtimeCount: 0, capacity: 0 };
+      current.showtimeCount += 1;
+      current.capacity += roomCapacity;
+      showtimeTheaterMap.set(theaterId, current);
+    }
+
+    if (movieId) {
+      const current = showtimeMovieMap.get(movieId) || { showtimeCount: 0, capacity: 0 };
+      current.showtimeCount += 1;
+      current.capacity += roomCapacity;
+      showtimeMovieMap.set(movieId, current);
+    }
+  }
 
   // Tổng tiền nhập kho trong kỳ (lọc theo ngày nhập, không phải ngày bán vé).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -186,8 +266,14 @@ export const getRevenueAnalytics = async (
     string,
     { revenue: number; cost: number; profit: number; ticketCount: number }
   >();
-  const movieMap = new Map<string, { title: string; revenue: number; ticketCount: number }>();
-  const theaterMap = new Map<string, { name: string; revenue: number; ticketCount: number }>();
+  const movieMap = new Map<
+    string,
+    { title: string; revenue: number; ticketCount: number; seatCount: number }
+  >();
+  const theaterMap = new Map<
+    string,
+    { name: string; revenue: number; ticketCount: number; seatCount: number }
+  >();
   const paymentMethodMap = new Map<string, { revenue: number; count: number }>();
   const comboMap = new Map<
     string,
@@ -259,20 +345,36 @@ export const getRevenueAnalytics = async (
     curTimeline.ticketCount += 1;
     timelineMap.set(dateKey, curTimeline);
 
-    // Movie aggregation
-    const movieId = t.showtime?.movie?._id?.toString() || 'unknown';
-    const movieTitle = t.showtime?.movie?.title || 'Phim khác';
-    const curMovie = movieMap.get(movieId) || { title: movieTitle, revenue: 0, ticketCount: 0 };
-    curMovie.revenue += revenueAmount;
-    curMovie.ticketCount += 1;
-    movieMap.set(movieId, curMovie);
+    // Movie aggregation (chỉ tính vào doanh thu phim nếu là đơn vé xem phim)
+    const isComboOnly = t.orderType === 'combo_only' || (!t.showtime && combosList.length > 0);
+    const movieId = t.showtime?.movie?._id?.toString() || (isComboOnly ? 'combo_only' : 'unknown');
+    const movieTitle =
+      t.showtime?.movie?.title || (isComboOnly ? 'Bán lẻ bắp nước tại quầy' : 'Phim khác');
+    if (!isComboOnly) {
+      const curMovie =
+        movieMap.get(movieId) ||
+        { title: movieTitle, revenue: 0, ticketCount: 0, seatCount: 0 };
+      curMovie.revenue += revenueAmount;
+      curMovie.ticketCount += 1;
+      curMovie.seatCount += seatsList.length;
+      movieMap.set(movieId, curMovie);
+    }
 
     // Theater aggregation
-    const theaterId = t.showtime?.theater?._id?.toString() || 'unknown';
-    const theaterName = t.showtime?.theater?.name || 'Rạp Fivecore';
-    const curTheater = theaterMap.get(theaterId) || { name: theaterName, revenue: 0, ticketCount: 0 };
+    const theaterId =
+      t.showtime?.theater?._id?.toString() ||
+      t.theater?._id?.toString() ||
+      'unknown';
+    const theaterName =
+      t.showtime?.theater?.name ||
+      t.theater?.name ||
+      'Rạp Fivecore';
+    const curTheater =
+      theaterMap.get(theaterId) ||
+      { name: theaterName, revenue: 0, ticketCount: 0, seatCount: 0 };
     curTheater.revenue += revenueAmount;
     curTheater.ticketCount += 1;
+    curTheater.seatCount += seatsList.length;
     theaterMap.set(theaterId, curTheater);
 
     // Payment method aggregation
@@ -288,10 +390,10 @@ export const getRevenueAnalytics = async (
       paidAt: t.paidAt || t.createdAt,
       movieTitle,
       theaterName,
-      roomName: t.showtime?.room?.name || 'Phòng chiếu',
-      customerName: t.user?.fullName || 'Khách vãng lai',
-      customerEmail: t.user?.email || 'N/A',
-      customerPhone: t.user?.phone || 'N/A',
+      roomName: t.showtime?.room?.name || (isComboOnly ? 'Quầy Bắp Nước' : 'Phòng chiếu'),
+      customerName: t.customerName || t.user?.fullName || 'Khách vãng lai',
+      customerEmail: t.customerEmail || t.user?.email || 'N/A',
+      customerPhone: t.customerPhone || t.user?.phone || 'N/A',
       seats: seatsList,
       seatCount: seatsList.length,
       combos: combosList.map((c: any) => ({
@@ -314,6 +416,12 @@ export const getRevenueAnalytics = async (
   const totalTickets = tickets.length;
   const averageOrderValue = totalTickets > 0 ? Math.round(totalRevenue / totalTickets) : 0;
 
+  // Tỷ lệ lấp đầy = số ghế bán / tổng sức chứa các suất chiếu trong kỳ.
+  const toOccupancyRate = (seatCount: number, capacity: number): number => {
+    if (capacity <= 0) return 0;
+    return Math.min(100, Math.round((seatCount / capacity) * 1000) / 10);
+  };
+
   // Sắp xếp timeline theo ngày tăng dần
   const timeline: RevenueTimelineItem[] = Array.from(timelineMap.entries())
     .map(([date, data]) => ({
@@ -327,22 +435,40 @@ export const getRevenueAnalytics = async (
 
   // Sắp xếp theo phim có doanh thu cao nhất giảm dần
   const byMovie: RevenueByMovieItem[] = Array.from(movieMap.entries())
-    .map(([movieId, data]) => ({
-      movieId,
-      movieTitle: data.title,
-      revenue: data.revenue,
-      ticketCount: data.ticketCount,
-    }))
+    .map(([movieId, data]) => {
+      const showtimeStats = showtimeMovieMap.get(movieId);
+      const capacity = showtimeStats?.capacity || 0;
+
+      return {
+        movieId,
+        movieTitle: data.title,
+        revenue: data.revenue,
+        ticketCount: data.ticketCount,
+        seatCount: data.seatCount,
+        showtimeCount: showtimeStats?.showtimeCount || 0,
+        capacity,
+        occupancyRate: toOccupancyRate(data.seatCount, capacity),
+      };
+    })
     .sort((a, b) => b.revenue - a.revenue);
 
   // Sắp xếp theo rạp có doanh thu cao nhất giảm dần
   const byTheater: RevenueByTheaterItem[] = Array.from(theaterMap.entries())
-    .map(([theaterId, data]) => ({
-      theaterId,
-      theaterName: data.name,
-      revenue: data.revenue,
-      ticketCount: data.ticketCount,
-    }))
+    .map(([theaterId, data]) => {
+      const showtimeStats = showtimeTheaterMap.get(theaterId);
+      const capacity = showtimeStats?.capacity || 0;
+
+      return {
+        theaterId,
+        theaterName: data.name,
+        revenue: data.revenue,
+        ticketCount: data.ticketCount,
+        seatCount: data.seatCount,
+        showtimeCount: showtimeStats?.showtimeCount || 0,
+        capacity,
+        occupancyRate: toOccupancyRate(data.seatCount, capacity),
+      };
+    })
     .sort((a, b) => b.revenue - a.revenue);
 
   // Phân bổ theo phương thức thanh toán

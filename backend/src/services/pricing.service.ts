@@ -6,15 +6,18 @@ import Combo from '../models/Combo';
 import { AppError } from '../utils/appError';
 import { validateVoucher } from './voucher.service';
 import { getSeatPrice } from '../utils/seatPrice';
+import { getPricingRule, resolveShowtimePrice } from './showtimePrice.service';
 
 export interface PricingComboInput {
   comboId: string;
   quantity: number;
+  selectedFlavor?: string;
 }
 
 export interface PricingInput {
-  showtimeId: string;
-  seats: string[]; // Danh sách mã ghế đã chọn (VD: ["A1", "A2"])
+  orderType?: 'ticket' | 'combo_only';
+  showtimeId?: string;
+  seats?: string[]; // Danh sách mã ghế đã chọn (VD: ["A1", "A2"])
   combos?: PricingComboInput[];
   voucherCode?: string;
   // Bỏ qua vé đang được thanh toán khi kiểm tra trùng ghế (dùng cho luồng hoàn tất vé pending)
@@ -29,61 +32,78 @@ export interface PricingInput {
  * Trả về chi tiết từng khoản để client hiển thị; không ghi nhận giao dịch.
  */
 export const calculatePrice = async (input: PricingInput) => {
-  const { showtimeId, seats, combos = [], voucherCode, excludeTicketId } = input;
+  const { orderType, showtimeId, seats = [], combos = [], voucherCode, excludeTicketId } = input;
+  const isComboOnly =
+    orderType === 'combo_only' ||
+    (!showtimeId && (!Array.isArray(seats) || seats.length === 0) && combos.length > 0);
 
-  if (!mongoose.Types.ObjectId.isValid(showtimeId)) {
-    throw new AppError('ID suất chiếu không hợp lệ', 400);
-  }
+  let ticketLines: Array<{ code: string; type: string; price: number }> = [];
+  let ticketSubtotal = 0;
 
-  const showtime = await Showtime.findById(showtimeId).populate('room');
-  if (!showtime) {
-    throw new AppError('Không tìm thấy suất chiếu', 404);
-  }
-
-  const room = showtime.room as unknown as IRoom | null;
-  if (!room || !Array.isArray(room.seatLayout) || room.seatLayout.length === 0) {
-    throw new AppError('Phòng chưa cấu hình sơ đồ ghế', 400);
-  }
-
-  if (!seats || seats.length === 0) {
-    throw new AppError('Vui lòng chọn ít nhất một ghế', 400);
-  }
-
-  const seatByCode = new Map(room.seatLayout.map((seat) => [seat.code, seat]));
-
-  /* ---------- 1. Tính tiền vé ---------- */
-  const ticketLines = seats.map((code) => {
-    const seat = seatByCode.get(code);
-    if (!seat) {
-      throw new AppError(`Ghế ${code} không tồn tại trong phòng`, 400);
+  if (isComboOnly) {
+    if (!Array.isArray(combos) || combos.length === 0) {
+      throw new AppError('Vui lòng chọn ít nhất một combo bắp nước', 400);
     }
-    const price = getSeatPrice(showtime.price || 0, seat, room.seatSurcharges);
-    return { code, type: seat.type, price };
-  });
-
-  const ticketSubtotal = ticketLines.reduce((sum, line) => sum + line.price, 0);
-
-  /* Kiểm tra ghế đã được đặt hoặc đang được giữ (tránh báo giá ghế không trống) */
-  const now = new Date();
-  const blocked = new Set<string>();
-  const existingTickets = await Ticket.find({
-    showtime: showtimeId,
-    status: { $in: ['completed', 'pending'] },
-    seats: { $in: seats },
-    ...(excludeTicketId ? { _id: { $ne: excludeTicketId } } : {}),
-  }).select('seats status lockedUntil');
-
-  for (const ticket of existingTickets) {
-    const stillHeld =
-      ticket.status === 'completed' ||
-      (ticket.status === 'pending' && !!ticket.lockedUntil && ticket.lockedUntil > now);
-    if (stillHeld) {
-      ticket.seats.forEach((code) => blocked.add(code));
+  } else {
+    if (!showtimeId || !mongoose.Types.ObjectId.isValid(showtimeId)) {
+      throw new AppError('ID suất chiếu không hợp lệ', 400);
     }
-  }
-  const conflictCodes = seats.filter((code) => blocked.has(code));
-  if (conflictCodes.length > 0) {
-    throw new AppError(`Ghế ${conflictCodes.join(', ')} đã được đặt hoặc đang được giữ`, 409);
+
+    const showtime = await Showtime.findById(showtimeId).populate('room');
+    if (!showtime) {
+      throw new AppError('Không tìm thấy suất chiếu', 404);
+    }
+
+    const room = showtime.room as unknown as IRoom | null;
+    if (!room || !Array.isArray(room.seatLayout) || room.seatLayout.length === 0) {
+      throw new AppError('Phòng chưa cấu hình sơ đồ ghế', 400);
+    }
+
+    if (!seats || seats.length === 0) {
+      throw new AppError('Vui lòng chọn ít nhất một ghế', 400);
+    }
+
+    const pricingRule = await getPricingRule();
+    const effectiveBase = resolveShowtimePrice(showtime.price || 0, showtime.startTime, pricingRule).finalPrice;
+    const seatByCode = new Map(room.seatLayout.map((seat) => [seat.code, seat]));
+
+    /* ---------- 1. Tính tiền vé ---------- */
+    ticketLines = seats.map((code) => {
+      const seat = seatByCode.get(code);
+      if (!seat) {
+        throw new AppError(`Ghế ${code} không tồn tại trong phòng`, 400);
+      }
+      if (seat.status === 'maintenance') {
+        throw new AppError(`Ghế ${code} đang bảo trì`, 400);
+      }
+      const price = getSeatPrice(effectiveBase, seat, room.seatSurcharges);
+      return { code, type: seat.type, price };
+    });
+
+    ticketSubtotal = ticketLines.reduce((sum, line) => sum + line.price, 0);
+
+    /* Kiểm tra ghế đã được đặt hoặc đang được giữ (tránh báo giá ghế không trống) */
+    const now = new Date();
+    const blocked = new Set<string>();
+    const existingTickets = await Ticket.find({
+      showtime: showtimeId,
+      status: { $in: ['completed', 'pending'] },
+      seats: { $in: seats },
+      ...(excludeTicketId ? { _id: { $ne: excludeTicketId } } : {}),
+    }).select('seats status lockedUntil');
+
+    for (const ticket of existingTickets) {
+      const stillHeld =
+        ticket.status === 'completed' ||
+        (ticket.status === 'pending' && !!ticket.lockedUntil && ticket.lockedUntil > now);
+      if (stillHeld) {
+        ticket.seats.forEach((code) => blocked.add(code));
+      }
+    }
+    const conflictCodes = seats.filter((code) => blocked.has(code));
+    if (conflictCodes.length > 0) {
+      throw new AppError(`Ghế ${conflictCodes.join(', ')} đã được đặt hoặc đang được giữ`, 409);
+    }
   }
 
   /* ---------- 2. Tính tiền combo bắp nước ---------- */
@@ -93,6 +113,7 @@ export const calculatePrice = async (input: PricingInput) => {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    selectedFlavor?: string;
     unitCost: number;
     costTotal: number;
   }> = [];
@@ -124,6 +145,7 @@ export const calculatePrice = async (input: PricingInput) => {
       quantity,
       unitPrice: combo.price,
       lineTotal,
+      selectedFlavor: item.selectedFlavor?.trim() || undefined,
       unitCost,
       costTotal: unitCost * quantity,
     });
@@ -175,6 +197,7 @@ export const sanitizePricingForClient = (
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       lineTotal: item.lineTotal,
+      selectedFlavor: item.selectedFlavor,
     })),
   },
 });

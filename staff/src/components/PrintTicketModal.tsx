@@ -9,20 +9,23 @@ interface PrintTicketModalProps {
 }
 
 export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onClose }) => {
+  const [selectedPreviewTab, setSelectedPreviewTab] = useState<number | 'all'>('all');
+
   if (!ticket) return null;
 
-  const seats = Array.isArray(ticket.seats) && ticket.seats.length > 0 ? ticket.seats : ['Ghế'];
+  const isComboOnly =
+    ticket.orderType === 'combo_only' ||
+    (!ticket.showtime && (!ticket.seats || ticket.seats.length === 0));
+  const seats = !isComboOnly && Array.isArray(ticket.seats) ? ticket.seats : [];
   const hasCombos = Array.isArray(ticket.combos) && ticket.combos.length > 0;
   const totalStubs = seats.length + (hasCombos ? 1 : 0);
 
-  // Tab xem trước trên màn hình staff: 'all' hoặc index cụ thể
-  const [selectedPreviewTab, setSelectedPreviewTab] = useState<number | 'all'>('all');
-
   const handlePrint = () => {
-    window.print();
+    setSelectedPreviewTab('all');
+    window.requestAnimationFrame(() => window.print());
   };
 
-  const showtimeDate = ticket.showtime?.startTime ? new Date(ticket.showtime.startTime) : new Date();
+  const showtimeDate = ticket.showtime?.startTime ? new Date(ticket.showtime.startTime) : new Date(ticket.createdAt || Date.now());
   const timeStr = showtimeDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   const dateStr = showtimeDate.toLocaleDateString('vi-VN');
 

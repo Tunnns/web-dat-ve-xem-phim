@@ -446,6 +446,29 @@ byCombo: Array<{
   profit: number;
 }>;
 
+// Bổ sung cho thống kê doanh thu rạp & độ hot phim
+byMovie: Array<{
+  movieId: string;
+  movieTitle: string;
+  revenue: number;
+  ticketCount: number;   // số đơn có phim này
+  seatCount: number;     // số ghế đã bán (dùng xếp hạng độ hot)
+  showtimeCount: number; // số suất chiếu trong kỳ
+  capacity: number;      // tổng sức chứa các suất chiếu
+  occupancyRate: number; // % lấp đầy = seatCount / capacity
+}>;
+
+byTheater: Array<{
+  theaterId: string;
+  theaterName: string;
+  revenue: number;
+  ticketCount: number;
+  seatCount: number;
+  showtimeCount: number;
+  capacity: number;
+  occupancyRate: number;
+}>;
+
 details: Array<{
   // ...các trường cũ
   comboCost: number;
@@ -456,6 +479,9 @@ details: Array<{
 > Lưu ý: `importCost` lọc theo **ngày nhập kho**, còn doanh thu/COGS lọc theo **ngày thanh toán
 > (`paidAt`)**. Vì vậy trong một kỳ, `importCost` (tiền mua hàng) và `comboCost` (giá vốn hàng
 > đã bán) thường khác nhau — đó là đúng bản chất kế toán.
+>
+> `showtimeCount`/`capacity`/`occupancyRate` lọc theo **giờ chiếu (`showtime.startTime`)** trong
+> kỳ, không phân biệt ngày thanh toán; `occupancyRate` được giới hạn tối đa 100%.
 > Vé cũ chưa có snapshot giá vốn sẽ được tính `comboCost = 0`, không làm hỏng báo cáo.
 
 ---

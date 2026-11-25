@@ -30,6 +30,7 @@ import {
   GiftOutlined,
   CoffeeOutlined,
   InboxOutlined,
+  ShoppingCartOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
@@ -88,7 +89,13 @@ const menuDefinitions: MenuDefinition[] = [
     key: '/tickets',
     icon: <BarcodeOutlined />,
     label: 'Quản lý vé đặt',
-    roles: ['admin', 'manager', 'staff'],
+    roles: ['admin', 'manager'],
+  },
+  {
+    key: '/counter-sales',
+    icon: <ShoppingCartOutlined />,
+    label: 'Bán vé tại quầy',
+    roles: ['admin', 'manager'],
   },
   {
     key: '/revenue',
@@ -136,6 +143,7 @@ const pageNames: Record<string, string> = {
   '/showtimes': 'Suất chiếu',
   '/users': 'Khách hàng',
   '/tickets': 'Quản lý vé đặt',
+  '/counter-sales': 'Bán vé tại quầy',
   '/revenue': 'Báo cáo doanh thu',
   '/vouchers': 'Mã giảm giá (Voucher)',
   '/combos': 'Combo bắp nước',

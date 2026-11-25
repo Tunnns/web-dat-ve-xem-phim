@@ -12,7 +12,8 @@ import {
   QrCode,
   Banknote,
 } from 'lucide-react';
-import { apiClient, getErrorMessage } from '../api/client';
+import { apiClient } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { Ticket } from '../types';
 import { PrintTicketModal } from '../components/PrintTicketModal';
 
@@ -21,19 +22,29 @@ interface ShiftSummary {
   totalRevenue: number;
   cashRevenue: number;
   qrRevenue: number;
+  comboRevenue?: number;
+  comboOnlyCount?: number;
   checkedInCount: number;
 }
 
+const toLocalDateStr = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export const ShiftHistory: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const { selectedTheater } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<string>(toLocalDateStr(new Date()));
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [summary, setSummary] = useState<ShiftSummary>({
     totalTickets: 0,
     totalRevenue: 0,
     cashRevenue: 0,
     qrRevenue: 0,
+    comboRevenue: 0,
+    comboOnlyCount: 0,
     checkedInCount: 0,
   });
   const [loading, setLoading] = useState(false);
@@ -44,7 +55,10 @@ export const ShiftHistory: React.FC = () => {
     setLoading(true);
     apiClient
       .get('/tickets/counter-history', {
-        params: { date: selectedDate },
+        params: {
+          date: selectedDate,
+          theaterId: selectedTheater?._id,
+        },
       })
       .then((res) => {
         const { tickets: list = [], summary: stats } = res.data.data || {};
@@ -61,7 +75,8 @@ export const ShiftHistory: React.FC = () => {
 
   useEffect(() => {
     fetchHistory();
-  }, [selectedDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, selectedTheater?._id]);
 
   // Lọc theo tìm kiếm
   const filteredTickets = tickets.filter((t) => {
@@ -103,7 +118,7 @@ export const ShiftHistory: React.FC = () => {
             />
           </div>
           <button
-            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+            onClick={() => setSelectedDate(toLocalDateStr(new Date()))}
             className="rounded-xl border border-zinc-800 bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-700"
           >
             Hôm nay
@@ -208,12 +223,18 @@ export const ShiftHistory: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-zinc-800/60">
                 {filteredTickets.map((t) => {
+                  const isComboOnly =
+                    t.orderType === 'combo_only' ||
+                    (!t.showtime && (t.combos?.length || 0) > 0);
                   const time = t.showtime?.startTime
                     ? new Date(t.showtime.startTime).toLocaleTimeString('vi-VN', {
                         hour: '2-digit',
                         minute: '2-digit',
                       })
-                    : '--:--';
+                    : new Date(t.createdAt).toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
 
                   return (
                     <tr key={t._id} className="hover:bg-zinc-800/40 transition-colors">
@@ -222,14 +243,34 @@ export const ShiftHistory: React.FC = () => {
                       </td>
                       <td className="py-3 px-3">
                         <div className="font-semibold text-zinc-200">
-                          {t.showtime?.movie?.title || 'Phim'}
+                          {isComboOnly ? 'Bán lẻ bắp nước' : t.showtime?.movie?.title || 'Phim'}
                         </div>
                         <div className="text-[11px] text-zinc-400">
-                          {time} - {t.showtime?.room?.name}
+                          {isComboOnly
+                            ? `${time} - Quầy bắp nước`
+                            : `${time} - ${t.showtime?.room?.name || 'Phòng'}`}
                         </div>
+                        {t.combos && t.combos.length > 0 && (
+                          <div className="mt-0.5 text-[11px] text-amber-400">
+                            {t.combos
+                              .map(
+                                (c) =>
+                                  `${c.name} x${c.quantity}${
+                                    c.selectedFlavor ? ` (${c.selectedFlavor})` : ''
+                                  }`
+                              )
+                              .join(', ')}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-3 font-bold text-white">
-                        {t.seats?.join(', ')}
+                        {isComboOnly ? (
+                          <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
+                            Chỉ bắp nước
+                          </span>
+                        ) : (
+                          t.seats?.join(', ')
+                        )}
                       </td>
                       <td className="py-3 px-3 text-zinc-300">
                         {t.customerName || t.user?.fullName || 'Khách vãng lai'}

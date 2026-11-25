@@ -8,6 +8,7 @@ import {
   checkInTicket,
   posSellTicket,
   getCounterTickets,
+  getPosCombos,
 } from '../controllers/ticket.controller';
 import { protect, optionalProtect, restrictTo } from '../middlewares/auth.middleware';
 
@@ -35,6 +36,9 @@ router.get('/verify/:code', requireStaffOrAdmin, verifyTicket);
 
 // Soát vé / check-in cho khách vào rạp
 router.post('/check-in', requireStaffOrAdmin, checkInTicket);
+
+// Lấy danh sách combo bắp nước đang bán (kèm tồn kho & vị bắp) cho POS
+router.get('/pos-combos', requireStaffOrAdmin, getPosCombos);
 
 // Bán vé trực tiếp tại quầy (tiền mặt / QR POS)
 router.post('/pos-sell', requireStaffOrAdmin, posSellTicket);

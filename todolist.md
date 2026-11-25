@@ -27,6 +27,7 @@
 - [x] 10. Bao cao doanh thu, bieu do va danh sach chi tiet giao dich ben admin
   - Backend: `backend/src/services/revenue.service.ts` tong hop doanh thu ve, combo, ty le theo phim, rap, phuong thuc thanh toan, route `GET /api/admin/revenue`.
   - Admin: Trang `admin/src/pages/Revenue/index.tsx` voi 6 the KPI, bo loc ngay/rap/phim/thanh toan, 5 bieu do Recharts, bang chi tiet giao dich va xuat CSV.
+  - Bo sung: doanh thu theo rap + do hot phim (xep theo so ghe ban, kem ty le lap day) o Dashboard va trang Doanh thu. Khong theo doi "thoi gian vao rap".
 - [x] 11. Chon vi tri khi dang nhap thanh cong va de xuat rap chieu gan nhat
   - Client: `client/src/store/userLocationStore.ts`, modal `client/src/components/Location/LocationPromptModal.tsx` tu dong bat sau khi dang nhap, tinh khoang cach Haversine GPS/thanh pho va de xuat rap gan nhat. Pill vi tri tren Navbar cho phep doi vi tri bat cu luc nao.
 - [x] 12. Quan ly Voucher (CRUD) ben admin

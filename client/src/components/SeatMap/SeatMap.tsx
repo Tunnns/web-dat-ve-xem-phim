@@ -18,6 +18,7 @@ import {
 import { getErrorMessage } from '../../api/axios'
 import { checkOrphanSeats } from '../../utils/seatValidation'
 import SeatItem from './SeatItem'
+import CoupleSeatItem from './CoupleSeatItem'
 import SeatLegend from './SeatLegend'
 import SeatTimer from './SeatTimer'
 
@@ -33,6 +34,27 @@ const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ'
 
 const isMongoId = (id?: string | null): boolean =>
   Boolean(id && /^[0-9a-fA-F]{24}$/.test(id))
+
+/** Gộp 2 ghế đôi liền kề (lẻ+chẵn) thành một nhóm; ghế khác giữ nguyên. */
+function groupCouples(rowSeats: Seat[]): Seat[][] {
+  const result: Seat[][] = []
+  for (let i = 0; i < rowSeats.length; i++) {
+    const s = rowSeats[i]
+    const next = rowSeats[i + 1]
+    if (
+      s.type === 'couple' &&
+      next?.type === 'couple' &&
+      s.number % 2 === 1 &&
+      next.number === s.number + 1
+    ) {
+      result.push([s, next])
+      i++
+    } else {
+      result.push([s])
+    }
+  }
+  return result
+}
 
 export default function SeatMap({
   showtimeId,
@@ -182,6 +204,11 @@ export default function SeatMap({
     let pairSeat: Seat | undefined = undefined
     if (seat.pairId) {
       pairSeat = activeSeats.find((s) => s.id === seat.pairId)
+    } else if (seat.type === 'couple') {
+      const pairNo = seat.number % 2 === 1 ? seat.number + 1 : seat.number - 1
+      pairSeat = activeSeats.find(
+        (s) => s.row === seat.row && s.number === pairNo && s.type === 'couple',
+      )
     }
 
     if (seat.status === 'booked') {
@@ -472,15 +499,32 @@ export default function SeatMap({
                       isCoupleRow ? 'gap-2' : 'gap-1.5 sm:gap-2'
                     }`}
                   >
-                    {rowSeats.map((seat) => (
-                      <SeatItem
-                        key={seat.id}
-                        seat={seat}
-                        isSelected={selectedSeatIds.has(seat.id)}
-                        onClick={() => handleSeatClick(seat)}
-                        disabled={holdingLoading}
-                      />
-                    ))}
+                    {groupCouples(rowSeats).map((item) =>
+                      item.length === 2 ? (
+                        <CoupleSeatItem
+                          key={item[0].id}
+                          seats={item}
+                          isSelected={
+                            selectedSeatIds.has(item[0].id) &&
+                            selectedSeatIds.has(item[1].id)
+                          }
+                          onClick={() =>
+                            handleSeatClick(
+                              item.find((s) => s.status !== 'available' && s.status !== 'selected') ?? item[0],
+                            )
+                          }
+                          disabled={holdingLoading}
+                        />
+                      ) : (
+                        <SeatItem
+                          key={item[0].id}
+                          seat={item[0]}
+                          isSelected={selectedSeatIds.has(item[0].id)}
+                          onClick={() => handleSeatClick(item[0])}
+                          disabled={holdingLoading}
+                        />
+                      ),
+                    )}
                   </div>
 
                   {/* Nhãn hàng bên phải */}

@@ -213,9 +213,13 @@ export const CheckIn: React.FC = () => {
                   <Film className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-zinc-400">Tên phim:</div>
+                  <div className="text-xs font-semibold text-zinc-400">
+                    {ticketData.orderType === 'combo_only' || !ticketData.showtime
+                      ? 'Loại đơn:'
+                      : 'Tên phim:'}
+                  </div>
                   <div className="text-base font-extrabold text-white">
-                    {ticketData.showtime?.movie?.title || 'Phim'}
+                    {ticketData.showtime?.movie?.title || 'Đơn Bắp Nước Tại Quầy'}
                   </div>
                 </div>
               </div>
@@ -225,16 +229,21 @@ export const CheckIn: React.FC = () => {
                   <Clock className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-zinc-400">Suất chiếu:</div>
+                  <div className="text-xs font-semibold text-zinc-400">
+                    {ticketData.showtime?.startTime ? 'Suất chiếu:' : 'Thời gian mua:'}
+                  </div>
                   <div className="text-sm font-bold text-zinc-200">
-                    {ticketData.showtime?.startTime &&
-                      new Date(ticketData.showtime.startTime).toLocaleTimeString('vi-VN', {
+                    {new Date(ticketData.showtime?.startTime || ticketData.createdAt).toLocaleTimeString(
+                      'vi-VN',
+                      {
                         hour: '2-digit',
                         minute: '2-digit',
-                      })}{' '}
+                      }
+                    )}{' '}
                     - Ngày{' '}
-                    {ticketData.showtime?.startTime &&
-                      new Date(ticketData.showtime.startTime).toLocaleDateString('vi-VN')}
+                    {new Date(
+                      ticketData.showtime?.startTime || ticketData.createdAt
+                    ).toLocaleDateString('vi-VN')}
                   </div>
                 </div>
               </div>
@@ -246,7 +255,8 @@ export const CheckIn: React.FC = () => {
                 <div>
                   <div className="text-xs font-semibold text-zinc-400">Rạp & Phòng chiếu:</div>
                   <div className="text-sm font-bold text-zinc-200">
-                    {ticketData.showtime?.theater?.name} ({ticketData.showtime?.room?.name})
+                    {ticketData.showtime?.theater?.name || ticketData.theater?.name || 'Rạp'} (
+                    {ticketData.showtime?.room?.name || 'Quầy bắp nước'})
                   </div>
                 </div>
               </div>
@@ -254,12 +264,16 @@ export const CheckIn: React.FC = () => {
 
             {/* Cột phải: Ghế & Bắp nước */}
             <div className="space-y-3">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-3.5">
-                <div className="text-xs font-semibold text-zinc-400 mb-1">Ghế ngồi ({ticketData.seats?.length} ghế):</div>
-                <div className="text-xl font-black text-rose-400 tracking-wider">
-                  {ticketData.seats?.join(', ')}
+              {ticketData.seats && ticketData.seats.length > 0 && (
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-3.5">
+                  <div className="text-xs font-semibold text-zinc-400 mb-1">
+                    Ghế ngồi ({ticketData.seats.length} ghế):
+                  </div>
+                  <div className="text-xl font-black text-rose-400 tracking-wider">
+                    {ticketData.seats.join(', ')}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {ticketData.combos && ticketData.combos.length > 0 && (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5">
@@ -270,7 +284,10 @@ export const CheckIn: React.FC = () => {
                   <div className="space-y-1">
                     {ticketData.combos.map((c, i) => (
                       <div key={i} className="flex justify-between text-xs font-semibold text-zinc-200">
-                        <span>• {c.name}</span>
+                        <span>
+                          • {c.name}
+                          {c.selectedFlavor ? ` (${c.selectedFlavor})` : ''}
+                        </span>
                         <span className="text-amber-300 font-bold">x{c.quantity}</span>
                       </div>
                     ))}

@@ -59,6 +59,10 @@ import type {
 } from '../../api/types';
 
 import { formatCurrency } from '../../utils/format';
+import PricingRuleModal from './PricingRuleModal';
+import { getPricingRule } from '../../api/pricing';
+import { previewPrice } from '../../utils/pricing';
+import type { PricingRule } from '../../api/types';
 
 const { Title, Text } = Typography;
 
@@ -69,6 +73,7 @@ interface ShowtimeFormValues {
   startTime: Dayjs;
   endTime: Dayjs;
   price: number;
+  breakMinutes?: number;
   isEarlyAccess?: boolean;
 }
 
@@ -161,6 +166,15 @@ const Showtimes: React.FC = () => {
   const [filterDate, setFilterDate] = useState<Dayjs | null>(null);
 
   const selectedTheater = Form.useWatch('theater', form);
+  const watchStart = Form.useWatch('startTime', form);
+  const watchEnd = Form.useWatch('endTime', form);
+  const watchPrice = Form.useWatch('price', form);
+  const watchBreak = Form.useWatch('breakMinutes', form);
+  const [pricingOpen, setPricingOpen] = useState(false);
+  const [pricingRule, setPricingRule] = useState<PricingRule | null>(null);
+  useEffect(() => {
+    getPricingRule().then(setPricingRule).catch(() => undefined);
+  }, []);
 
   // Lấy dữ liệu từ API.
   const fetchData = useCallback(async () => {
@@ -256,7 +270,8 @@ const Showtimes: React.FC = () => {
         )
         .map((room) => ({
           value: room._id,
-          label: room.name,
+          label: room.seatLayout?.length ? room.name : `${room.name} (Chưa có sơ đồ ghế)`,
+          disabled: !room.seatLayout?.length,
         })),
     [rooms, selectedTheater],
   );
@@ -334,6 +349,7 @@ const Showtimes: React.FC = () => {
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
+    form.setFieldsValue({ breakMinutes: 15 });
     setModalOpen(true);
   };
 
@@ -348,6 +364,7 @@ const Showtimes: React.FC = () => {
       startTime: dayjs(record.startTime),
       endTime: dayjs(record.endTime),
       price: record.price,
+      breakMinutes: record.breakMinutes ?? 0,
       isEarlyAccess: Boolean(record.isEarlyAccess),
     });
   };
@@ -363,6 +380,7 @@ const Showtimes: React.FC = () => {
         startTime: dayjs(editing.startTime),
         endTime: dayjs(editing.endTime),
         price: editing.price,
+        breakMinutes: editing.breakMinutes ?? 0,
         isEarlyAccess: Boolean(editing.isEarlyAccess),
       });
     }
@@ -423,6 +441,7 @@ const Showtimes: React.FC = () => {
         startTime: values.startTime.toISOString(),
         endTime: values.endTime.toISOString(),
         price: values.price,
+        breakMinutes: values.breakMinutes ?? 0,
         isEarlyAccess: Boolean(values.isEarlyAccess),
       };
 
@@ -614,7 +633,7 @@ const Showtimes: React.FC = () => {
       sorter: (a, b) => a.price - b.price,
       render: (_, record) => (
         <Text strong style={{ color: '#1677ff' }}>
-          {formatCurrency(record.price)}
+          {formatCurrency(record.finalPrice ?? record.price)}
         </Text>
       ),
     },
@@ -674,6 +693,7 @@ const Showtimes: React.FC = () => {
 
           <Col>
             <Space wrap>
+              <Button onClick={() => setPricingOpen(true)}>Bảng giá</Button>
               <Button
                 icon={<ReloadOutlined />}
                 onClick={() => void fetchData()}
@@ -954,7 +974,7 @@ const Showtimes: React.FC = () => {
                               strong
                               style={{ color: '#1677ff' }}
                             >
-                              {formatCurrency(record.price)}
+                              {formatCurrency(record.finalPrice ?? record.price)}
                             </Text>
 
                             {renderShowtimeStatus(record)}
@@ -1201,6 +1221,33 @@ const Showtimes: React.FC = () => {
             />
           </Form.Item>
 
+          {watchEnd && (
+            <Typography.Paragraph type="secondary">
+              Phim kết thúc {dayjs(watchEnd).format('HH:mm')} → phòng sẵn sàng cho suất kế tiếp lúc{' '}
+              {dayjs(watchEnd).add(watchBreak ?? 0, 'minute').format('HH:mm')}
+            </Typography.Paragraph>
+          )}
+
+          <Form.Item
+            name="breakMinutes"
+            label="Thời gian nghỉ / dọn phòng sau suất (phút)"
+            rules={[{ type: 'number', min: 0, max: 120, message: 'Từ 0 đến 120 phút' }]}
+          >
+            <InputNumber min={0} max={120} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+
+          {watchStart && watchPrice != null && (() => {
+            const p = previewPrice(watchPrice, dayjs(watchStart), pricingRule);
+            return (
+              <Typography.Paragraph>
+                Giá thực tế dự kiến: <Text strong>{formatCurrency(p.final)}</Text>{' '}
+                {p.slot && <Tag color="blue">{p.slot}</Tag>}
+                {p.day && <Tag color="red">{p.day}</Tag>}
+                <Text type="secondary">(chưa gồm phụ phí loại ghế)</Text>
+              </Typography.Paragraph>
+            );
+          })()}
+
           <Form.Item
             name="isEarlyAccess"
             label="Suất chiếu sớm"
@@ -1211,6 +1258,7 @@ const Showtimes: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+      <PricingRuleModal open={pricingOpen} onClose={() => setPricingOpen(false)} onSaved={setPricingRule} />
     </div>
   );
 };

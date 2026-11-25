@@ -39,8 +39,11 @@ const { RangePicker } = DatePicker;
 export interface TicketItem {
   _id: string;
   code?: string;
+  orderType?: 'ticket' | 'combo_only';
   userEmail: string;
   customerName: string;
+  customerPhone?: string;
+  soldByName?: string;
   movieTitle: string;
   theaterName: string;
   roomName: string;
@@ -54,6 +57,7 @@ export interface TicketItem {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    selectedFlavor?: string;
   }>;
   status: 'completed' | 'pending' | 'cancelled';
   createdAt: string;
@@ -213,7 +217,10 @@ const Tickets: React.FC = () => {
       width: 150,
       render: (_, record) => (
         <Space wrap size={[4, 4]}>
-          {record.seats?.length > 0 ? (
+          {record.orderType === 'combo_only' ||
+          (!record.showTime && (record.combos?.length || 0) > 0) ? (
+            <Tag color="gold">Chỉ bắp nước</Tag>
+          ) : record.seats?.length > 0 ? (
             record.seats.map((seat) => (
               <Tag key={seat} color="geekblue" style={{ fontWeight: 600 }}>
                 {seat}
@@ -513,7 +520,9 @@ const Tickets: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {selectedTicket.combos.map((c, idx) => (
                     <Text key={idx} style={{ fontSize: 13 }}>
-                      • {c.name} x{c.quantity}: {formatCurrency(c.lineTotal)}
+                      • {c.name} x{c.quantity}
+                      {c.selectedFlavor ? ` (${c.selectedFlavor})` : ''}:{' '}
+                      {formatCurrency(c.lineTotal)}
                     </Text>
                   ))}
                 </div>

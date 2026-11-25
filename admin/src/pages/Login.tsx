@@ -107,6 +107,13 @@ const Login = () => {
             Đăng nhập
           </Button>
         </Form>
+
+        <div style={{ marginTop: 18, textAlign: 'center', fontSize: 13 }}>
+          <Typography.Text type="secondary">Nhân viên bán vé tại quầy? </Typography.Text>
+          <a href="http://localhost:5175" target="_blank" rel="noreferrer">
+            Mở Quầy Vé POS
+          </a>
+        </div>
       </Card>
     </div>
   );

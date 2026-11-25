@@ -2,6 +2,7 @@ import mongoose, { HydratedDocument } from 'mongoose';
 import Ticket, { ITicket } from '../models/Ticket';
 import Showtime from '../models/Showtime';
 import { calculatePrice, PricingComboInput } from './pricing.service';
+import { getPricingRule, resolveShowtimePrice } from './showtimePrice.service';
 import { deductStockForTicket } from './inventory.service';
 import { redeemVoucher } from './voucher.service';
 import { AppError } from '../utils/appError';
@@ -17,9 +18,11 @@ import {
 const MAX_QR_ATTEMPTS = 5;
 
 export interface CompleteTicketPaymentInput {
+  orderType?: 'ticket' | 'combo_only';
   userId?: string;
-  showtimeId: string;
-  seats: string[];
+  theaterId?: string;
+  showtimeId?: string;
+  seats?: string[];
   combos?: PricingComboInput[];
   voucherCode?: string;
   paymentMethod?: string;
@@ -28,6 +31,7 @@ export interface CompleteTicketPaymentInput {
   soldBy?: string; // ID nhân viên bán vé tại quầy (nếu là giao dịch POS)
   customerName?: string;
   customerPhone?: string;
+  customerEmail?: string;
   cashReceived?: number;
   cashChange?: number;
 }
@@ -39,11 +43,13 @@ export interface CompleteTicketPaymentInput {
 const findTicketDetail = (id: mongoose.Types.ObjectId | string) =>
   Ticket.findById(id).populate([
     { path: 'user', select: 'fullName email phone' },
+    { path: 'soldBy', select: 'fullName email' },
+    { path: 'theater', select: 'name address' },
     {
       path: 'showtime',
       select: 'movie theater room startTime endTime price',
       populate: [
-        { path: 'movie', select: 'title poster duration' },
+        { path: 'movie', select: 'title poster posterUrl duration' },
         { path: 'theater', select: 'name address' },
         { path: 'room', select: 'name' },
       ],
@@ -54,7 +60,7 @@ const buildQrPayloadForTicket = (ticket: HydratedDocument<ITicket>): TicketQrPay
   buildTicketQrPayload({
     ticketId: String(ticket._id),
     code: ticket.code ?? '',
-    showtimeId: String(ticket.showtime),
+    showtimeId: ticket.showtime ? String(ticket.showtime) : '',
     seats: ticket.seats,
   });
 
@@ -89,10 +95,12 @@ const normalizeSeats = (seats: string[]): string =>
  */
 export const completeTicketPayment = async (input: CompleteTicketPaymentInput) => {
   const {
+    orderType: rawOrderType,
     userId,
+    theaterId,
     showtimeId,
-    seats,
-    combos,
+    seats = [],
+    combos = [],
     voucherCode: rawVoucherCode,
     paymentMethod: rawPaymentMethod,
     paymentReference: rawPaymentReference,
@@ -100,6 +108,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
     soldBy,
     customerName,
     customerPhone,
+    customerEmail,
     cashReceived,
     cashChange,
   } = input;
@@ -109,15 +118,25 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
   const paymentMethod = rawPaymentMethod?.trim() || 'vietqr';
   const paymentReference = rawPaymentReference?.trim() || undefined;
   const ticketId = rawTicketId?.trim() || undefined;
+  const isComboOnly =
+    rawOrderType === 'combo_only' ||
+    (!showtimeId && (!Array.isArray(seats) || seats.length === 0) && Array.isArray(combos) && combos.length > 0);
+  const resolvedOrderType: 'ticket' | 'combo_only' = isComboOnly ? 'combo_only' : 'ticket';
 
   if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
     throw new AppError('Người dùng không hợp lệ', 401);
   }
-  if (!mongoose.Types.ObjectId.isValid(showtimeId)) {
-    throw new AppError('ID suất chiếu không hợp lệ', 400);
-  }
-  if (!Array.isArray(seats) || seats.length === 0) {
-    throw new AppError('Vui lòng chọn ít nhất một ghế', 400);
+  if (isComboOnly) {
+    if (!Array.isArray(combos) || combos.length === 0) {
+      throw new AppError('Vui lòng chọn ít nhất một combo bắp nước', 400);
+    }
+  } else {
+    if (!showtimeId || !mongoose.Types.ObjectId.isValid(showtimeId)) {
+      throw new AppError('ID suất chiếu không hợp lệ', 400);
+    }
+    if (!Array.isArray(seats) || seats.length === 0) {
+      throw new AppError('Vui lòng chọn ít nhất một ghế', 400);
+    }
   }
 
   /* ---------- 0. Chống tạo trùng khi callback thanh toán được gọi lại ---------- */
@@ -148,11 +167,13 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
       if (found.status === 'cancelled') {
         throw new AppError('Vé đã bị hủy', 400);
       }
-      if (String(found.showtime) !== showtimeId) {
-        throw new AppError('Suất chiếu không khớp với vé đang giữ', 400);
-      }
-      if (normalizeSeats(found.seats) !== normalizeSeats(seats)) {
-        throw new AppError('Danh sách ghế không khớp với vé đang giữ', 400);
+      if (!isComboOnly) {
+        if (String(found.showtime) !== showtimeId) {
+          throw new AppError('Suất chiếu không khớp với vé đang giữ', 400);
+        }
+        if (normalizeSeats(found.seats) !== normalizeSeats(seats)) {
+          throw new AppError('Danh sách ghế không khớp với vé đang giữ', 400);
+        }
       }
 
       // Đã thanh toán trước đó → trả lại vé cũ (idempotent)
@@ -186,6 +207,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
 
   /* ---------- 2. Tính tiền lại ở server + kiểm tra ghế trống ---------- */
   const pricing = await calculatePrice({
+    orderType: resolvedOrderType,
     showtimeId,
     seats,
     combos,
@@ -205,12 +227,13 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
     const payload = buildTicketQrPayload({
       ticketId: String(targetId),
       code,
-      showtimeId,
+      showtimeId: showtimeId || '',
       seats,
     });
     const qrCode = await generateQrDataUrl(encodeTicketQrPayload(payload));
 
     const paymentFields = {
+      orderType: resolvedOrderType,
       code,
       qrCode,
       combos: pricing.combos.items.map((item) => ({
@@ -219,6 +242,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         lineTotal: item.lineTotal,
+        selectedFlavor: item.selectedFlavor,
         unitCost: item.unitCost,
         costTotal: item.costTotal,
       })),
@@ -232,8 +256,13 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
       paidAt: new Date(),
       lockedUntil: undefined,
       soldBy: soldBy && mongoose.Types.ObjectId.isValid(soldBy) ? new mongoose.Types.ObjectId(soldBy) : undefined,
+      theater:
+        theaterId && mongoose.Types.ObjectId.isValid(theaterId)
+          ? new mongoose.Types.ObjectId(theaterId)
+          : pendingTicket?.theater,
       customerName: customerName?.trim() || undefined,
       customerPhone: customerPhone?.trim() || undefined,
+      customerEmail: customerEmail?.trim() || undefined,
       cashReceived: typeof cashReceived === 'number' ? cashReceived : undefined,
       cashChange: typeof cashChange === 'number' ? cashChange : undefined,
     };
@@ -249,7 +278,7 @@ export const completeTicketPayment = async (input: CompleteTicketPaymentInput) =
         savedTicket = await Ticket.create({
           _id: targetId,
           user: userId,
-          showtime: showtimeId,
+          ...(showtimeId && mongoose.Types.ObjectId.isValid(showtimeId) ? { showtime: showtimeId } : {}),
           seats,
           ...paymentFields,
         });
@@ -600,10 +629,21 @@ export const getShowtimeSeatsService = async (showtimeId: string, currentUserId?
     }
   }
 
+  const pricingRule = await getPricingRule();
+  const effectiveBasePrice = resolveShowtimePrice(
+    showtime.price || 0,
+    showtime.startTime,
+    pricingRule
+  ).finalPrice;
+
   return {
     showtimeId,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     seatLayout: (showtime.room as any)?.seatLayout || [],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    seatSurcharges: (showtime.room as any)?.seatSurcharges || null,
+    basePrice: showtime.price || 0,
+    effectiveBasePrice,
     bookedSeats,
     holdingSeats,
   };
@@ -672,6 +712,7 @@ export const verifyTicketService = async (codeOrPayload: string) => {
     { path: 'user', select: 'fullName email phone' },
     { path: 'soldBy', select: 'fullName email' },
     { path: 'usedBy', select: 'fullName email' },
+    { path: 'theater', select: 'name address hotline' },
     {
       path: 'showtime',
       select: 'movie theater room startTime endTime price',
@@ -726,17 +767,26 @@ export const getCounterTicketsService = async (options: {
     status: 'completed',
   };
 
-  const targetDate = options.date ? new Date(options.date) : new Date();
-  const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0);
-  const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+  let startOfDay: Date;
+  let endOfDay: Date;
+  if (options.date && /^\d{4}-\d{2}-\d{2}$/.test(options.date)) {
+    const [y, m, d] = options.date.split('-').map(Number);
+    startOfDay = new Date(y, m - 1, d, 0, 0, 0, 0);
+    endOfDay = new Date(y, m - 1, d, 23, 59, 59, 999);
+  } else {
+    const targetDate = options.date ? new Date(options.date) : new Date();
+    startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0);
+    endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+  }
 
   filter.createdAt = { $gte: startOfDay, $lte: endOfDay };
 
-  const tickets = await Ticket.find(filter)
+  const rawTickets = await Ticket.find(filter)
     .populate([
       { path: 'user', select: 'fullName email phone' },
       { path: 'soldBy', select: 'fullName email' },
       { path: 'usedBy', select: 'fullName email' },
+      { path: 'theater', select: 'name address' },
       {
         path: 'showtime',
         select: 'movie theater room startTime endTime price',
@@ -749,9 +799,21 @@ export const getCounterTicketsService = async (options: {
     ])
     .sort({ createdAt: -1 });
 
+  // Lọc theo rạp nếu có theaterId
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tickets = options.theaterId
+    ? rawTickets.filter((t: any) => {
+        const stTheaterId = t.showtime?.theater?._id?.toString() || t.showtime?.theater?.toString();
+        const directTheaterId = t.theater?._id?.toString() || t.theater?.toString();
+        return stTheaterId === options.theaterId || directTheaterId === options.theaterId;
+      })
+    : rawTickets;
+
   let totalRevenue = 0;
   let cashRevenue = 0;
   let qrRevenue = 0;
+  let comboRevenue = 0;
+  let comboOnlyCount = 0;
   let checkedInCount = 0;
 
   for (const t of tickets) {
@@ -760,6 +822,11 @@ export const getCounterTicketsService = async (options: {
       cashRevenue += t.totalAmount || 0;
     } else {
       qrRevenue += t.totalAmount || 0;
+    }
+    const comboSum = (t.combos || []).reduce((acc, c) => acc + (c.lineTotal || 0), 0);
+    comboRevenue += comboSum;
+    if (t.orderType === 'combo_only' || (!t.showtime && (t.combos?.length || 0) > 0)) {
+      comboOnlyCount += 1;
     }
     if (t.isUsed) {
       checkedInCount += 1;
@@ -773,9 +840,10 @@ export const getCounterTicketsService = async (options: {
       totalRevenue,
       cashRevenue,
       qrRevenue,
+      comboRevenue,
+      comboOnlyCount,
       checkedInCount,
     },
   };
 };
 
- 

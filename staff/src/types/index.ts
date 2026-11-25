@@ -29,10 +29,16 @@ export interface Room {
   _id: string;
   name: string;
   capacity?: number;
+  seatSurcharges?: {
+    normal?: number;
+    vip?: number;
+    couple?: number;
+  };
   seatLayout?: Array<{
     code: string;
     type: 'normal' | 'vip' | 'couple';
     status: 'available' | 'maintenance';
+    surcharge?: number;
   }>;
 }
 
@@ -44,6 +50,10 @@ export interface Showtime {
   startTime: string;
   endTime: string;
   price: number;
+  finalPrice?: number;
+  availableSeats?: number;
+  totalSeats?: number;
+  isEarlyAccess?: boolean;
   format?: string;
 }
 
@@ -53,21 +63,28 @@ export interface Combo {
   price: number;
   description?: string;
   items?: Array<{ name: string; quantity: number }>;
+  image?: string;
   imageUrl?: string;
+  flavors?: string[];
+  stock?: number;
+  minStock?: number;
   isActive: boolean;
 }
 
 export interface Ticket {
   _id: string;
   code?: string;
+  orderType?: 'ticket' | 'combo_only';
   user?: {
     fullName: string;
     email: string;
     phone?: string;
   };
+  theater?: Theater;
   customerName?: string;
   customerPhone?: string;
-  showtime: Showtime;
+  customerEmail?: string;
+  showtime?: Showtime;
   seats: string[];
   combos?: Array<{
     comboId: string;
@@ -75,6 +92,7 @@ export interface Ticket {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    selectedFlavor?: string;
   }>;
   totalAmount: number;
   discount?: number;

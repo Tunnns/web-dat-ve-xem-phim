@@ -47,6 +47,7 @@ echo [3/3] Cac dich vu chay chung trong 1 Terminal duy nhat:
 echo       - BACKEND API:      http://localhost:5000 [Mau Xanh Duong]
 echo       - CLIENT WEB:       http://localhost:5173 [Mau Xanh La]
 echo       - ADMIN DASHBOARD:  http://localhost:5174 [Mau Tim]
+echo       - STAFF POS QUAY:   http://localhost:5175 [Mau Xanh Ngoc]
 echo       - NGROK WEBHOOK:    Port 5000            [Mau Vang]
 echo.
 echo ================================================================================
