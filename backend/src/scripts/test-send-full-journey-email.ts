@@ -1,4 +1,9 @@
-import 'dotenv/config';
+import path from 'path';
+import dotenv from 'dotenv';
+dotenv.config();
+dotenv.config({ path: path.resolve('backend/.env') });
+dotenv.config({ path: path.join(__dirname, '../../.env') });
+
 import mongoose from 'mongoose';
 import Showtime from '../models/Showtime';
 import Room from '../models/Room';

@@ -1,5 +1,14 @@
 import nodemailer, { Transporter, SendMailOptions } from 'nodemailer';
 import mongoose from 'mongoose';
+import path from 'path';
+import dotenv from 'dotenv';
+
+if (!process.env.EMAIL_USER) {
+  dotenv.config();
+  dotenv.config({ path: path.resolve('backend/.env') });
+  dotenv.config({ path: path.join(__dirname, '../../.env') });
+}
+
 import Ticket from '../models/Ticket';
 import '../models/Movie';
 import '../models/Theater';
