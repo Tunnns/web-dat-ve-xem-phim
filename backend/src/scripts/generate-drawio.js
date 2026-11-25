@@ -161,7 +161,10 @@ builder.addDiagram('ERD_Main', '1. Sơ Đồ Thực Thể ERD', 2100, 1500, (g) 
     { name: '_id', type: 'ObjectId', pk: true },
     { name: 'name', type: 'string' },
     { name: 'address', type: 'string' },
+    { name: 'region', type: 'enum (Bắc/Trung/Nam)' },
     { name: 'city', type: 'string' },
+    { name: 'district', type: 'string' },
+    { name: 'ward', type: 'string' },
     { name: 'location.lat', type: 'number' },
     { name: 'location.lng', type: 'number' },
     { name: 'hotline', type: 'string' },
@@ -231,6 +234,7 @@ builder.addDiagram('ERD_Main', '1. Sơ Đồ Thực Thể ERD', 2100, 1500, (g) 
     { name: 'soldBy', type: 'ObjectId', fk: true },
     { name: 'customerName', type: 'string' },
     { name: 'customerPhone', type: 'string' },
+    { name: 'customerEmail', type: 'string' },
     { name: 'cashReceived', type: 'number' },
     { name: 'stockDeducted', type: 'boolean' },
     { name: 'lockedUntil', type: 'Date' },
@@ -260,7 +264,7 @@ builder.addDiagram('ERD_Main', '1. Sơ Đồ Thực Thể ERD', 2100, 1500, (g) 
     { name: 'email', type: 'string' },
     { name: 'password', type: 'string' },
     { name: 'phone', type: 'string' },
-    { name: 'role', type: 'enum' },
+    { name: 'role', type: 'enum (admin/manager/staff/user)' },
     { name: 'isActive', type: 'boolean' },
     { name: 'avatar', type: 'string' },
   ], '#1e293b', '#0f172a');
@@ -309,9 +313,10 @@ builder.addDiagram('UseCase_System', '2. Sơ Đồ Use Case Tổng Quan', 1900, 
   g.createSystemBoundary(260, 40, 1320, 1180, 'HỆ THỐNG QUẢN LÝ & ĐẶT VÉ XEM PHIM (FIVECORE / CINOPS)');
 
   // Actors
-  const actorClient = g.createActor(80, 280, 'Khách Hàng\n(Client / User)', '#e11d48');
-  const actorStaff = g.createActor(80, 800, 'Nhân Viên Quầy\n(Staff / POS)', '#2563eb');
-  const actorAdmin = g.createActor(1680, 280, 'Quản Trị Viên\n(Admin / Manager)', '#7c3aed');
+  const actorClient = g.createActor(80, 220, 'Khách Hàng\n(Client / User)', '#e11d48');
+  const actorStaff = g.createActor(80, 660, 'Nhân Viên Quầy\n(Staff / POS)', '#2563eb');
+  const actorManager = g.createActor(80, 1020, 'Quản Lý Rạp\n(Cinema Manager)', '#0891b2');
+  const actorAdmin = g.createActor(1680, 280, 'Quản Trị Viên\n(System Admin)', '#7c3aed');
   const actorPayment = g.createActor(1680, 800, 'Cổng SePay\nVietQR Bank', '#059669');
 
   // Client Use Cases
@@ -341,7 +346,7 @@ builder.addDiagram('UseCase_System', '2. Sơ Đồ Use Case Tổng Quan', 1900, 
   const ucManageInventory = g.createUseCase(1020, 420, 230, 60, 'Quản lý Kho bắp nước & Nhập hàng');
   const ucManageVoucher = g.createUseCase(1020, 500, 230, 60, 'Quản lý khuyến mãi Voucher');
   const ucManageUser = g.createUseCase(1020, 580, 230, 60, 'Quản lý tài khoản & Phân quyền');
-  const ucAnalytics = g.createUseCase(1020, 660, 230, 60, 'Báo cáo doanh thu & Lợi nhuận COGS');
+  const ucAnalytics = g.createUseCase(1020, 660, 240, 60, 'Báo cáo Doanh thu rạp & Độ hot phim');
 
   // External / System Use Cases
   const ucWebhook = g.createUseCase(1020, 800, 240, 65, 'Xử lý SePay Webhook biến động số dư');
@@ -363,6 +368,13 @@ builder.addDiagram('UseCase_System', '2. Sơ Đồ Use Case Tổng Quan', 1900, 
   g.createAssociation(actorStaff, ucStaffLookup);
   g.createAssociation(actorStaff, ucStaffPrint);
   g.createAssociation(actorStaff, ucStaffCheckin);
+
+  // Links: Manager (Điều hành cụm rạp & quầy vé)
+  g.createAssociation(actorManager, ucManageCinema);
+  g.createAssociation(actorManager, ucManageShowtime);
+  g.createAssociation(actorManager, ucPOSSell);
+  g.createAssociation(actorManager, ucStaffLookup);
+  g.createAssociation(actorManager, ucAnalytics);
 
   // Links: Admin
   g.createAssociation(actorAdmin, ucManageMovie);
@@ -397,9 +409,9 @@ builder.addDiagram('UseCase_Detail', '3. Chi Tiết Đặt Vé & POS', 1800, 120
   const step5 = g.createUseCase(260, 260, 220, 60, '5. Thêm combo bắp nước');
   const step6 = g.createUseCase(540, 260, 220, 60, '6. Áp mã giảm giá Voucher');
   const step7 = g.createUseCase(830, 260, 230, 60, '7. Mở popup VietQR SePay');
-  const step8 = g.createUseCase(1120, 260, 240, 60, '8. Chuyển khoản (kể cả test 1đ)');
+  const step8 = g.createUseCase(1120, 260, 240, 60, '8. Chuyển khoản VietQR (kể cả test 1đ)');
   const step9 = g.createUseCase(680, 400, 260, 65, '9. Hoàn tất đơn & Sinh mã QR vé', '#dcfce7', '#16a34a');
-  const step10 = g.createUseCase(1020, 400, 250, 65, '10. Gửi thông tin & QR về Gmail', '#eff6ff', '#2563eb');
+  const step10 = g.createUseCase(1020, 400, 260, 65, '10. Gửi vé & QR qua Gmail SMTP (tự động)', '#eff6ff', '#2563eb');
 
   g.createAssociation(actorUser, step1);
   g.createInclude(step1, step2);
