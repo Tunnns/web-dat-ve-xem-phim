@@ -59,6 +59,9 @@ body {
     box-sizing: border-box;
     border-bottom: 2px dashed #333;
   }
+  #printable-tickets-wrapper .ticket-stub.hidden {
+    display: block !important;
+  }
   .ticket-stub:last-child {
     page-break-after: auto;
     break-after: auto;
@@ -68,3 +71,4 @@ body {
     display: none !important;
   }
 }
+ 

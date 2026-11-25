@@ -1385,3 +1385,4 @@ export const POS: React.FC = () => {
     </div>
   );
 };
+ 

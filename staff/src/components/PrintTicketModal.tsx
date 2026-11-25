@@ -21,19 +21,18 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
   const totalStubs = seats.length + (hasCombos ? 1 : 0);
 
   const handlePrint = () => {
-    window.print();
+    setSelectedPreviewTab('all');
+    window.requestAnimationFrame(() => window.print());
   };
 
   const showtimeDate = ticket.showtime?.startTime ? new Date(ticket.showtime.startTime) : new Date(ticket.createdAt || Date.now());
   const timeStr = showtimeDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   const dateStr = showtimeDate.toLocaleDateString('vi-VN');
 
-  const theaterName = ticket.showtime?.theater?.name || ticket.theater?.name || 'FIVECORE CINEMA';
-  const theaterAddress = ticket.showtime?.theater?.address || ticket.theater?.address || 'Quầy vé rạp';
-
+  // Ước tính đơn giá 1 vé (nếu có combo thì trừ combo ra rồi chia đều cho số ghế)
   const comboTotal = (ticket.combos || []).reduce((acc, c) => acc + (c.lineTotal || 0), 0);
   const ticketOnlyTotal = Math.max(0, ticket.totalAmount - comboTotal);
-  const singleTicketPrice = seats.length > 0 ? Math.round(ticketOnlyTotal / seats.length) : 0;
+  const singleTicketPrice = Math.round(ticketOnlyTotal / seats.length);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
@@ -54,68 +53,58 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">
-                {isComboOnly ? 'Xuất hóa đơn bắp nước thành công!' : 'Xuất vé tại quầy thành công!'}
-              </h3>
+              <h3 className="text-base font-bold text-white">Xuất vé tại quầy thành công!</h3>
               <p className="text-xs text-zinc-400">
-                {seats.length > 0 && (
-                  <>
-                    Đơn gồm <strong className="text-rose-400">{seats.length} vé xem phim</strong>
-                    {hasCombos ? ' + ' : ''}
-                  </>
-                )}
-                {hasCombos && (
-                  <strong className="text-amber-400">1 phiếu nhận bắp nước</strong>
-                )}
-                {' '}(In <strong className="text-emerald-400">{totalStubs} cuống</strong>)
+                Đơn gồm <strong className="text-rose-400">{seats.length} vé xem phim</strong>
+                {hasCombos ? ' + 1 phiếu nhận bắp nước' : ''} (Sẽ in ra{' '}
+                <strong className="text-emerald-400">{totalStubs} cuống vé</strong> rời)
               </p>
             </div>
           </div>
 
-          {totalStubs > 1 && (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+          {/* Tab Selector Xem Trước trên màn hình */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setSelectedPreviewTab('all')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                selectedPreviewTab === 'all'
+                  ? 'bg-rose-500 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>Xem tất cả ({totalStubs} cuống)</span>
+            </button>
+            {seats.map((seat, idx) => (
               <button
-                onClick={() => setSelectedPreviewTab('all')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                  selectedPreviewTab === 'all'
+                key={seat}
+                onClick={() => setSelectedPreviewTab(idx)}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                  selectedPreviewTab === idx
                     ? 'bg-rose-500 text-white'
                     : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                 }`}
               >
-                <Layers className="h-3.5 w-3.5" />
-                <span>Xem tất cả ({totalStubs} cuống)</span>
+                <TicketIcon className="h-3.5 w-3.5" />
+                <span>
+                  Vé {idx + 1}: {seat}
+                </span>
               </button>
-              {seats.map((seat, idx) => (
-                <button
-                  key={seat}
-                  onClick={() => setSelectedPreviewTab(idx)}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
-                    selectedPreviewTab === idx
-                      ? 'bg-rose-500 text-white'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  <TicketIcon className="h-3.5 w-3.5" />
-                  <span>
-                    Vé {idx + 1}: {seat}
-                  </span>
-                </button>
-              ))}
-              {hasCombos && (
-                <button
-                  onClick={() => setSelectedPreviewTab(seats.length)}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
-                    selectedPreviewTab === seats.length
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  <Popcorn className="h-3.5 w-3.5" />
-                  <span>Phiếu Bắp Nước</span>
-                </button>
-              )}
-            </div>
-          )}
+            ))}
+            {hasCombos && (
+              <button
+                onClick={() => setSelectedPreviewTab(seats.length)}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                  selectedPreviewTab === seats.length
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                <Popcorn className="h-3.5 w-3.5" />
+                <span>Phiếu Bắp Nước</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Scrollable Container chứa tất cả các Cuống Vé */}
@@ -145,11 +134,14 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                   }`}
                   style={{ pageBreakAfter: 'always', breakAfter: 'page' }}
                 >
+                  {/* Header rạp */}
                   <div className="text-center border-b border-zinc-800 pb-2">
                     <h2 className="text-base font-black tracking-wider uppercase text-rose-500">
-                      {theaterName}
+                      {ticket.showtime?.theater?.name || 'FIVECORE CINEMA'}
                     </h2>
-                    <p className="text-[10px] text-zinc-400">{theaterAddress}</p>
+                    <p className="text-[10px] text-zinc-400">
+                      {ticket.showtime?.theater?.address || 'Quầy vé rạp'}
+                    </p>
                     <div className="mt-1 flex items-center justify-between text-[11px] font-mono text-zinc-400 px-1">
                       <span>MÃ ĐƠN: {ticket.code || ticket._id}</span>
                       <span className="font-bold text-emerald-400">
@@ -158,6 +150,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                     </div>
                   </div>
 
+                  {/* Thông tin phim */}
                   <div className="my-2.5 space-y-1 text-xs">
                     <div className="text-sm font-black text-white uppercase line-clamp-1">
                       {ticket.showtime?.movie?.title || 'Phim'}
@@ -171,6 +164,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                       </span>
                     </div>
 
+                    {/* Vị trí Ghế: Nổi bật to rõ */}
                     <div className="my-2 rounded-lg border-2 border-rose-500/80 bg-rose-500/10 p-2 text-center">
                       <div className="text-[10px] uppercase font-semibold text-rose-400">
                         VỊ TRÍ GHẾ NGỒI
@@ -184,6 +178,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                     </div>
                   </div>
 
+                  {/* Mã vé con và QR soát vé độc lập */}
                   <div className="mt-2 flex flex-col items-center justify-center border-t border-zinc-800 pt-2 text-center">
                     <div className="rounded-lg bg-white p-2 shadow-sm">
                       <QRCode
@@ -205,7 +200,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
               );
             })}
 
-            {/* 2. Phiếu nhận Combo Bắp Nước */}
+            {/* 2. In phiếu nhận Combo Bắp Nước riêng biệt (nếu có mua bắp nước) */}
             {hasCombos && (
               <div
                 className={`ticket-stub rounded-xl border border-dashed border-amber-600/70 bg-zinc-950 p-5 text-zinc-100 shadow-lg ${
@@ -218,10 +213,10 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                 <div className="text-center border-b border-zinc-800 pb-2">
                   <div className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 uppercase tracking-wider">
                     <Popcorn className="h-3.5 w-3.5" />
-                    <span>{theaterName} — QUẦY BẮP NƯỚC</span>
+                    <span>QUẦY BẮP NƯỚC (CONCESSION)</span>
                   </div>
                   <h2 className="text-base font-black tracking-wider uppercase text-amber-500">
-                    {isComboOnly ? 'HÓA ĐƠN & PHIẾU BẮP NƯỚC' : 'PHIẾU NHẬN BẮP NƯỚC'}
+                    PHIẾU NHẬN BẮP NƯỚC
                   </h2>
                   <div className="mt-1 flex items-center justify-between text-[11px] font-mono text-zinc-400 px-1">
                     <span>MÃ ĐƠN: {ticket.code || ticket._id}</span>
@@ -229,40 +224,27 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                   </div>
                 </div>
 
+                {/* Danh sách các phần bắp nước */}
                 <div className="my-3 space-y-1.5 text-xs">
                   <div className="font-semibold text-zinc-300 mb-1">Các món đã đặt:</div>
                   {ticket.combos!.map((c, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between rounded bg-zinc-900/80 px-2.5 py-1.5 text-zinc-200"
+                      className="flex items-center justify-between rounded bg-zinc-900/80 px-2 py-1 text-zinc-200"
                     >
-                      <div>
-                        <span className="font-medium">
-                          {c.name} <strong className="text-amber-400">x{c.quantity}</strong>
-                        </span>
-                        {c.selectedFlavor && (
-                          <span className="ml-1.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300">
-                            Vị: {c.selectedFlavor}
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-medium">
+                        {c.name} <strong className="text-amber-400">x{c.quantity}</strong>
+                      </span>
                       <span>{c.lineTotal?.toLocaleString('vi-VN')} đ</span>
                     </div>
                   ))}
-                  {ticket.discount && ticket.discount > 0 ? (
-                    <div className="flex justify-between text-emerald-400 text-xs pt-1">
-                      <span>Giảm giá ({ticket.voucherCode}):</span>
-                      <span>-{ticket.discount.toLocaleString('vi-VN')} đ</span>
-                    </div>
-                  ) : null}
                   <div className="mt-2 flex justify-between border-t border-zinc-800 pt-1.5 font-bold text-sm text-white">
-                    <span>{isComboOnly ? 'Tổng thanh toán:' : 'Tổng tiền bắp nước:'}</span>
-                    <span className="text-amber-400">
-                      {(isComboOnly ? ticket.totalAmount : comboTotal).toLocaleString('vi-VN')} đ
-                    </span>
+                    <span>Tổng tiền bắp nước:</span>
+                    <span className="text-amber-400">{comboTotal.toLocaleString('vi-VN')} đ</span>
                   </div>
                 </div>
 
+                {/* Mã QR nhận bắp nước tại quầy Concession */}
                 <div className="mt-2 flex flex-col items-center justify-center border-t border-zinc-800 pt-2 text-center">
                   <div className="rounded-lg bg-white p-2 shadow-sm">
                     <QRCode
@@ -270,11 +252,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                         type: 'FNB',
                         ticketId: ticket._id,
                         code: ticket.code || ticket._id,
-                        items: ticket.combos?.map((c) => ({
-                          name: c.name,
-                          qty: c.quantity,
-                          flavor: c.selectedFlavor,
-                        })),
+                        items: ticket.combos?.map((c) => ({ name: c.name, qty: c.quantity })),
                       })}
                       size={100}
                       level="M"
@@ -286,7 +264,7 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
                     FNB-{ticket.code || ticket._id}
                   </div>
                   <p className="text-[9px] text-zinc-400 mt-0.5">
-                    Xuất trình phiếu này tại quầy Bắp Nước để nhận combo
+                    Xuất trình phiếu này tại quầy Bắp Nước trước giờ vào xem phim
                   </p>
                 </div>
               </div>
@@ -295,23 +273,13 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
         </div>
 
         {/* Modal Actions */}
-        <div className="no-print p-4 border-t border-zinc-800 bg-zinc-950/60 rounded-b-2xl flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-zinc-400 space-y-0.5">
-            <div>
-              Tổng thanh toán:{' '}
-              <strong className="text-rose-400 text-sm">
-                {ticket.totalAmount?.toLocaleString('vi-VN')} đ
-              </strong>{' '}
-              ({ticket.paymentMethod === 'cash' ? 'Tiền mặt' : ticket.paymentMethod})
-            </div>
-            {ticket.cashReceived ? (
-              <div className="text-[11px] text-zinc-500">
-                Khách đưa: {ticket.cashReceived.toLocaleString('vi-VN')} đ · Tiền thừa:{' '}
-                <span className="text-emerald-400 font-semibold">
-                  {(ticket.cashChange || 0).toLocaleString('vi-VN')} đ
-                </span>
-              </div>
-            ) : null}
+        <div className="no-print p-4 border-t border-zinc-800 bg-zinc-950/60 rounded-b-2xl flex items-center justify-between gap-3">
+          <div className="text-xs text-zinc-400">
+            Tổng thanh toán:{' '}
+            <strong className="text-rose-400 text-sm">
+              {ticket.totalAmount?.toLocaleString('vi-VN')} đ
+            </strong>{' '}
+            ({ticket.paymentMethod === 'cash' ? 'Tiền mặt' : ticket.paymentMethod})
           </div>
 
           <div className="flex gap-2">
@@ -320,13 +288,13 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
               className="flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-500 shadow-lg shadow-rose-600/30 transition-all active:scale-95"
             >
               <Printer className="h-4 w-4" />
-              <span>In Tất Cả ({totalStubs} Cuống)</span>
+              <span>In Tất Cả ({totalStubs} Cuống Vé)</span>
             </button>
             <button
               onClick={onClose}
               className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-all"
             >
-              Đóng & Bán tiếp
+              Đóng & Bán vé tiếp
             </button>
           </div>
         </div>
@@ -334,3 +302,4 @@ export const PrintTicketModal: React.FC<PrintTicketModalProps> = ({ ticket, onCl
     </div>
   );
 };
+ 

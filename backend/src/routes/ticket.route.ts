@@ -47,3 +47,4 @@ router.post('/pos-sell', requireStaffOrAdmin, posSellTicket);
 router.get('/counter-history', requireStaffOrAdmin, getCounterTickets);
 
 export default router;
+ 

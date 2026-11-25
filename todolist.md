@@ -49,4 +49,8 @@
   - Client: `client/src/utils/seatValidation.ts` kem thong bao truc quan realtime va chan chuyen tiep tai `client/src/components/SeatMap/SeatMap.tsx`.
   - Backend: `backend/src/utils/seatValidation.ts`, chan tai `backend/src/services/booking.service.ts` (lockSeats) va `backend/src/controllers/payment.controller.ts` (generateVietQR).
   - Kiem thu: `backend/src/scripts/test-orphan-seats.ts` (10/10 test case dat yeu cau).
+- [x] 17. Tach cuong ve in an va xuat ve dien tu rieng tung ghe (1 Booking Code => N Cuong ve)
+  - Staff POS: `staff/src/components/PrintTicketModal.tsx` tach don hang thanh N cuong ve rieng tung ghe voi `page-break-after: always` chuan may in nhiet 80mm, kem ma ve con (VD: `FC982341-A1`), QR rieng tung ghe va phieu nhan bap nuoc F&B doc lap.
+  - Client: `client/src/pages/Profile/TicketDetailModal.tsx` bo sung bo chon xem ve tung ghe, hien thi ma ve con va QR tung ghe de khach gui rieng cho ban be, nut in ve giay.
+  - Backend: `backend/src/services/ticket.service.ts` ho tro parser ma ve con (VD: `FC982341-A1` -> `FC982341`) de nhan vien soat ve tai `staff/src/pages/CheckIn.tsx` quet duoc ca ma tong lan ma ve le.
 

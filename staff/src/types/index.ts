@@ -122,3 +122,4 @@ export interface SeatStatus {
   type: 'normal' | 'vip' | 'couple';
   status: 'available' | 'booked' | 'holding' | 'selected';
 }
+ 

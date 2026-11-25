@@ -114,3 +114,4 @@ export const posSellCounterTicket = async (payload: PosSellPayload) => {
   const res = await posRootClient.post('/tickets/pos-sell', payload);
   return res.data.data;
 };
+ 
