@@ -8,6 +8,7 @@ export interface IUser extends Document {
   password?: string;
   phone?: string;
   role: UserRole;
+  isRoot?: boolean;
   isActive: boolean;
   avatar?: string;
   resetPasswordToken?: string;
@@ -42,6 +43,10 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: ['user', 'admin', 'manager', 'staff'],
       default: 'user',
+    },
+    isRoot: {
+      type: Boolean,
+      default: false,
     },
     isActive: {
       type: Boolean,

@@ -17,6 +17,7 @@ import {
   Statistic,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -36,6 +37,7 @@ import {
   UnlockOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { useAuth } from '../contexts/AuthContext';
 import { apiClient, getErrorMessage } from '../api/client';
 import './Accounts.css';
 
@@ -51,10 +53,18 @@ interface AdminAccount {
   role: UserRole;
   avatar?: string;
   isActive: boolean;
+  isRoot?: boolean;
   status?: 'active' | 'locked';
   createdAt?: string;
   updatedAt?: string;
 }
+
+const ROOT_ADMIN_EMAILS = ['admin@cineops.com', 'admin@fivecore.com'];
+
+const isRootAccount = (account?: AdminAccount | null): boolean => {
+  if (!account) return false;
+  return Boolean(account.isRoot) || ROOT_ADMIN_EMAILS.includes(account.email.toLowerCase());
+};
 
 interface AccountFormValues {
   fullName: string;
@@ -99,6 +109,9 @@ const formatDate = (value?: string): string => {
 
 const Accounts: React.FC = () => {
   const { message, modal } = App.useApp();
+  const { user: currentUser } = useAuth();
+  const currentUserId = currentUser?._id;
+  const currentUserEmail = currentUser?.email?.toLowerCase();
 
   const [form] = Form.useForm<AccountFormValues>();
   const [passwordForm] = Form.useForm<PasswordFormValues>();
@@ -240,6 +253,19 @@ const Accounts: React.FC = () => {
   };
 
   const handleToggleStatus = (account: AdminAccount) => {
+    if (isRootAccount(account)) {
+      message.error('Tài khoản Root Admin là bất khả xâm phạm, không thể khóa!');
+      return;
+    }
+
+    if (
+      account._id === currentUserId ||
+      (currentUserEmail && account.email.toLowerCase() === currentUserEmail)
+    ) {
+      message.error('Bạn không thể tự khóa tài khoản của chính mình!');
+      return;
+    }
+
     const nextStatus = !account.isActive;
 
     modal.confirm({
@@ -308,6 +334,19 @@ const Accounts: React.FC = () => {
   };
 
   const handleDeleteAccount = (account: AdminAccount) => {
+    if (isRootAccount(account)) {
+      message.error('Tài khoản Root Admin là bất khả xâm phạm, không thể xóa!');
+      return;
+    }
+
+    if (
+      account._id === currentUserId ||
+      (currentUserEmail && account.email.toLowerCase() === currentUserEmail)
+    ) {
+      message.error('Bạn không thể tự xóa tài khoản của chính mình!');
+      return;
+    }
+
     modal.confirm({
       title: 'Xác nhận xóa tài khoản',
       content: (
@@ -391,12 +430,22 @@ const Accounts: React.FC = () => {
       title: 'VAI TRÒ',
       dataIndex: 'role',
       key: 'role',
-      width: 150,
-      render: (role: UserRole) => (
-        <Tag color={ROLE_COLORS[role]}>
-          {ROLE_LABELS[role] || role}
-        </Tag>
-      ),
+      width: 170,
+      render: (role: UserRole, account: AdminAccount) => {
+        const isRoot = isRootAccount(account);
+        return (
+          <Space size={4} wrap>
+            <Tag color={ROLE_COLORS[role]}>
+              {ROLE_LABELS[role] || role}
+            </Tag>
+            {isRoot && (
+              <Tag color="gold" style={{ fontWeight: 600 }}>
+                Root Admin
+              </Tag>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: 'TRẠNG THÁI',
@@ -421,44 +470,100 @@ const Accounts: React.FC = () => {
       key: 'actions',
       fixed: 'right',
       width: 230,
-      render: (_, account) => (
-        <Space size={4} wrap>
-          <Button
-            type="text"
-            title="Xem chi tiết"
-            icon={<EyeOutlined />}
-            onClick={() => openDetailModal(account)}
-          />
-          <Button
-            type="text"
-            title="Sửa tài khoản"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(account)}
-          />
-          <Button
-            type="text"
-            title="Đặt lại mật khẩu"
-            icon={<KeyOutlined />}
-            onClick={() => openPasswordModal(account)}
-          />
-          <Button
-            type="text"
-            title={account.isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
-            danger={account.isActive}
-            icon={
-              account.isActive ? <LockOutlined /> : <UnlockOutlined />
-            }
-            onClick={() => handleToggleStatus(account)}
-          />
-          <Button
-            type="text"
-            danger
-            title="Xóa tài khoản"
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteAccount(account)}
-          />
-        </Space>
-      ),
+      render: (_, account) => {
+        const isRoot = isRootAccount(account);
+        const isSelf =
+          account._id === currentUserId ||
+          (!!currentUserEmail && account.email.toLowerCase() === currentUserEmail);
+
+        return (
+          <Space size={4} wrap>
+            <Tooltip title="Xem chi tiết">
+              <Button
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={() => openDetailModal(account)}
+              />
+            </Tooltip>
+            <Tooltip title="Sửa tài khoản">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => openEditModal(account)}
+              />
+            </Tooltip>
+            <Tooltip title="Đặt lại mật khẩu">
+              <Button
+                type="text"
+                icon={<KeyOutlined />}
+                onClick={() => openPasswordModal(account)}
+              />
+            </Tooltip>
+            {isRoot ? (
+              <Tooltip title="Tài khoản Root Admin bất khả xâm phạm, không thể khóa">
+                <span>
+                  <Button
+                    type="text"
+                    disabled
+                    icon={<LockOutlined />}
+                  />
+                </span>
+              </Tooltip>
+            ) : isSelf ? (
+              <Tooltip title="Không thể tự khóa tài khoản của chính mình">
+                <span>
+                  <Button
+                    type="text"
+                    disabled
+                    icon={<LockOutlined />}
+                  />
+                </span>
+              </Tooltip>
+            ) : (
+              <Tooltip title={account.isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}>
+                <Button
+                  type="text"
+                  danger={account.isActive}
+                  icon={account.isActive ? <LockOutlined /> : <UnlockOutlined />}
+                  onClick={() => handleToggleStatus(account)}
+                />
+              </Tooltip>
+            )}
+            {isRoot ? (
+              <Tooltip title="Tài khoản Root Admin bất khả xâm phạm, không thể xóa">
+                <span>
+                  <Button
+                    type="text"
+                    danger
+                    disabled
+                    icon={<DeleteOutlined />}
+                  />
+                </span>
+              </Tooltip>
+            ) : isSelf ? (
+              <Tooltip title="Không thể tự xóa tài khoản của chính mình">
+                <span>
+                  <Button
+                    type="text"
+                    danger
+                    disabled
+                    icon={<DeleteOutlined />}
+                  />
+                </span>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Xóa tài khoản">
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleDeleteAccount(account)}
+                />
+              </Tooltip>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -723,6 +828,11 @@ const Accounts: React.FC = () => {
           <Form.Item
             name="email"
             label="Email đăng nhập"
+            tooltip={
+              editingAccount && isRootAccount(editingAccount)
+                ? 'Email của Root Admin là cố định, không thể chỉnh sửa'
+                : undefined
+            }
             rules={[
               { required: true, message: 'Vui lòng nhập email' },
               { type: 'email', message: 'Email không hợp lệ' },
@@ -731,7 +841,7 @@ const Accounts: React.FC = () => {
             <Input
               size="large"
               placeholder="example@cinema.com"
-              disabled={false}
+              disabled={Boolean(editingAccount && isRootAccount(editingAccount))}
             />
           </Form.Item>
 
@@ -758,10 +868,16 @@ const Accounts: React.FC = () => {
           <Form.Item
             name="role"
             label="Vai trò tài khoản"
+            tooltip={
+              editingAccount && isRootAccount(editingAccount)
+                ? 'Vai trò Root Admin được bảo vệ cố định'
+                : undefined
+            }
             rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
           >
             <Select
               size="large"
+              disabled={Boolean(editingAccount && isRootAccount(editingAccount))}
               options={[
                 { value: 'admin', label: 'Quản trị viên - Admin' },
                 { value: 'manager', label: 'Quản lý - Manager' },

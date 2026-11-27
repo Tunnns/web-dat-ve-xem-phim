@@ -643,6 +643,23 @@ export const updateUser = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
     }
 
+    const rootEmails = ['admin@cineops.com', 'admin@fivecore.com'];
+    const isRoot = Boolean((user as any).isRoot || (user.email && rootEmails.includes(user.email.toLowerCase())));
+
+    if (isRoot && role && role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Không thể hạ quyền Quản trị viên gốc (Root Admin)!',
+      });
+    }
+
+    if (isRoot && isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản Quản trị viên gốc (Root Admin) là bất khả xâm phạm, không thể khóa!',
+      });
+    }
+
     if (fullName) user.fullName = fullName.trim();
     if (phone !== undefined) user.phone = phone.trim();
     if (role && ['user', 'admin', 'manager', 'staff'].includes(role)) {
@@ -695,6 +712,16 @@ export const updateUserStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Không thể tự khóa tài khoản của chính mình' });
     }
 
+    const rootEmails = ['admin@cineops.com', 'admin@fivecore.com'];
+    const isRoot = Boolean((user as any).isRoot || (user.email && rootEmails.includes(user.email.toLowerCase())));
+
+    if (isRoot && (req.body.isActive === false || user.isActive)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản Quản trị viên gốc (Root Admin) là bất khả xâm phạm, không thể khóa!',
+      });
+    }
+
     user.isActive = req.body.isActive !== undefined ? Boolean(req.body.isActive) : !user.isActive;
     await user.save();
 
@@ -730,6 +757,14 @@ export const deleteUser = async (req: Request, res: Response) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (String((req as any).user?._id || (req as any).user?.id) === String(user._id)) {
       return res.status(400).json({ success: false, message: 'Không thể tự xóa tài khoản của chính mình' });
+    }
+
+    const rootEmails = ['admin@cineops.com', 'admin@fivecore.com'];
+    if (user.role === 'admin' || (user as any).isRoot || rootEmails.includes(user.email.toLowerCase())) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản Quản trị viên gốc (Root Admin) là bất khả xâm phạm, không thể xóa!',
+      });
     }
 
     await User.findByIdAndDelete(id);

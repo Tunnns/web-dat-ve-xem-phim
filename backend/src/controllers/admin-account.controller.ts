@@ -45,12 +45,19 @@ const handleError = (res: Response, error: unknown): void => {
   });
 };
 
+export const isRootAdmin = (user: { isRoot?: boolean; email?: string } | null | undefined): boolean => {
+  if (!user) return false;
+  const rootEmails = ['admin@cineops.com', 'admin@fivecore.com'];
+  return !!user.isRoot || (!!user.email && rootEmails.includes(user.email.toLowerCase()));
+};
+
 const formatAccount = (user: InstanceType<typeof User>) => ({
   _id: user._id,
   fullName: user.fullName,
   email: user.email,
   phone: user.phone,
   role: user.role,
+  isRoot: isRootAdmin(user),
   avatar: user.avatar,
   isActive: user.isActive !== false,
   status: user.isActive === false ? 'locked' : 'active',
@@ -179,6 +186,7 @@ export const updateAdminAccount = async (
     }
 
     const isSelf = account._id.toString() === req.user?.id;
+    const isRoot = isRootAdmin(account);
 
     if (fullName !== undefined) {
       if (!fullName.trim()) {
@@ -193,6 +201,10 @@ export const updateAdminAccount = async (
 
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
         throw new AppError('Email không hợp lệ', 400);
+      }
+
+      if (isRoot && normalizedEmail !== account.email.toLowerCase()) {
+        throw new AppError('Không thể thay đổi email của Quản trị viên gốc (Root Admin)!', 403);
       }
 
       const existingUser = await User.findOne({
@@ -214,6 +226,10 @@ export const updateAdminAccount = async (
     if (role !== undefined) {
       if (!ADMIN_ROLES.includes(role)) {
         throw new AppError('Vai trò tài khoản không hợp lệ', 400);
+      }
+
+      if (isRoot && role !== 'admin') {
+        throw new AppError('Không thể hạ quyền Quản trị viên gốc (Root Admin)!', 403);
       }
 
       if (isSelf && role !== 'admin') {
@@ -274,6 +290,10 @@ export const updateAdminAccountStatus = async (
 
     if (!account || !ADMIN_ROLES.includes(account.role)) {
       throw new AppError('Không tìm thấy tài khoản quản trị', 404);
+    }
+
+    if (isRootAdmin(account)) {
+      throw new AppError('Tài khoản Quản trị viên gốc (Root Admin) là bất khả xâm phạm, không thể khóa!', 403);
     }
 
     if (
@@ -370,6 +390,10 @@ export const deleteAdminAccount = async (
       throw new AppError('Không tìm thấy tài khoản quản trị', 404);
     }
 
+    if (isRootAdmin(account)) {
+      throw new AppError('Tài khoản Quản trị viên gốc (Root Admin) là bất khả xâm phạm, không thể xóa!', 403);
+    }
+
     if (account._id.toString() === req.user?.id) {
       throw new AppError('Bạn không thể tự xóa tài khoản của mình', 403);
     }
@@ -381,7 +405,7 @@ export const deleteAdminAccount = async (
 
       if (adminCount <= 1) {
         throw new AppError(
-          'Không thể xóa quản trị viên cuối cùng',
+          'Không thể xóa quản trị viên cuối cùng của hệ thống',
           400
         );
       }

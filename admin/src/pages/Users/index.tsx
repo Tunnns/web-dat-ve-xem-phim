@@ -19,6 +19,7 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -47,9 +48,20 @@ type Customer = {
   email?: string;
   phone?: string;
   role?: string;
+  isRoot?: boolean;
   status?: string;
   isActive?: boolean;
   createdAt?: string;
+};
+
+const ROOT_CUSTOMER_EMAILS = ['admin@cineops.com', 'admin@fivecore.com'];
+
+const isRootCustomer = (customer: Customer): boolean => {
+  return Boolean(
+    customer.isRoot ||
+    customer.role === 'admin' ||
+    (customer.email && ROOT_CUSTOMER_EMAILS.includes(customer.email.toLowerCase()))
+  );
 };
 
 interface EditCustomerFormValues {
@@ -147,6 +159,16 @@ const Users: React.FC = () => {
     if (!editingCustomer) return;
     try {
       const values = await form.validateFields();
+      if (isRootCustomer(editingCustomer)) {
+        if (values.role && values.role !== 'admin') {
+          message.error('Không thể hạ quyền Quản trị viên gốc (Root Admin)!');
+          return;
+        }
+        if (values.isActive === false) {
+          message.error('Tài khoản Quản trị viên gốc (Root Admin) là bất khả xâm phạm, không thể khóa!');
+          return;
+        }
+      }
       setSavingEdit(true);
       await apiClient.put(`/users/${editingCustomer._id}`, values);
       message.success('Cập nhật tài khoản người dùng thành công');
@@ -161,6 +183,11 @@ const Users: React.FC = () => {
   };
 
   const handleToggleStatus = async (customer: Customer) => {
+    if (isRootCustomer(customer)) {
+      message.error('Tài khoản Quản trị viên (Root Admin) là bất khả xâm phạm, không thể khóa!');
+      return;
+    }
+
     try {
       const newStatus = customer.isActive === false;
       await apiClient.patch(`/users/${customer._id}/status`, { isActive: newStatus });
@@ -172,6 +199,11 @@ const Users: React.FC = () => {
   };
 
   const handleDeleteUser = async (customer: Customer) => {
+    if (isRootCustomer(customer)) {
+      message.error('Tài khoản Quản trị viên (Root Admin) là bất khả xâm phạm, không thể xóa!');
+      return;
+    }
+
     try {
       await apiClient.delete(`/users/${customer._id}`);
       message.success('Đã xóa người dùng thành công');
@@ -291,52 +323,85 @@ const Users: React.FC = () => {
       title: 'Thao tác',
       key: 'actions',
       align: 'center',
-      render: (_, customer) => (
-        <Space size={6}>
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => {
-              setSelectedCustomer(customer);
-              setDetailOpen(true);
-            }}
-            title="Xem chi tiết"
-          />
+      render: (_, customer) => {
+        const isRoot = isRootCustomer(customer);
 
-          <Button
-            size="small"
-            type="primary"
-            ghost
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(customer)}
-            title="Chỉnh sửa thông tin"
-          />
+        return (
+          <Space size={6}>
+            <Tooltip title="Xem chi tiết">
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => {
+                  setSelectedCustomer(customer);
+                  setDetailOpen(true);
+                }}
+              />
+            </Tooltip>
 
-          <Button
-            size="small"
-            danger={customer.isActive !== false}
-            icon={customer.isActive === false ? <UnlockOutlined /> : <LockOutlined />}
-            onClick={() => void handleToggleStatus(customer)}
-            title={customer.isActive === false ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-          />
+            <Tooltip title="Chỉnh sửa thông tin">
+              <Button
+                size="small"
+                type="primary"
+                ghost
+                icon={<EditOutlined />}
+                onClick={() => openEditModal(customer)}
+              />
+            </Tooltip>
 
-          <Popconfirm
-            title="Xác nhận xóa tài khoản?"
-            description={`Bạn có chắc chắn muốn xóa tài khoản ${getCustomerName(customer)}?`}
-            onConfirm={() => void handleDeleteUser(customer)}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
-            <Button
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              title="Xóa tài khoản"
-            />
-          </Popconfirm>
-        </Space>
-      ),
+            {isRoot ? (
+              <Tooltip title="Tài khoản Quản trị viên (Root Admin) là bất khả xâm phạm, không thể khóa">
+                <span>
+                  <Button
+                    size="small"
+                    disabled
+                    icon={<LockOutlined />}
+                  />
+                </span>
+              </Tooltip>
+            ) : (
+              <Tooltip title={customer.isActive === false ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}>
+                <Button
+                  size="small"
+                  danger={customer.isActive !== false}
+                  icon={customer.isActive === false ? <UnlockOutlined /> : <LockOutlined />}
+                  onClick={() => void handleToggleStatus(customer)}
+                />
+              </Tooltip>
+            )}
+
+            {isRoot ? (
+              <Tooltip title="Tài khoản Quản trị viên (Root Admin) là bất khả xâm phạm, không thể xóa">
+                <span>
+                  <Button
+                    size="small"
+                    danger
+                    disabled
+                    icon={<DeleteOutlined />}
+                  />
+                </span>
+              </Tooltip>
+            ) : (
+              <Popconfirm
+                title="Xác nhận xóa tài khoản?"
+                description={`Bạn có chắc chắn muốn xóa tài khoản ${getCustomerName(customer)}?`}
+                onConfirm={() => void handleDeleteUser(customer)}
+                okText="Xóa"
+                cancelText="Hủy"
+                okButtonProps={{ danger: true }}
+              >
+                <Tooltip title="Xóa tài khoản">
+                  <Button
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -571,13 +636,20 @@ const Users: React.FC = () => {
           <Form.Item
             name="role"
             label="Vai trò"
+            tooltip={
+              editingCustomer && isRootCustomer(editingCustomer)
+                ? 'Vai trò Root Admin được bảo vệ cố định'
+                : undefined
+            }
             rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
           >
             <Select
+              disabled={Boolean(editingCustomer && isRootCustomer(editingCustomer))}
               options={[
                 { value: 'user', label: 'Khách hàng (User)' },
                 { value: 'staff', label: 'Nhân viên (Staff)' },
                 { value: 'manager', label: 'Quản lý (Manager)' },
+                { value: 'admin', label: 'Quản trị viên (Admin)' },
               ]}
             />
           </Form.Item>
@@ -585,9 +657,15 @@ const Users: React.FC = () => {
           <Form.Item
             name="isActive"
             label="Trạng thái hoạt động"
+            tooltip={
+              editingCustomer && isRootCustomer(editingCustomer)
+                ? 'Tài khoản Root Admin bất khả xâm phạm, không thể khóa'
+                : undefined
+            }
             valuePropName="checked"
           >
             <Switch
+              disabled={Boolean(editingCustomer && isRootCustomer(editingCustomer))}
               checkedChildren="Hoạt động"
               unCheckedChildren="Đã khóa"
             />

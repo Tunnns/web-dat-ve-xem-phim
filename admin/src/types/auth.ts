@@ -7,6 +7,7 @@ export interface AdminUser {
   email: string;
   phone?: string;
   role: UserRole;
+  isRoot?: boolean;
   avatar?: string;
 }
 

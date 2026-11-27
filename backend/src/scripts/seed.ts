@@ -90,6 +90,7 @@ async function seedData() {
         password: adminHashedPassword,
         phone: '0901234567',
         role: 'admin',
+        isRoot: true,
         isActive: true,
       },
       {
@@ -98,6 +99,7 @@ async function seedData() {
         password: adminHashedPassword,
         phone: '0901234567',
         role: 'admin',
+        isRoot: true,
         isActive: true,
       },
       {
