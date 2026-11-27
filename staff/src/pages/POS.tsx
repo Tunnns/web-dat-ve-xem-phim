@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Film,
   Calendar,
@@ -19,11 +19,29 @@ import { apiClient, getErrorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Movie, Showtime, Combo, Ticket } from '../types';
 import { PrintTicketModal } from '../components/PrintTicketModal';
+import { SeatItem } from '../components/SeatMap/SeatItem';
+import { CoupleSeatItem } from '../components/SeatMap/CoupleSeatItem';
+import { SeatLegend } from '../components/SeatMap/SeatLegend';
+import type { PosSeat, SeatStatus, SeatType } from '../components/SeatMap/types';
 
-interface SeatItem {
-  code: string;
-  type: 'normal' | 'vip' | 'couple';
-  status: 'available' | 'booked' | 'holding';
+function groupCouples(rowSeats: PosSeat[]): PosSeat[][] {
+  const result: PosSeat[][] = [];
+  for (let i = 0; i < rowSeats.length; i++) {
+    const s = rowSeats[i];
+    const next = rowSeats[i + 1];
+    if (
+      s.type === 'couple' &&
+      next?.type === 'couple' &&
+      s.number % 2 === 1 &&
+      next.number === s.number + 1
+    ) {
+      result.push([s, next]);
+      i++;
+    } else {
+      result.push([s]);
+    }
+  }
+  return result;
 }
 
 export const POS: React.FC = () => {
@@ -38,7 +56,7 @@ export const POS: React.FC = () => {
   const [loadingShowtimes, setLoadingShowtimes] = useState(false);
 
   // State: Ghế
-  const [seatLayout, setSeatLayout] = useState<SeatItem[]>([]);
+  const [seatLayout, setSeatLayout] = useState<PosSeat[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
 
@@ -113,10 +131,13 @@ export const POS: React.FC = () => {
     setLoadingSeats(true);
     setSelectedSeats([]);
 
+    const basePrice = selectedShowtime.price || 75000;
+
     apiClient
       .get(`/tickets/showtime/${selectedShowtime._id}/seats`)
       .then((res) => {
-        const { seatLayout: rawLayout, bookedSeats = [], holdingSeats = [] } = res.data.data || {};
+        const { seatLayout: rawLayout, bookedSeats = [], holdingSeats = [] } =
+          res.data.data || {};
 
         const holdingCodes = new Set(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -124,33 +145,76 @@ export const POS: React.FC = () => {
         );
         const bookedCodes = new Set(bookedSeats);
 
-        // Chuẩn hóa danh sách ghế
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const layout: SeatItem[] = (rawLayout || []).map((s: any) => {
-          let status: 'available' | 'booked' | 'holding' = 'available';
-          if (bookedCodes.has(s.code)) status = 'booked';
-          else if (holdingCodes.has(s.code)) status = 'holding';
-          return {
-            code: s.code,
-            type: s.type || (['D', 'E', 'F'].some((r) => s.code.startsWith(r)) ? 'vip' : 'normal'),
-            status,
-          };
-        });
+        const roomSurcharges = selectedShowtime.room?.seatSurcharges || {
+          normal: 0,
+          vip: 15000,
+          couple: 30000,
+        };
 
-        // Nếu phòng chưa có layout sẵn, sinh sơ đồ mẫu 8x10
-        if (layout.length === 0) {
+        const calcPrice = (type: SeatType, surcharge?: number): number => {
+          if (typeof surcharge === 'number') return basePrice + surcharge;
+          if (type === 'vip') return basePrice + (roomSurcharges.vip ?? 15000);
+          if (type === 'couple') return basePrice + (roomSurcharges.couple ?? 30000);
+          return basePrice;
+        };
+
+        let layout: PosSeat[] = [];
+
+        if (Array.isArray(rawLayout) && rawLayout.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          layout = rawLayout.map((s: any) => {
+            const code: string = s.code;
+            const row = code.charAt(0);
+            const number = parseInt(code.slice(1), 10) || 1;
+            const type: SeatType =
+              s.type === 'vip' ? 'vip' : s.type === 'couple' ? 'couple' : 'normal';
+
+            let status: SeatStatus = 'available';
+            if (s.status === 'maintenance') {
+              status = 'maintenance';
+            } else if (bookedCodes.has(code)) {
+              status = 'booked';
+            } else if (holdingCodes.has(code)) {
+              status = 'holding';
+            }
+
+            let pairId: string | undefined = undefined;
+            if (type === 'couple') {
+              pairId = `${row}${number % 2 === 1 ? number + 1 : number - 1}`;
+            }
+
+            return {
+              id: code,
+              row,
+              number,
+              type,
+              status,
+              price: calcPrice(type, s.surcharge),
+              pairId,
+            };
+          });
+        } else {
+          // Sơ đồ mặc định 8 hàng x 10 ghế (đồng bộ chính xác với Client: A-C thường, D-G VIP, H đôi)
           const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
           for (const r of rows) {
+            const isVip = ['D', 'E', 'F', 'G'].includes(r);
+            const isCouple = r === 'H';
+            const type: SeatType = isCouple ? 'couple' : isVip ? 'vip' : 'normal';
+
             for (let c = 1; c <= 10; c++) {
               const code = `${r}${c}`;
-              const isVip = ['D', 'E', 'F'].includes(r);
-              let status: 'available' | 'booked' | 'holding' = 'available';
+              let status: SeatStatus = 'available';
               if (bookedCodes.has(code)) status = 'booked';
               else if (holdingCodes.has(code)) status = 'holding';
+
               layout.push({
-                code,
-                type: isVip ? 'vip' : 'normal',
+                id: code,
+                row: r,
+                number: c,
+                type,
                 status,
+                price: calcPrice(type),
+                pairId: isCouple ? `${r}${c % 2 === 1 ? c + 1 : c - 1}` : undefined,
               });
             }
           }
@@ -166,12 +230,45 @@ export const POS: React.FC = () => {
       });
   }, [selectedShowtime]);
 
-  // Xử lý chọn / bỏ chọn ghế
-  const toggleSeat = (seatCode: string) => {
-    if (selectedSeats.includes(seatCode)) {
-      setSelectedSeats(selectedSeats.filter((s) => s !== seatCode));
+  // Gom nhóm ghế theo Hàng (Row A - H)
+  const rows = useMemo(() => {
+    const rowMap = new Map<string, PosSeat[]>();
+    seatLayout.forEach((seat) => {
+      if (!rowMap.has(seat.row)) {
+        rowMap.set(seat.row, []);
+      }
+      rowMap.get(seat.row)!.push(seat);
+    });
+    rowMap.forEach((list) => {
+      list.sort((a, b) => a.number - b.number);
+    });
+    return Array.from(rowMap.entries());
+  }, [seatLayout]);
+
+  // Xử lý chọn / bỏ chọn ghế (Ghế đôi chọn / hủy cả cặp)
+  const handleSeatClick = (seat: PosSeat) => {
+    if (seat.status === 'booked' || seat.status === 'holding' || seat.status === 'maintenance') {
+      return;
+    }
+
+    let pairSeat: PosSeat | undefined = undefined;
+    if (seat.pairId) {
+      pairSeat = seatLayout.find((s) => s.id === seat.pairId);
+    } else if (seat.type === 'couple') {
+      const pairNo = seat.number % 2 === 1 ? seat.number + 1 : seat.number - 1;
+      pairSeat = seatLayout.find(
+        (s) => s.row === seat.row && s.number === pairNo && s.type === 'couple'
+      );
+    }
+
+    const isSelected = selectedSeats.includes(seat.id);
+
+    if (isSelected) {
+      const idsToRemove = pairSeat ? [seat.id, pairSeat.id] : [seat.id];
+      setSelectedSeats(selectedSeats.filter((id) => !idsToRemove.includes(id)));
     } else {
-      setSelectedSeats([...selectedSeats, seatCode]);
+      const idsToAdd = pairSeat ? [seat.id, pairSeat.id] : [seat.id];
+      setSelectedSeats([...selectedSeats, ...idsToAdd]);
     }
   };
 
@@ -188,12 +285,11 @@ export const POS: React.FC = () => {
     }
   };
 
-  // Tính toán tổng tiền
+  // Tính toán tổng tiền ghế
   const ticketBasePrice = selectedShowtime?.price || 75000;
   const seatsTotal = selectedSeats.reduce((sum, seatCode) => {
-    const seat = seatLayout.find((s) => s.code === seatCode);
-    const surcharge = seat?.type === 'vip' ? 15000 : seat?.type === 'couple' ? 35000 : 0;
-    return sum + ticketBasePrice + surcharge;
+    const seat = seatLayout.find((s) => s.id === seatCode);
+    return sum + (seat?.price || ticketBasePrice);
   }, 0);
 
   const combosTotal = Object.entries(selectedCombos).reduce((sum, [cId, qty]) => {
@@ -253,7 +349,7 @@ export const POS: React.FC = () => {
       apiClient.get(`/tickets/showtime/${selectedShowtime._id}/seats`).then((r) => {
         const bookedCodes = new Set(r.data.data?.bookedSeats || []);
         setSeatLayout((prev) =>
-          prev.map((s) => (bookedCodes.has(s.code) ? { ...s, status: 'booked' } : s))
+          prev.map((s) => (bookedCodes.has(s.id) ? { ...s, status: 'booked' } : s))
         );
       });
     } catch (err) {
@@ -328,11 +424,10 @@ export const POS: React.FC = () => {
                 <button
                   key={st._id}
                   onClick={() => setSelectedShowtime(st)}
-                  className={`flex flex-col rounded-xl border p-3 text-left transition-all ${
-                    isSelected
+                  className={`flex flex-col rounded-xl border p-3 text-left transition-all ${isSelected
                       ? 'border-rose-500 bg-rose-500/10 shadow-lg shadow-rose-500/10 ring-1 ring-rose-500'
                       : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-800/80'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-white">
                     <span className="flex items-center gap-1 text-rose-400">
@@ -372,67 +467,83 @@ export const POS: React.FC = () => {
                     Phim: <strong className="text-zinc-200">{selectedShowtime.movie?.title}</strong>
                   </p>
                 </div>
-                {/* Chú thích màu sắc */}
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1.5 text-zinc-400">
-                    <span className="h-3 w-3 rounded bg-zinc-700" /> Trống
-                  </span>
-                  <span className="flex items-center gap-1.5 text-zinc-400">
-                    <span className="h-3 w-3 rounded bg-amber-600/70" /> VIP
-                  </span>
-                  <span className="flex items-center gap-1.5 text-zinc-400">
-                    <span className="h-3 w-3 rounded bg-rose-500" /> Đang chọn
-                  </span>
-                  <span className="flex items-center gap-1.5 text-zinc-400">
-                    <span className="h-3 w-3 rounded bg-zinc-800 opacity-40" /> Đã bán
-                  </span>
-                </div>
               </div>
 
-              {/* Màn hình chiếu */}
-              <div className="my-6">
-                <div className="mx-auto h-2 max-w-md rounded-full bg-gradient-to-r from-rose-500/20 via-rose-500 to-rose-500/20 shadow-lg shadow-rose-500/40" />
-                <p className="mt-1.5 text-center text-[10px] uppercase tracking-widest text-zinc-500">
+              {/* Màn hình cong phát sáng */}
+              <div className="mx-auto my-6 max-w-2xl text-center">
+                <div className="relative mx-auto h-2.5 w-5/6 rounded-full bg-gradient-to-r from-transparent via-rose-500 to-transparent shadow-[0_4px_35px_rgba(244,63,94,0.7)]" />
+                <div className="mt-2 text-[11px] font-bold tracking-[0.3em] uppercase text-zinc-400">
                   MÀN HÌNH CHIẾU
+                </div>
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  Khán giả hướng mắt về phía màn hình
                 </p>
               </div>
 
-              {/* Lưới ghế */}
+              {/* Lưới ghế ngồi */}
               {loadingSeats ? (
-                <div className="py-12 text-center text-sm text-zinc-500">Đang tải ghế...</div>
+                <div className="py-12 text-center text-sm text-zinc-500">
+                  Đang tải sơ đồ ghế ngồi...
+                </div>
+              ) : seatLayout.length === 0 ? (
+                <div className="py-12 text-center text-sm text-zinc-500">
+                  Không có dữ liệu ghế cho suất chiếu này.
+                </div>
               ) : (
-                <div className="flex justify-center overflow-x-auto py-2">
-                  <div className="grid grid-cols-10 gap-2 max-w-xl">
-                    {seatLayout.map((seat) => {
-                      const isSelected = selectedSeats.includes(seat.code);
-                      const isBooked = seat.status === 'booked';
-                      const isHolding = seat.status === 'holding';
-
-                      let btnStyle = 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white border-zinc-700';
-                      if (seat.type === 'vip') {
-                        btnStyle = 'bg-amber-950/40 text-amber-300 border-amber-600/40 hover:bg-amber-800/50';
-                      }
-                      if (isSelected) {
-                        btnStyle = 'bg-rose-600 text-white font-bold border-rose-500 shadow-md shadow-rose-600/40';
-                      }
-                      if (isBooked || isHolding) {
-                        btnStyle = 'bg-zinc-900/60 text-zinc-600 border-zinc-800/80 cursor-not-allowed opacity-40 line-through';
-                      }
+                <div className="overflow-x-auto pb-4 pt-2">
+                  <div className="flex min-w-[580px] flex-col items-center gap-2 sm:gap-2.5">
+                    {rows.map(([rowName, rowSeats]) => {
+                      const isCoupleRow = rowSeats.some((s) => s.type === 'couple');
 
                       return (
-                        <button
-                          key={seat.code}
-                          disabled={isBooked || isHolding}
-                          onClick={() => toggleSeat(seat.code)}
-                          className={`flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-semibold transition-all ${btnStyle}`}
-                        >
-                          {seat.code}
-                        </button>
+                        <div key={rowName} className="flex items-center gap-2 sm:gap-3">
+                          {/* Nhãn hàng bên trái */}
+                          <span className="w-5 text-center font-mono text-xs font-bold text-zinc-400">
+                            {rowName}
+                          </span>
+
+                          {/* Danh sách ghế của hàng */}
+                          <div
+                            className={`flex items-center ${isCoupleRow ? 'gap-2' : 'gap-1.5 sm:gap-2'
+                              }`}
+                          >
+                            {groupCouples(rowSeats).map((item) =>
+                              item.length === 2 ? (
+                                <CoupleSeatItem
+                                  key={item[0].id}
+                                  seats={item}
+                                  isSelected={
+                                    selectedSeats.includes(item[0].id) &&
+                                    selectedSeats.includes(item[1].id)
+                                  }
+                                  onClick={() => handleSeatClick(item[0])}
+                                />
+                              ) : (
+                                <SeatItem
+                                  key={item[0].id}
+                                  seat={item[0]}
+                                  isSelected={selectedSeats.includes(item[0].id)}
+                                  onClick={() => handleSeatClick(item[0])}
+                                />
+                              )
+                            )}
+                          </div>
+
+                          {/* Nhãn hàng bên phải */}
+                          <span className="w-5 text-center font-mono text-xs font-bold text-zinc-400">
+                            {rowName}
+                          </span>
+                        </div>
                       );
                     })}
                   </div>
                 </div>
               )}
+
+              {/* Chú thích màu sắc ghế đồng bộ Client */}
+              <div className="mt-6 border-t border-zinc-800/80 pt-4">
+                <SeatLegend />
+              </div>
             </div>
 
             {/* CHỌN BẮP NƯỚC (COMBOS) */}
@@ -551,11 +662,10 @@ export const POS: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('cash')}
-                    className={`flex items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-semibold transition-all ${
-                      paymentMethod === 'cash'
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-semibold transition-all ${paymentMethod === 'cash'
                         ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
                         : 'border-zinc-800 bg-zinc-950 text-zinc-400'
-                    }`}
+                      }`}
                   >
                     <Banknote className="h-4 w-4" />
                     <span>Tiền Mặt</span>
@@ -564,11 +674,10 @@ export const POS: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('vietqr')}
-                    className={`flex items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-semibold transition-all ${
-                      paymentMethod === 'vietqr'
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-semibold transition-all ${paymentMethod === 'vietqr'
                         ? 'border-rose-500 bg-rose-500/15 text-rose-400'
                         : 'border-zinc-800 bg-zinc-950 text-zinc-400'
-                    }`}
+                      }`}
                   >
                     <CreditCard className="h-4 w-4" />
                     <span>Quét VietQR</span>

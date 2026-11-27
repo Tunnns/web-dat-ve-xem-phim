@@ -1,0 +1,61 @@
+import React from 'react';
+import { Clock } from 'lucide-react';
+
+export const SeatLegend: React.FC = () => {
+  const legendItems = [
+    {
+      label: 'Ghế thường',
+      style: 'border border-zinc-400 bg-zinc-600 text-white',
+      description: 'Tiêu chuẩn',
+    },
+    {
+      label: 'Ghế VIP',
+      style: 'border border-amber-400 bg-amber-600 text-white',
+      description: 'Vị trí trung tâm',
+    },
+    {
+      label: 'Ghế đôi Sweetbox',
+      style: 'border border-pink-400 bg-pink-600 text-white',
+      description: 'Dành cho 2 người',
+    },
+    {
+      label: 'Đang chọn',
+      style: 'border border-rose-400 bg-rose-600 text-white shadow-md shadow-rose-600/50',
+      description: 'Ghế đang chọn',
+    },
+    {
+      label: 'Đang giữ',
+      style: 'border border-amber-500/80 bg-amber-500/20 text-amber-300 cursor-not-allowed',
+      description: 'Có khách đang giữ',
+      isHolding: true,
+    },
+    {
+      label: 'Đã bán',
+      style: 'border border-zinc-800 bg-zinc-800 text-zinc-600 cursor-not-allowed',
+      description: 'Không thể chọn',
+      isBooked: true,
+    },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-4 text-xs">
+      {legendItems.map((item) => (
+        <div key={item.label} className="flex items-center gap-2">
+          <div
+            className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-md font-semibold text-[10px] ${item.style}`}
+          >
+            {item.isBooked ? (
+              '✕'
+            ) : item.isHolding ? (
+              <Clock className="h-3 w-3 text-amber-400" />
+            ) : null}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-medium text-zinc-200">{item.label}</span>
+            <span className="text-[10px] text-zinc-500">{item.description}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};

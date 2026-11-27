@@ -33,7 +33,13 @@ export interface Room {
     code: string;
     type: 'normal' | 'vip' | 'couple';
     status: 'available' | 'maintenance';
+    surcharge?: number;
   }>;
+  seatSurcharges?: {
+    normal?: number;
+    vip?: number;
+    couple?: number;
+  };
 }
 
 export interface Showtime {
